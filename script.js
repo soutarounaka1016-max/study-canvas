@@ -4,11 +4,18 @@ import {
   DrawingHistory,
   cloneDrawing,
   emptyDrawing,
-  parseSavedDrawing,
   strokeTouchesPoint,
 } from "./src/drawing-model.js";
+import {
+  getPageDrawing,
+  loadPageStore,
+  serializePageStore,
+  setPageDrawing,
+  shiftDate,
+} from "./src/page-store.js";
 
-const STORAGE_KEY = "study-canvas:drawing:v1";
+const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
+const PAGE_STORE_KEY = "study-canvas:pages:v2";
 const canvas = document.querySelector("#drawingCanvas");
 const page = document.querySelector("#page");
 const context = canvas.getContext("2d", { alpha: false });
@@ -16,7 +23,11 @@ const emptyHint = document.querySelector("#emptyHint");
 const undoButton = document.querySelector("#undoButton");
 const redoButton = document.querySelector("#redoButton");
 const penWidth = document.querySelector("#penWidth");
+const documentTitle = document.querySelector("#documentTitle");
 const pageDate = document.querySelector("#pageDate");
+const previousDateButton = document.querySelector("#previousDateButton");
+const nextDateButton = document.querySelector("#nextDateButton");
+const todayButton = document.querySelector("#todayButton");
 const saveState = document.querySelector(".save-state");
 const saveStatus = document.querySelector("#saveStatus");
 const clearButton = document.querySelector("#clearButton");
@@ -27,19 +38,23 @@ const today = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
 }).format(new Date());
 
-pageDate.textContent = new Intl.DateTimeFormat("ja-JP", {
-  timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short",
-}).format(new Date());
-
-let initialDrawing;
+let pageStore;
+let activeDate = today;
 try {
-  initialDrawing = parseSavedDrawing(localStorage.getItem(STORAGE_KEY), today);
+  const loaded = loadPageStore(
+    localStorage.getItem(PAGE_STORE_KEY),
+    localStorage.getItem(LEGACY_STORAGE_KEY),
+    today,
+  );
+  pageStore = loaded.store;
+  if (loaded.migrated) localStorage.setItem(PAGE_STORE_KEY, serializePageStore(pageStore));
+  if (loaded.recovered) showSaveError("旧データから復旧しました");
 } catch {
-  initialDrawing = emptyDrawing(today);
+  pageStore = loadPageStore(null, null, today).store;
   showSaveError("保存データを読み込めませんでした");
 }
 
-const history = new DrawingHistory(initialDrawing);
+let history = new DrawingHistory(getPageDrawing(pageStore, activeDate));
 let selectedTool = "pen";
 let selectedColor = "#2558e6";
 let activeStroke = null;
@@ -66,6 +81,9 @@ document.querySelectorAll("[data-color]").forEach((button) => {
   });
 });
 
+previousDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, -1)));
+nextDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, 1)));
+todayButton.addEventListener("click", () => switchDate(today));
 undoButton.addEventListener("click", () => { history.undo(); afterDocumentChange(); });
 redoButton.addEventListener("click", () => { history.redo(); afterDocumentChange(); });
 
@@ -76,7 +94,7 @@ clearButton.addEventListener("click", () => {
 
 confirmClearButton.addEventListener("click", () => {
   if (history.current.strokes.length === 0) return;
-  history.commit(emptyDrawing(history.current.date || today));
+  history.commit(emptyDrawing(activeDate));
   afterDocumentChange();
 });
 
@@ -98,6 +116,30 @@ function selectTool(tool) {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   });
+}
+
+function switchDate(nextDate) {
+  if (nextDate === activeDate || activePointerId !== null) return;
+  if (!saveImmediately()) return;
+  activeDate = nextDate;
+  history = new DrawingHistory(getPageDrawing(pageStore, activeDate));
+  updateDateDisplay();
+  updateHistoryButtons();
+  requestRender();
+}
+
+function updateDateDisplay() {
+  const value = new Date(`${activeDate}T00:00:00+09:00`);
+  documentTitle.textContent = activeDate === today ? "今日の計画" : "この日の計画";
+  pageDate.dateTime = activeDate;
+  pageDate.textContent = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(value);
+  todayButton.disabled = activeDate === today;
 }
 
 function handlePointerDown(event) {
@@ -237,11 +279,14 @@ function scheduleSave() {
 function saveImmediately() {
   window.clearTimeout(saveTimer);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.current));
+    pageStore = setPageDrawing(pageStore, activeDate, history.current);
+    localStorage.setItem(PAGE_STORE_KEY, serializePageStore(pageStore));
     saveState.className = "save-state";
     saveStatus.textContent = "保存済み";
+    return true;
   } catch {
     showSaveError("保存できませんでした");
+    return false;
   }
 }
 function showSaveError(message) {
@@ -249,5 +294,6 @@ function showSaveError(message) {
   saveStatus.textContent = message;
 }
 
+updateDateDisplay();
 updateHistoryButtons();
 requestRender();
