@@ -55,6 +55,8 @@
           <div class="menu-panel">
             <strong>ページ操作</strong>
             <button id="backupButton" class="primary-menu-button" type="button">バックアップを保存</button>
+            <button id="restoreButton" type="button">バックアップから復元</button>
+            <input id="restoreFile" type="file" accept="application/json,.json" hidden />
             <p id="backupStatus" class="backup-status" role="status" aria-live="polite" hidden></p>
             <button id="clearButton" class="danger-menu-button" type="button">ページを白紙に戻す</button>
           </div>
@@ -100,6 +102,24 @@
       <div id="pageList" class="page-list" aria-label="手書きしたページ"></div>
     </dialog>
 
+    <dialog id="restoreDialog">
+      <form method="dialog">
+        <h2>バックアップから復元</h2>
+        <p>次の内容で全日付の手書きを置き換えます。まだ現在のデータは変更されていません。</p>
+        <dl>
+          <dt>ファイル</dt><dd id="restoreFileName"></dd>
+          <dt>保存日時</dt><dd id="restoreExportedAt"></dd>
+          <dt>手書きがある日</dt><dd id="restorePageCount"></dd>
+          <dt>手書き線</dt><dd id="restoreStrokeCount"></dd>
+        </dl>
+        <p><strong>復元前の現在データは、自動で別のJSONファイルに保存します。</strong></p>
+        <div class="dialog-actions">
+          <button value="cancel">キャンセル</button>
+          <button id="confirmRestoreButton" class="danger-button" type="button">退避して復元する</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="clearDialog">
       <form method="dialog">
         <h2>ページを白紙に戻しますか？</h2>
@@ -113,5 +133,6 @@
 
     <noscript>このアプリを使うにはJavaScriptを有効にしてください。</noscript>
     <script type="module" src="script.js?v=20260719-6"></script>
+    <script type="module" src="restore-ui.js?v=20260720-1"></script>
   </body>
 </html>

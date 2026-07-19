@@ -6,6 +6,8 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
 const script = await readFile(new URL("../script.js", import.meta.url), "utf8");
 const backupScript = await readFile(new URL("../src/backup.js", import.meta.url), "utf8");
+const restoreUi = await readFile(new URL("../restore-ui.js", import.meta.url), "utf8");
+const restoreScript = await readFile(new URL("../src/restore.js", import.meta.url), "utf8");
 
 test("不要と決めた指す・文字入力をツールバーに表示しない", () => {
   assert.doesNotMatch(html, /指す（今後追加）/);
@@ -75,8 +77,29 @@ test("メニューから全ページのJSONバックアップを保存できる"
   assert.match(backupScript, /BACKUP_FORMAT = "study-canvas-backup"/);
 });
 
+test("バックアップ復元はファイル選択と確認画面を分ける", () => {
+  assert.match(html, /id="restoreButton"/);
+  assert.match(html, /id="restoreFile"[^>]*type="file"[^>]*hidden/);
+  assert.match(html, /id="restoreDialog"/);
+  assert.match(html, /id="confirmRestoreButton"/);
+  assert.match(html, /まだ現在のデータは変更されていません/);
+});
+
+test("復元前に現在データを別ファイルへ退避する", () => {
+  assert.match(restoreUi, /serializeBackup\(current/);
+  assert.match(restoreUi, /createPreRestoreBackupFilename/);
+  assert.match(restoreUi, /replaceStoredPageStore/);
+  assert.match(restoreScript, /previousRaw/);
+});
+
+test("復元後は再読み込みして正式な保存データから描画する", () => {
+  assert.match(restoreUi, /window\.location\.reload/);
+});
+
 test("公開後に更新したCSSとJavaScriptを確実に読み込む", () => {
   assert.match(html, /styles\.css\?v=\d{8}-\d+/);
   assert.match(html, /script\.js\?v=\d{8}-\d+/);
+  assert.match(html, /restore-ui\.js\?v=\d{8}-\d+/);
   assert.match(script, /page-store\.js\?v=\d{8}-\d+/);
+  assert.match(restoreUi, /restore\.js\?v=\d{8}-\d+/);
 });
