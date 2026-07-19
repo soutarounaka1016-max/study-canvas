@@ -36,3 +36,9 @@ test("ページ一覧をサムネイルから開ける", () => {
   assert.match(script, /listWrittenPageDates/);
   assert.match(script, /drawThumbnail/);
 });
+
+test("公開後に更新したCSSとJavaScriptを確実に読み込む", () => {
+  assert.match(html, /styles\.css\?v=\d{8}-\d+/);
+  assert.match(html, /script\.js\?v=\d{8}-\d+/);
+  assert.match(script, /page-store\.js\?v=\d{8}-\d+/);
+});
