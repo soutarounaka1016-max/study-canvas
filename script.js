@@ -7,9 +7,10 @@ import {
   emptyDrawing,
   getSelectedStrokeBounds,
   moveSelectedStrokes,
+  scaleSelectedStrokes,
   selectStrokeIdsByLasso,
   strokeTouchesPoint,
-} from "./src/drawing-model.js?v=20260719-3";
+} from "./src/drawing-model.js?v=20260719-4";
 import {
   getPageDrawing,
   listWrittenPageDates,
@@ -17,7 +18,7 @@ import {
   serializePageStore,
   setPageDrawing,
   shiftDate,
-} from "./src/page-store.js?v=20260719-3";
+} from "./src/page-store.js?v=20260719-4";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
@@ -76,6 +77,7 @@ let eraseDraft = null;
 let lassoPoints = null;
 let selectedStrokeIds = new Set();
 let selectionDrag = null;
+let selectionResize = null;
 let selectionDraft = null;
 let selectionActionsVisible = false;
 let activePointerId = null;
@@ -237,7 +239,17 @@ function handlePointerDown(event) {
     eraseAt(point);
   } else if (selectedTool === "select") {
     const bounds = getSelectedStrokeBounds(history.current, selectedStrokeIds);
-    if (bounds && pointInsideBounds(point, bounds, 24)) {
+    const resizeHandle = bounds ? getResizeHandleAtPoint(bounds, point) : null;
+    if (resizeHandle) {
+      selectionActionsVisible = false;
+      selectionResize = {
+        ...resizeHandle,
+        start: point,
+        drawing: cloneDrawing(history.current),
+        moved: false,
+      };
+      selectionDraft = cloneDrawing(history.current);
+    } else if (bounds && pointInsideBounds(point, bounds, 24)) {
       selectionActionsVisible = false;
       selectionDrag = { start: point, drawing: cloneDrawing(history.current), moved: false };
       selectionDraft = cloneDrawing(history.current);
@@ -264,6 +276,23 @@ function handlePointerMove(event) {
     } else if (lassoPoints) {
       const previous = lassoPoints.at(-1);
       if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) >= 2) lassoPoints.push(point);
+    } else if (selectionResize) {
+      const handleX = selectionResize.handle.x - selectionResize.anchor.x;
+      const handleY = selectionResize.handle.y - selectionResize.anchor.y;
+      const handleLengthSquared = handleX * handleX + handleY * handleY;
+      const movedX = point.x - selectionResize.start.x;
+      const movedY = point.y - selectionResize.start.y;
+      const scale = handleLengthSquared > 0
+        ? 1 + (movedX * handleX + movedY * handleY) / handleLengthSquared
+        : 1;
+      selectionResize.moved = selectionResize.moved ||
+        Math.hypot(movedX, movedY) >= 0.8;
+      selectionDraft = scaleSelectedStrokes(
+        selectionResize.drawing,
+        selectedStrokeIds,
+        selectionResize.anchor,
+        scale,
+      );
     } else if (selectionDrag) {
       const dx = point.x - selectionDrag.start.x;
       const dy = point.y - selectionDrag.start.y;
@@ -290,6 +319,9 @@ function finishPointer(event) {
   } else if (selectionDrag?.moved && selectionDraft) {
     history.commit(selectionDraft);
     documentChanged = true;
+  } else if (selectionResize?.moved && selectionDraft) {
+    history.commit(selectionDraft);
+    documentChanged = true;
   } else if (selectionDrag && !selectionDrag.moved) {
     selectionActionsVisible = true;
   }
@@ -297,6 +329,7 @@ function finishPointer(event) {
   eraseDraft = null;
   lassoPoints = null;
   selectionDrag = null;
+  selectionResize = null;
   selectionDraft = null;
   activePointerId = null;
   updateSelectionHint();
@@ -328,6 +361,24 @@ function getCanvasPoint(event) {
 function pointInsideBounds(point, bounds, padding = 0) {
   return point.x >= bounds.minX - padding && point.x <= bounds.maxX + padding &&
     point.y >= bounds.minY - padding && point.y <= bounds.maxY + padding;
+}
+
+function getResizeHandles(bounds) {
+  const padding = 14;
+  const minimumX = Math.max(12, bounds.minX - padding);
+  const minimumY = Math.max(12, bounds.minY - padding);
+  const maximumX = Math.min(BASE_WIDTH - 12, bounds.maxX + padding);
+  const maximumY = Math.min(BASE_HEIGHT - 12, bounds.maxY + padding);
+  return [
+    { corner: "north-west", handle: { x: minimumX, y: minimumY }, anchor: { x: bounds.maxX, y: bounds.maxY } },
+    { corner: "north-east", handle: { x: maximumX, y: minimumY }, anchor: { x: bounds.minX, y: bounds.maxY } },
+    { corner: "south-east", handle: { x: maximumX, y: maximumY }, anchor: { x: bounds.minX, y: bounds.minY } },
+    { corner: "south-west", handle: { x: minimumX, y: maximumY }, anchor: { x: bounds.maxX, y: bounds.minY } },
+  ];
+}
+
+function getResizeHandleAtPoint(bounds, point) {
+  return getResizeHandles(bounds).find(({ handle }) => Math.hypot(point.x - handle.x, point.y - handle.y) <= 32) || null;
 }
 
 function resizeCanvas() {
@@ -397,8 +448,20 @@ function drawSelectionOverlay(drawing) {
     const height = bounds.maxY - bounds.minY + padding * 2;
     context.fillRect(x, y, width, height);
     context.strokeRect(x, y, width, height);
+    context.setLineDash([]);
+    for (const { handle } of getResizeHandles(bounds)) drawSelectionHandle(handle);
   }
   context.restore();
+}
+
+function drawSelectionHandle(point) {
+  context.beginPath();
+  context.fillStyle = "#ffffff";
+  context.strokeStyle = "#2558e6";
+  context.lineWidth = 5;
+  context.arc(point.x, point.y, 12, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
 }
 
 function drawThumbnail(thumbnail, drawing) {
@@ -470,6 +533,7 @@ function clearSelection() {
   selectedStrokeIds = new Set();
   lassoPoints = null;
   selectionDrag = null;
+  selectionResize = null;
   selectionDraft = null;
   selectionActionsVisible = false;
   updateSelectionHint();
@@ -478,7 +542,7 @@ function clearSelection() {
 function updateSelectionHint() {
   if (!selectionHint) return;
   selectionHint.textContent = selectedStrokeIds.size > 0
-    ? `${selectedStrokeIds.size}本を選択中。枠の中をドラッグして移動できます`
+    ? `${selectedStrokeIds.size}本を選択中。枠内で移動、四隅の丸で拡大・縮小できます`
     : "手書きを囲んで選択してください";
 }
 
