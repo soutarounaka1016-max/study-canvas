@@ -45,6 +45,7 @@
 - GitHub Actions（Pull Request）: 成功
 - GitHub Pages公開画面: 正常表示
 - 公開後の手書き・自動保存・再読み込み復元・取り消し・やり直し: 成功
+- 公開後のv1→v2移行・日付切り替え・日付別保存: 成功
 - アプリ本体由来の重大なコンソールエラー: なし
 - iPad Safari / Apple Pencil: 未確認
 
