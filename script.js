@@ -5,7 +5,7 @@ import {
   cloneDrawing,
   emptyDrawing,
   strokeTouchesPoint,
-} from "./src/drawing-model.js";
+} from "./src/drawing-model.js?v=20260719-1";
 import {
   getPageDrawing,
   listWrittenPageDates,
@@ -13,7 +13,7 @@ import {
   serializePageStore,
   setPageDrawing,
   shiftDate,
-} from "./src/page-store.js";
+} from "./src/page-store.js?v=20260719-1";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
