@@ -4,6 +4,7 @@ import {
   PAGE_STORE_VERSION,
   emptyPageStore,
   getPageDrawing,
+  listWrittenPageDates,
   loadPageStore,
   serializePageStore,
   setPageDrawing,
@@ -59,6 +60,20 @@ test("日付ごとの手書きが混ざらない", () => {
 
   assert.equal(getPageDrawing(second, "2026-07-18").strokes.length, 1);
   assert.equal(getPageDrawing(second, "2026-07-19").strokes.length, 0);
+});
+
+test("手書きがあるページだけを新しい日付順で一覧にする", () => {
+  const first = setPageDrawing(emptyPageStore(), "2026-07-17", {
+    version: 1, date: "2026-07-17", strokes: [stroke],
+  });
+  const blank = setPageDrawing(first, "2026-07-18", {
+    version: 1, date: "2026-07-18", strokes: [],
+  });
+  const latest = setPageDrawing(blank, "2026-07-19", {
+    version: 1, date: "2026-07-19", strokes: [stroke],
+  });
+
+  assert.deepEqual(listWrittenPageDates(latest), ["2026-07-19", "2026-07-17"]);
 });
 
 test("前日・翌日を月や年をまたいで計算できる", () => {

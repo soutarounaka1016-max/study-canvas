@@ -116,6 +116,34 @@ dialog h2 { margin-top: 0; font-size: 21px; }
 .dialog-actions button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 9px; background: white; }
 .dialog-actions .danger-button { border-color: #dc2626; background: #dc2626; color: white; }
 
+.page-list-dialog { width: min(900px, calc(100vw - 40px)); max-height: calc(100vh - 40px); }
+.page-list-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.page-list-header h2 { margin-bottom: 4px; }
+.page-list-header p { margin: 0; color: var(--muted); }
+.dialog-close-button {
+  display: grid; width: 46px; height: 46px; flex: 0 0 auto; place-items: center;
+  border: 1px solid var(--border); border-radius: 50%; background: white; color: var(--text);
+  font-size: 28px;
+}
+.page-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px; margin-top: 22px;
+}
+.page-card {
+  display: grid; gap: 9px; padding: 10px; border: 2px solid transparent; border-radius: 12px;
+  background: #f5f7fa; color: var(--text); text-align: left;
+}
+.page-card:hover, .page-card:focus-visible { border-color: var(--accent); background: #eef3ff; outline: none; }
+.page-card.is-current { border-color: #9db5ff; }
+.page-card canvas {
+  display: block; width: 100%; aspect-ratio: 3 / 2; border: 1px solid var(--border);
+  border-radius: 6px; background: white; box-shadow: 0 3px 10px rgb(16 24 40 / 9%);
+}
+.page-card-date { font-weight: 700; }
+.page-card small { color: var(--muted); }
+.empty-page-list { margin: 24px 0 4px; color: var(--muted); text-align: center; }
+.empty-page-list[hidden] { display: none; }
+
 @media (orientation: portrait) {
   :root { --toolbar-height: 76px; }
   .orientation-note { display: block; }
@@ -128,4 +156,6 @@ dialog h2 { margin-top: 0; font-size: 21px; }
   .document-title strong { font-size: 15px; }
   .pen-options { gap: 14px; padding-inline: 14px; }
   .save-state { min-width: max-content; }
+  .page-list-dialog { padding: 18px; }
+  .page-list { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }

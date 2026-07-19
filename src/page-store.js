@@ -44,6 +44,13 @@ export function setPageDrawing(store, date, drawing) {
   };
 }
 
+export function listWrittenPageDates(store) {
+  return Object.entries(store?.pages || {})
+    .filter(([date, drawing]) => isValidDateKey(date) && drawing?.strokes?.length > 0)
+    .map(([date]) => date)
+    .sort((first, second) => second.localeCompare(first));
+}
+
 export function shiftDate(date, amount) {
   if (!isValidDateKey(date) || !Number.isInteger(amount)) throw new TypeError("日付が正しくありません");
   const [year, month, day] = date.split("-").map(Number);
