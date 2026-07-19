@@ -13,6 +13,7 @@
 html, body {
   width: 100%; min-height: 100%; margin: 0; background: var(--workspace); color: var(--text);
   overscroll-behavior: none; touch-action: manipulation;
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
 }
 button, input { font: inherit; }
 button, input, summary { touch-action: manipulation; }
@@ -70,6 +71,7 @@ button { -webkit-tap-highlight-color: transparent; }
   background: rgb(250 251 252 / 96%);
 }
 .color-options { display: flex; gap: 12px; }
+.color-options[hidden], .width-control[hidden] { display: none; }
 .color-button {
   width: 34px; height: 34px; border: 3px solid white; border-radius: 50%;
   background: var(--button-color); box-shadow: 0 0 0 1px #b8bec8;
@@ -107,6 +109,12 @@ button { -webkit-tap-highlight-color: transparent; }
   transform: translate(-50%, -50%); color: #a4aab4; text-align: center; pointer-events: none;
 }
 #emptyHint[hidden] { display: none; }
+.selection-delete-button {
+  position: absolute; z-index: 3; min-width: 76px; min-height: 46px; padding: 8px 16px;
+  border: 0; border-radius: 11px; background: #dc2626; color: white; font-weight: 700;
+  box-shadow: 0 6px 18px rgb(16 24 40 / 24%); touch-action: manipulation;
+}
+.selection-delete-button[hidden] { display: none; }
 
 dialog {
   width: min(440px, calc(100vw - 32px)); padding: 24px; border: 0; border-radius: 16px;

@@ -141,6 +141,13 @@ export function moveSelectedStrokes(drawing, selectedIds, dx, dy) {
   return moved;
 }
 
+export function deleteSelectedStrokes(drawing, selectedIds) {
+  const ids = new Set(selectedIds);
+  const nextDrawing = cloneDrawing(drawing);
+  nextDrawing.strokes = nextDrawing.strokes.filter((stroke) => !ids.has(stroke.id));
+  return nextDrawing;
+}
+
 function strokeIntersectsPolygon(stroke, polygon) {
   if (stroke.points.some((point) => pointInPolygon(point, polygon))) return true;
   for (let strokeIndex = 1; strokeIndex < stroke.points.length; strokeIndex += 1) {

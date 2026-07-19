@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  deleteSelectedStrokes,
   DrawingHistory,
   emptyDrawing,
   moveSelectedStrokes,
@@ -61,6 +62,14 @@ test("選択した手書きはキャンバスの外へ移動しない", () => {
   const drawing = { version: 1, date: "2026-07-19", strokes: [stroke] };
   const moved = moveSelectedStrokes(drawing, ["stroke-1"], -1000, -1000);
   assert.deepEqual(moved.strokes[0].points, [{ x: 0, y: 0 }, { x: 90, y: 90 }]);
+});
+
+test("選んだ手書きだけを削除し、元のデータは変更しない", () => {
+  const outside = { ...stroke, id: "outside", points: [{ x: 500, y: 500 }, { x: 600, y: 600 }] };
+  const drawing = { version: 1, date: "2026-07-19", strokes: [stroke, outside] };
+  const deleted = deleteSelectedStrokes(drawing, ["stroke-1"]);
+  assert.deepEqual(deleted.strokes, [outside]);
+  assert.deepEqual(drawing.strokes, [stroke, outside]);
 });
 
 test("履歴の最大数を超えた古い操作は破棄される", () => {
