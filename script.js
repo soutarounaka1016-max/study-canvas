@@ -3,12 +3,13 @@ import {
   BASE_WIDTH,
   DrawingHistory,
   cloneDrawing,
+  deleteSelectedStrokes,
   emptyDrawing,
   getSelectedStrokeBounds,
   moveSelectedStrokes,
   selectStrokeIdsByLasso,
   strokeTouchesPoint,
-} from "./src/drawing-model.js?v=20260719-2";
+} from "./src/drawing-model.js?v=20260719-3";
 import {
   getPageDrawing,
   listWrittenPageDates,
@@ -16,7 +17,7 @@ import {
   serializePageStore,
   setPageDrawing,
   shiftDate,
-} from "./src/page-store.js?v=20260719-2";
+} from "./src/page-store.js?v=20260719-3";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
@@ -30,6 +31,7 @@ const penWidth = document.querySelector("#penWidth");
 const colorOptions = document.querySelector(".color-options");
 const widthControl = document.querySelector(".width-control");
 const selectionHint = document.querySelector("#selectionHint");
+const selectionDeleteButton = document.querySelector("#selectionDeleteButton");
 const documentTitle = document.querySelector("#documentTitle");
 const pageDate = document.querySelector("#pageDate");
 const previousDateButton = document.querySelector("#previousDateButton");
@@ -75,6 +77,7 @@ let lassoPoints = null;
 let selectedStrokeIds = new Set();
 let selectionDrag = null;
 let selectionDraft = null;
+let selectionActionsVisible = false;
 let activePointerId = null;
 let frameRequest = null;
 let saveTimer = null;
@@ -104,6 +107,7 @@ pageListButton.addEventListener("click", openPageList);
 closePageListButton.addEventListener("click", () => pageListDialog.close());
 undoButton.addEventListener("click", () => { history.undo(); clearSelection(); afterDocumentChange(); });
 redoButton.addEventListener("click", () => { history.redo(); clearSelection(); afterDocumentChange(); });
+selectionDeleteButton.addEventListener("click", deleteSelection);
 
 clearButton.addEventListener("click", () => {
   document.querySelector(".menu").removeAttribute("open");
@@ -123,6 +127,8 @@ canvas.addEventListener("pointerup", finishPointer);
 canvas.addEventListener("pointercancel", finishPointer);
 canvas.addEventListener("lostpointercapture", finishPointer);
 document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
+document.addEventListener("selectstart", (event) => event.preventDefault());
+document.addEventListener("contextmenu", (event) => event.preventDefault());
 window.addEventListener("pagehide", saveImmediately);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") saveImmediately();
@@ -232,6 +238,7 @@ function handlePointerDown(event) {
   } else if (selectedTool === "select") {
     const bounds = getSelectedStrokeBounds(history.current, selectedStrokeIds);
     if (bounds && pointInsideBounds(point, bounds, 24)) {
+      selectionActionsVisible = false;
       selectionDrag = { start: point, drawing: cloneDrawing(history.current), moved: false };
       selectionDraft = cloneDrawing(history.current);
     } else {
@@ -283,6 +290,8 @@ function finishPointer(event) {
   } else if (selectionDrag?.moved && selectionDraft) {
     history.commit(selectionDraft);
     documentChanged = true;
+  } else if (selectionDrag && !selectionDrag.moved) {
+    selectionActionsVisible = true;
   }
   activeStroke = null;
   eraseDraft = null;
@@ -298,6 +307,14 @@ function finishPointer(event) {
 function eraseAt(point) {
   const radius = 18;
   eraseDraft.strokes = eraseDraft.strokes.filter((stroke) => !strokeTouchesPoint(stroke, point, radius));
+}
+
+function deleteSelection() {
+  if (selectedStrokeIds.size === 0) return;
+  const nextDrawing = deleteSelectedStrokes(history.current, selectedStrokeIds);
+  history.commit(nextDrawing);
+  clearSelection();
+  afterDocumentChange();
 }
 
 function getCanvasPoint(event) {
@@ -340,7 +357,21 @@ function render() {
   for (const stroke of drawing.strokes) drawStroke(context, stroke);
   if (activeStroke) drawStroke(context, activeStroke);
   drawSelectionOverlay(drawing);
+  updateSelectionActions(drawing);
   emptyHint.hidden = drawing.strokes.length > 0 || Boolean(activeStroke);
+}
+
+function updateSelectionActions(drawing) {
+  const bounds = getSelectedStrokeBounds(drawing, selectedStrokeIds);
+  const visible = selectionActionsVisible && Boolean(bounds);
+  selectionDeleteButton.hidden = !visible;
+  if (!visible) return;
+  const padding = 14;
+  const left = Math.max(0, Math.min(BASE_WIDTH, bounds.maxX + padding));
+  const top = Math.max(0, Math.min(BASE_HEIGHT, bounds.minY - padding));
+  selectionDeleteButton.style.left = `${(left / BASE_WIDTH) * 100}%`;
+  selectionDeleteButton.style.top = `${(top / BASE_HEIGHT) * 100}%`;
+  selectionDeleteButton.style.transform = top < 60 ? "translate(-100%, 0)" : "translate(-100%, -100%)";
 }
 
 function drawSelectionOverlay(drawing) {
@@ -440,6 +471,7 @@ function clearSelection() {
   lassoPoints = null;
   selectionDrag = null;
   selectionDraft = null;
+  selectionActionsVisible = false;
   updateSelectionHint();
 }
 
