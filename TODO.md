@@ -4,7 +4,7 @@
 
 ## 最優先
 
-- [ ] Pull Requestの自動チェックを通す
+- [x] Pull Requestの自動チェックを通す
 - [ ] mainへマージする前に変更内容を確認する
 - [ ] GitHub Pagesを有効にして公開する
 - [ ] iPad Safari横向きでペン入力を確認する

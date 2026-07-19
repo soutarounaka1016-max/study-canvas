@@ -39,6 +39,7 @@
 - 自動テスト: 5件成功
 - 静的構成検査: 成功
 - ローカル静的サーバー: 主要4ファイルがHTTP 200で取得可能
+- GitHub Actions（Pull Request）: 成功
 - iPad Safari: 未確認
 - GitHub Pages公開画面: 未確認
 
