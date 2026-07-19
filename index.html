@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f5f7" />
+    <title>Study Canvas</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="document-bar">
+        <button class="icon-button" type="button" aria-label="キャンバス一覧（今後追加）" disabled>
+          <span aria-hidden="true">‹</span><small>閉じる</small>
+        </button>
+        <button class="icon-button" type="button" aria-label="新しいページ（今後追加）" disabled>
+          <span aria-hidden="true">＋</span><small>新規</small>
+        </button>
+        <div class="document-title">
+          <strong>今日の計画</strong>
+          <time id="pageDate"></time>
+        </div>
+      </div>
+
+      <nav class="tool-bar" aria-label="キャンバスツール">
+        <button class="tool-button" type="button" data-tool="view" aria-pressed="false">
+          <span aria-hidden="true">◉</span><small>見る</small>
+        </button>
+        <button class="tool-button" type="button" aria-label="指す（今後追加）" disabled>
+          <span aria-hidden="true">⌁</span><small>指す</small>
+        </button>
+        <button class="tool-button is-active" type="button" data-tool="pen" aria-pressed="true">
+          <span aria-hidden="true">✎</span><small>書く</small>
+        </button>
+        <button class="tool-button" type="button" data-tool="eraser" aria-pressed="false">
+          <span aria-hidden="true">◇</span><small>消す</small>
+        </button>
+        <button class="tool-button" type="button" aria-label="選択（今後追加）" disabled>
+          <span aria-hidden="true">▧</span><small>選ぶ</small>
+        </button>
+        <button class="tool-button" type="button" aria-label="文字入力（今後追加）" disabled>
+          <span aria-hidden="true">T</span><small>文字</small>
+        </button>
+        <button class="tool-button" type="button" aria-label="移動（今後追加）" disabled>
+          <span aria-hidden="true">✥</span><small>動かす</small>
+        </button>
+      </nav>
+
+      <div class="history-bar">
+        <button id="undoButton" class="icon-button" type="button" aria-label="取り消し" disabled>
+          <span aria-hidden="true">↶</span><small>取り消し</small>
+        </button>
+        <button id="redoButton" class="icon-button" type="button" aria-label="やり直し" disabled>
+          <span aria-hidden="true">↷</span><small>やり直し</small>
+        </button>
+        <details class="menu">
+          <summary aria-label="メニュー">☰</summary>
+          <div class="menu-panel">
+            <strong>ページ操作</strong>
+            <button id="clearButton" type="button">ページを白紙に戻す</button>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <section class="pen-options" aria-label="ペン設定">
+      <div class="color-options" role="group" aria-label="ペンの色">
+        <button class="color-button is-selected" type="button" data-color="#2558e6" aria-label="青" aria-pressed="true"></button>
+        <button class="color-button" type="button" data-color="#ef4444" aria-label="赤" aria-pressed="false"></button>
+        <button class="color-button" type="button" data-color="#111827" aria-label="黒" aria-pressed="false"></button>
+      </div>
+      <label class="width-control" for="penWidth">
+        <span>太さ</span>
+        <input id="penWidth" type="range" min="2" max="14" step="1" value="5" />
+      </label>
+      <div class="save-state" role="status" aria-live="polite">
+        <span id="saveDot" aria-hidden="true"></span><span id="saveStatus">保存済み</span>
+      </div>
+    </section>
+
+    <p class="orientation-note">iPadを横向きにすると、広いキャンバスで書けます。</p>
+
+    <main class="workspace">
+      <div class="page" id="page">
+        <canvas id="drawingCanvas" aria-label="今日の計画を書く白いキャンバス"></canvas>
+        <p id="emptyHint">Apple Pencilまたは指で、今日の計画を書いてください</p>
+      </div>
+    </main>
+
+    <dialog id="clearDialog">
+      <form method="dialog">
+        <h2>ページを白紙に戻しますか？</h2>
+        <p>現在の手書きは削除されます。取り消し操作で元に戻せます。</p>
+        <div class="dialog-actions">
+          <button value="cancel">キャンセル</button>
+          <button id="confirmClearButton" class="danger-button" value="confirm">白紙に戻す</button>
+        </div>
+      </form>
+    </dialog>
+
+    <noscript>このアプリを使うにはJavaScriptを有効にしてください。</noscript>
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
