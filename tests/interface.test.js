@@ -75,6 +75,42 @@ test("メニューから全ページのJSONバックアップを保存できる"
   assert.match(backupScript, /BACKUP_FORMAT = "study-canvas-backup"/);
 });
 
+test("検査・プレビュー・安全コピー付きでバックアップを復元できる", () => {
+  assert.match(html, /id="restoreButton"/);
+  assert.match(html, /id="restoreFileInput"[^>]*type="file"/);
+  assert.match(html, /id="restoreDialog"/);
+  assert.match(script, /parseBackup/);
+  assert.match(script, /RESTORE_SAFETY_KEY/);
+  assert.match(script, /applyPendingRestore/);
+});
+
+test("今日のキャンバスへ手動タスクカードを追加できる", () => {
+  assert.match(html, /id="newTaskButton"/);
+  assert.match(html, /id="taskDialog"/);
+  assert.match(html, /id="taskSubject"/);
+  assert.match(html, /id="taskTitle"/);
+  assert.match(html, /id="taskMinutes"/);
+  assert.match(script, /renderTaskCards/);
+  assert.match(script, /addTaskDrag/);
+  assert.match(css, /\.task-card/);
+});
+
+test("週間目標は今日の計画と別の保存領域を使う", () => {
+  assert.match(html, /id="weeklyModeButton"/);
+  assert.match(script, /WEEKLY_STORE_KEY/);
+  assert.match(script, /activeMode === "weekly"/);
+  assert.doesNotMatch(script, /weekly.*addTask/i);
+});
+
+test("複数の自由ノートを名前付きで作成できる", () => {
+  assert.match(html, /id="freeNoteButton"/);
+  assert.match(html, /id="noteListDialog"/);
+  assert.match(html, /id="newNoteTitle"/);
+  assert.match(script, /NOTE_STORE_KEY/);
+  assert.match(script, /createNote/);
+  assert.match(script, /renderNoteList/);
+});
+
 test("公開後に更新したCSSとJavaScriptを確実に読み込む", () => {
   assert.match(html, /styles\.css\?v=\d{8}-\d+/);
   assert.match(html, /script\.js\?v=\d{8}-\d+/);
