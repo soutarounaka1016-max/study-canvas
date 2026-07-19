@@ -62,8 +62,13 @@ button { -webkit-tap-highlight-color: transparent; }
   box-shadow: 0 14px 32px rgb(16 24 40 / 18%);
 }
 .menu-panel button {
-  min-height: 44px; border: 1px solid #ef4444; border-radius: 8px; background: white; color: #b42318;
+  min-height: 46px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: white; color: var(--text);
 }
+.menu-panel .primary-menu-button { border-color: var(--accent); background: var(--accent); color: white; font-weight: 700; }
+.menu-panel .danger-menu-button { border-color: #ef4444; color: #b42318; }
+.backup-status { margin: -4px 0 2px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.backup-status[hidden] { display: none; }
 
 .pen-options {
   position: sticky; z-index: 15; top: var(--toolbar-height); display: flex; min-height: 52px;
