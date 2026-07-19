@@ -67,7 +67,7 @@ export function serializePageStore(store) {
   return JSON.stringify(parsePageStore(JSON.stringify(store)) || emptyPageStore());
 }
 
-function parsePageStore(raw) {
+export function parsePageStore(raw) {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw);
