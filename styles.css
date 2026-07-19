@@ -80,6 +80,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .color-button.is-selected { box-shadow: 0 0 0 3px #9db5ff; }
 .width-control { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
 .width-control input { width: 145px; accent-color: var(--accent); }
+.selection-hint { margin: 0; color: var(--accent); font-size: 14px; font-weight: 700; }
+.selection-hint[hidden] { display: none; }
 .save-state { display: flex; align-items: center; gap: 7px; margin-left: auto; color: var(--muted); font-size: 13px; }
 #saveDot { width: 8px; height: 8px; border-radius: 50%; background: #22a06b; }
 .save-state.is-saving #saveDot { background: #f59e0b; }
