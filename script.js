@@ -8,6 +8,7 @@ import {
 } from "./src/drawing-model.js";
 import {
   getPageDrawing,
+  listWrittenPageDates,
   loadPageStore,
   serializePageStore,
   setPageDrawing,
@@ -28,6 +29,11 @@ const pageDate = document.querySelector("#pageDate");
 const previousDateButton = document.querySelector("#previousDateButton");
 const nextDateButton = document.querySelector("#nextDateButton");
 const todayButton = document.querySelector("#todayButton");
+const pageListButton = document.querySelector("#pageListButton");
+const pageListDialog = document.querySelector("#pageListDialog");
+const closePageListButton = document.querySelector("#closePageListButton");
+const pageList = document.querySelector("#pageList");
+const emptyPageList = document.querySelector("#emptyPageList");
 const saveState = document.querySelector(".save-state");
 const saveStatus = document.querySelector("#saveStatus");
 const clearButton = document.querySelector("#clearButton");
@@ -84,6 +90,8 @@ document.querySelectorAll("[data-color]").forEach((button) => {
 previousDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, -1)));
 nextDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, 1)));
 todayButton.addEventListener("click", () => switchDate(today));
+pageListButton.addEventListener("click", openPageList);
+closePageListButton.addEventListener("click", () => pageListDialog.close());
 undoButton.addEventListener("click", () => { history.undo(); afterDocumentChange(); });
 redoButton.addEventListener("click", () => { history.redo(); afterDocumentChange(); });
 
@@ -129,17 +137,59 @@ function switchDate(nextDate) {
   requestRender();
 }
 
-function updateDateDisplay() {
-  const value = new Date(`${activeDate}T00:00:00+09:00`);
-  documentTitle.textContent = activeDate === today ? "今日の計画" : "この日の計画";
-  pageDate.dateTime = activeDate;
-  pageDate.textContent = new Intl.DateTimeFormat("ja-JP", {
+function openPageList() {
+  if (!saveImmediately()) return;
+  renderPageList();
+  pageListDialog.showModal();
+}
+
+function renderPageList() {
+  pageList.replaceChildren();
+  const dates = listWrittenPageDates(pageStore);
+  emptyPageList.hidden = dates.length > 0;
+
+  for (const date of dates) {
+    const drawing = getPageDrawing(pageStore, date);
+    const button = document.createElement("button");
+    const thumbnail = document.createElement("canvas");
+    const dateLabel = document.createElement("span");
+    const strokeLabel = document.createElement("small");
+
+    button.type = "button";
+    button.className = "page-card";
+    button.classList.toggle("is-current", date === activeDate);
+    button.setAttribute("aria-label", `${formatDate(date)}のページを開く`);
+    thumbnail.width = 300;
+    thumbnail.height = 200;
+    thumbnail.setAttribute("aria-hidden", "true");
+    dateLabel.className = "page-card-date";
+    dateLabel.textContent = date === today ? `今日・${formatDate(date)}` : formatDate(date);
+    strokeLabel.textContent = `${drawing.strokes.length}本の手書き`;
+
+    drawThumbnail(thumbnail, drawing);
+    button.append(thumbnail, dateLabel, strokeLabel);
+    button.addEventListener("click", () => {
+      switchDate(date);
+      pageListDialog.close();
+    });
+    pageList.append(button);
+  }
+}
+
+function formatDate(date) {
+  return new Intl.DateTimeFormat("ja-JP", {
     timeZone: "Asia/Tokyo",
     year: "numeric",
     month: "long",
     day: "numeric",
     weekday: "short",
-  }).format(value);
+  }).format(new Date(`${date}T00:00:00+09:00`));
+}
+
+function updateDateDisplay() {
+  documentTitle.textContent = activeDate === today ? "今日の計画" : "この日の計画";
+  pageDate.dateTime = activeDate;
+  pageDate.textContent = formatDate(activeDate);
   todayButton.disabled = activeDate === today;
 }
 
@@ -233,33 +283,41 @@ function render() {
   context.setTransform(canvas.width / BASE_WIDTH, 0, 0, canvas.height / BASE_HEIGHT, 0, 0);
 
   const drawing = eraseDraft || history.current;
-  for (const stroke of drawing.strokes) drawStroke(stroke);
-  if (activeStroke) drawStroke(activeStroke);
+  for (const stroke of drawing.strokes) drawStroke(context, stroke);
+  if (activeStroke) drawStroke(context, activeStroke);
   emptyHint.hidden = drawing.strokes.length > 0 || Boolean(activeStroke);
 }
 
-function drawStroke(stroke) {
-  context.strokeStyle = stroke.color;
-  context.fillStyle = stroke.color;
-  context.lineWidth = stroke.width;
-  context.lineCap = "round";
-  context.lineJoin = "round";
+function drawThumbnail(thumbnail, drawing) {
+  const thumbnailContext = thumbnail.getContext("2d", { alpha: false });
+  thumbnailContext.fillStyle = "#ffffff";
+  thumbnailContext.fillRect(0, 0, thumbnail.width, thumbnail.height);
+  thumbnailContext.setTransform(thumbnail.width / BASE_WIDTH, 0, 0, thumbnail.height / BASE_HEIGHT, 0, 0);
+  for (const stroke of drawing.strokes) drawStroke(thumbnailContext, stroke);
+}
+
+function drawStroke(targetContext, stroke) {
+  targetContext.strokeStyle = stroke.color;
+  targetContext.fillStyle = stroke.color;
+  targetContext.lineWidth = stroke.width;
+  targetContext.lineCap = "round";
+  targetContext.lineJoin = "round";
   if (stroke.points.length === 1) {
-    context.beginPath();
-    context.arc(stroke.points[0].x, stroke.points[0].y, stroke.width / 2, 0, Math.PI * 2);
-    context.fill();
+    targetContext.beginPath();
+    targetContext.arc(stroke.points[0].x, stroke.points[0].y, stroke.width / 2, 0, Math.PI * 2);
+    targetContext.fill();
     return;
   }
-  context.beginPath();
-  context.moveTo(stroke.points[0].x, stroke.points[0].y);
+  targetContext.beginPath();
+  targetContext.moveTo(stroke.points[0].x, stroke.points[0].y);
   for (let index = 1; index < stroke.points.length - 1; index += 1) {
     const current = stroke.points[index];
     const next = stroke.points[index + 1];
-    context.quadraticCurveTo(current.x, current.y, (current.x + next.x) / 2, (current.y + next.y) / 2);
+    targetContext.quadraticCurveTo(current.x, current.y, (current.x + next.x) / 2, (current.y + next.y) / 2);
   }
   const last = stroke.points.at(-1);
-  context.lineTo(last.x, last.y);
-  context.stroke();
+  targetContext.lineTo(last.x, last.y);
+  targetContext.stroke();
 }
 
 function afterDocumentChange() {
