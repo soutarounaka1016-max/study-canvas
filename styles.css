@@ -1,0 +1,128 @@
+:root {
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+  --border: #d9dde4;
+  --text: #1d2433;
+  --muted: #667085;
+  --workspace: #eef0f3;
+  --accent: #2558e6;
+  --toolbar-height: 86px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  width: 100%; min-height: 100%; margin: 0; background: var(--workspace); color: var(--text);
+  overscroll-behavior: none;
+}
+button, input { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+
+.app-header {
+  position: sticky; z-index: 20; top: 0; display: grid;
+  grid-template-columns: minmax(245px, .8fr) minmax(500px, 1.5fr) minmax(235px, .75fr);
+  min-height: var(--toolbar-height); padding: max(6px, env(safe-area-inset-top)) 14px 6px;
+  border-bottom: 1px solid var(--border); background: rgb(255 255 255 / 96%);
+  box-shadow: 0 2px 10px rgb(16 24 40 / 5%);
+}
+.document-bar, .tool-bar, .history-bar { display: flex; align-items: center; }
+.document-bar { gap: 8px; min-width: 0; }
+.document-title { min-width: 0; padding-left: 10px; border-left: 1px solid var(--border); }
+.document-title strong, .document-title time {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.document-title strong { font-size: 18px; }
+.document-title time { margin-top: 3px; color: var(--muted); font-size: 13px; }
+.tool-bar { justify-content: center; gap: 3px; border-inline: 1px solid var(--border); }
+.history-bar { justify-content: flex-end; gap: 4px; }
+
+.tool-button, .icon-button {
+  display: inline-flex; min-width: 54px; min-height: 64px; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; padding: 6px 8px;
+  border: 0; border-radius: 10px; background: transparent; color: #303747; cursor: pointer;
+}
+.tool-button span, .icon-button span { font-size: 27px; line-height: 1; }
+.tool-button small, .icon-button small { font-size: 12px; white-space: nowrap; }
+.tool-button:hover:not(:disabled), .icon-button:hover:not(:disabled) { background: #f2f4f7; }
+.tool-button.is-active { color: var(--accent); background: #eef3ff; box-shadow: inset 0 -3px var(--accent); }
+.tool-button:disabled, .icon-button:disabled { color: #b4bac4; cursor: default; }
+
+.menu { position: relative; }
+.menu summary {
+  display: grid; width: 50px; height: 54px; place-items: center; border-radius: 10px;
+  font-size: 27px; cursor: pointer; list-style: none;
+}
+.menu summary::-webkit-details-marker { display: none; }
+.menu-panel {
+  position: absolute; top: 60px; right: 0; display: grid; width: 220px; gap: 12px;
+  padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: white;
+  box-shadow: 0 14px 32px rgb(16 24 40 / 18%);
+}
+.menu-panel button {
+  min-height: 44px; border: 1px solid #ef4444; border-radius: 8px; background: white; color: #b42318;
+}
+
+.pen-options {
+  position: sticky; z-index: 15; top: var(--toolbar-height); display: flex; min-height: 52px;
+  align-items: center; gap: 22px; padding: 6px 24px; border-bottom: 1px solid var(--border);
+  background: rgb(250 251 252 / 96%);
+}
+.color-options { display: flex; gap: 12px; }
+.color-button {
+  width: 34px; height: 34px; border: 3px solid white; border-radius: 50%;
+  background: var(--button-color); box-shadow: 0 0 0 1px #b8bec8;
+}
+.color-button[data-color="#2558e6"] { --button-color: #2558e6; }
+.color-button[data-color="#ef4444"] { --button-color: #ef4444; }
+.color-button[data-color="#111827"] { --button-color: #111827; }
+.color-button.is-selected { box-shadow: 0 0 0 3px #9db5ff; }
+.width-control { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
+.width-control input { width: 145px; accent-color: var(--accent); }
+.save-state { display: flex; align-items: center; gap: 7px; margin-left: auto; color: var(--muted); font-size: 13px; }
+#saveDot { width: 8px; height: 8px; border-radius: 50%; background: #22a06b; }
+.save-state.is-saving #saveDot { background: #f59e0b; }
+.save-state.is-error #saveDot { background: #dc2626; }
+
+.orientation-note {
+  display: none; margin: 0; padding: 10px 16px; background: #fff7d6; color: #6b4f00;
+  text-align: center; font-size: 14px;
+}
+.workspace {
+  display: grid; min-height: calc(100vh - var(--toolbar-height) - 52px);
+  padding: 28px max(28px, env(safe-area-inset-right)) max(34px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+  place-items: start center; overflow: auto;
+}
+.page {
+  position: relative; width: min(1320px, calc(100vw - 72px)); aspect-ratio: 3 / 2; overflow: hidden;
+  border: 1px solid #e4e7ec; background: white; box-shadow: 0 8px 24px rgb(16 24 40 / 12%);
+}
+#drawingCanvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+.page.is-viewing #drawingCanvas { cursor: default; touch-action: pan-x pan-y; }
+#emptyHint {
+  position: absolute; top: 50%; left: 50%; width: min(80%, 520px); margin: 0;
+  transform: translate(-50%, -50%); color: #a4aab4; text-align: center; pointer-events: none;
+}
+#emptyHint[hidden] { display: none; }
+
+dialog {
+  width: min(440px, calc(100vw - 32px)); padding: 24px; border: 0; border-radius: 16px;
+  box-shadow: 0 20px 60px rgb(16 24 40 / 28%);
+}
+dialog::backdrop { background: rgb(16 24 40 / 45%); }
+dialog h2 { margin-top: 0; font-size: 21px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.dialog-actions button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 9px; background: white; }
+.dialog-actions .danger-button { border-color: #dc2626; background: #dc2626; color: white; }
+
+@media (orientation: portrait) {
+  :root { --toolbar-height: 76px; }
+  .orientation-note { display: block; }
+  .app-header { grid-template-columns: 180px minmax(360px, 1fr) 160px; min-width: 760px; overflow-x: auto; }
+  .tool-button, .icon-button { min-width: 48px; min-height: 58px; padding-inline: 5px; }
+  .page { width: min(1100px, calc(100vw - 32px)); }
+}
+@media (max-width: 900px) {
+  .app-header { grid-template-columns: 190px minmax(410px, 1fr) 170px; overflow-x: auto; }
+  .document-title strong { font-size: 15px; }
+  .pen-options { gap: 14px; padding-inline: 14px; }
+  .save-state { min-width: max-content; }
+}
