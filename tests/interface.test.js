@@ -5,6 +5,7 @@ import test from "node:test";
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
 const script = await readFile(new URL("../script.js", import.meta.url), "utf8");
+const backupScript = await readFile(new URL("../src/backup.js", import.meta.url), "utf8");
 
 test("不要と決めた指す・文字入力をツールバーに表示しない", () => {
   assert.doesNotMatch(html, /指す（今後追加）/);
@@ -63,6 +64,15 @@ test("ページ一覧をサムネイルから開ける", () => {
   assert.match(html, /id="pageList"/);
   assert.match(script, /listWrittenPageDates/);
   assert.match(script, /drawThumbnail/);
+});
+
+test("メニューから全ページのJSONバックアップを保存できる", () => {
+  assert.match(html, /id="backupButton"/);
+  assert.match(html, /id="backupStatus"[^>]*role="status"/);
+  assert.match(script, /serializeBackup/);
+  assert.match(script, /createObjectURL/);
+  assert.match(script, /createBackupFilename/);
+  assert.match(backupScript, /BACKUP_FORMAT = "study-canvas-backup"/);
 });
 
 test("公開後に更新したCSSとJavaScriptを確実に読み込む", () => {
