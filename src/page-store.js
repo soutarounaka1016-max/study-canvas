@@ -1,4 +1,4 @@
-import { cloneDrawing, emptyDrawing, parseSavedDrawing } from "./drawing-model.js?v=20260719-5";
+import { cloneDrawing, emptyDrawing, parseSavedDrawing } from "./drawing-model.js?v=20260719-6";
 
 export const PAGE_STORE_VERSION = 2;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
