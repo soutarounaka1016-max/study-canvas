@@ -44,6 +44,9 @@
       </nav>
 
       <div class="history-bar">
+        <button id="pageListButton" class="icon-button" type="button" aria-label="ページ一覧を開く">
+          <span aria-hidden="true">▦</span><small>一覧</small>
+        </button>
         <button id="undoButton" class="icon-button" type="button" aria-label="取り消し" disabled>
           <span aria-hidden="true">↶</span><small>取り消し</small>
         </button>
@@ -83,6 +86,18 @@
         <p id="emptyHint">Apple Pencilまたは指で、今日の計画を書いてください</p>
       </div>
     </main>
+
+    <dialog id="pageListDialog" class="page-list-dialog">
+      <div class="page-list-header">
+        <div>
+          <h2>ページ一覧</h2>
+          <p>手書きした日を選ぶと、その日のキャンバスを開きます。</p>
+        </div>
+        <button id="closePageListButton" class="dialog-close-button" type="button" aria-label="ページ一覧を閉じる">×</button>
+      </div>
+      <p id="emptyPageList" class="empty-page-list">手書きしたページはまだありません。</p>
+      <div id="pageList" class="page-list" aria-label="手書きしたページ"></div>
+    </dialog>
 
     <dialog id="clearDialog">
       <form method="dialog">
