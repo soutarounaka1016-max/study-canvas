@@ -1,4 +1,4 @@
-import { serializePageStore } from "./page-store.js?v=20260719-5";
+import { serializePageStore } from "./page-store.js?v=20260719-6";
 
 export const BACKUP_FORMAT = "study-canvas-backup";
 export const BACKUP_VERSION = 1;
