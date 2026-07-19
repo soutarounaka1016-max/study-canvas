@@ -10,23 +10,48 @@ import {
   scaleSelectedStrokes,
   selectStrokeIdsByLasso,
   strokeTouchesPoint,
-} from "./src/drawing-model.js?v=20260719-6";
+} from "./src/drawing-model.js?v=20260720-1";
 import {
+  emptyPageStore,
   getPageDrawing,
   listWrittenPageDates,
   loadPageStore,
   serializePageStore,
   setPageDrawing,
   shiftDate,
-} from "./src/page-store.js?v=20260719-6";
+} from "./src/page-store.js?v=20260720-1";
 import {
   createBackupFilename,
   getBackupSummary,
+  parseBackup,
   serializeBackup,
-} from "./src/backup.js?v=20260719-6";
+} from "./src/backup.js?v=20260720-1";
+import {
+  addTask,
+  deleteTask,
+  emptyTaskStore,
+  getTasksForDate,
+  parseTaskStore,
+  serializeTaskStore,
+  updateTask,
+} from "./src/task-store.js?v=20260720-1";
+import {
+  createNote,
+  emptyNoteStore,
+  getNote,
+  listNotes,
+  parseNoteStore,
+  serializeNoteStore,
+  setNoteDrawing,
+} from "./src/note-store.js?v=20260720-1";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
-const PAGE_STORE_KEY = "study-canvas:pages:v2";
+const DAILY_STORE_KEY = "study-canvas:pages:v2";
+const TASK_STORE_KEY = "study-canvas:tasks:v1";
+const WEEKLY_STORE_KEY = "study-canvas:weekly:v1";
+const NOTE_STORE_KEY = "study-canvas:notes:v1";
+const RESTORE_SAFETY_KEY = "study-canvas:restore-safety:v1";
+
 const canvas = document.querySelector("#drawingCanvas");
 const page = document.querySelector("#page");
 const context = canvas.getContext("2d", { alpha: false });
@@ -52,31 +77,68 @@ const saveState = document.querySelector(".save-state");
 const saveStatus = document.querySelector("#saveStatus");
 const backupButton = document.querySelector("#backupButton");
 const backupStatus = document.querySelector("#backupStatus");
+const restoreButton = document.querySelector("#restoreButton");
+const restorePreviousButton = document.querySelector("#restorePreviousButton");
+const restoreFileInput = document.querySelector("#restoreFileInput");
+const restoreDialog = document.querySelector("#restoreDialog");
+const restoreSummary = document.querySelector("#restoreSummary");
+const cancelRestoreButton = document.querySelector("#cancelRestoreButton");
+const confirmRestoreButton = document.querySelector("#confirmRestoreButton");
+const dailyModeButton = document.querySelector("#dailyModeButton");
+const weeklyModeButton = document.querySelector("#weeklyModeButton");
+const freeNoteButton = document.querySelector("#freeNoteButton");
+const newTaskButton = document.querySelector("#newTaskButton");
+const taskLayer = document.querySelector("#taskLayer");
+const taskDialog = document.querySelector("#taskDialog");
+const taskForm = document.querySelector("#taskForm");
+const taskSubject = document.querySelector("#taskSubject");
+const taskTitle = document.querySelector("#taskTitle");
+const taskMinutes = document.querySelector("#taskMinutes");
+const cancelTaskButton = document.querySelector("#cancelTaskButton");
+const noteListDialog = document.querySelector("#noteListDialog");
+const closeNoteListButton = document.querySelector("#closeNoteListButton");
+const newNoteForm = document.querySelector("#newNoteForm");
+const newNoteTitle = document.querySelector("#newNoteTitle");
+const noteList = document.querySelector("#noteList");
+const emptyNoteList = document.querySelector("#emptyNoteList");
 const clearButton = document.querySelector("#clearButton");
 const clearDialog = document.querySelector("#clearDialog");
 const confirmClearButton = document.querySelector("#confirmClearButton");
 
-const today = new Intl.DateTimeFormat("sv-SE", {
-  timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
-}).format(new Date());
+const today = formatDateKey(new Date());
+const currentWeek = getWeekStart(today);
 
-let pageStore;
-let activeDate = today;
+let dailyPages;
+let weeklyPages;
+let tasks;
+let notes;
 try {
   const loaded = loadPageStore(
-    localStorage.getItem(PAGE_STORE_KEY),
+    localStorage.getItem(DAILY_STORE_KEY),
     localStorage.getItem(LEGACY_STORAGE_KEY),
     today,
   );
-  pageStore = loaded.store;
-  if (loaded.migrated) localStorage.setItem(PAGE_STORE_KEY, serializePageStore(pageStore));
+  dailyPages = loaded.store;
+  weeklyPages = loadPageStore(localStorage.getItem(WEEKLY_STORE_KEY), null, currentWeek).store;
+  tasks = parseTaskStore(localStorage.getItem(TASK_STORE_KEY)) || emptyTaskStore();
+  notes = parseNoteStore(localStorage.getItem(NOTE_STORE_KEY)) || emptyNoteStore();
+  if (loaded.migrated) localStorage.setItem(DAILY_STORE_KEY, serializePageStore(dailyPages));
   if (loaded.recovered) showSaveError("旧データから復旧しました");
 } catch {
-  pageStore = loadPageStore(null, null, today).store;
+  dailyPages = emptyPageStore();
+  weeklyPages = emptyPageStore();
+  tasks = emptyTaskStore();
+  notes = emptyNoteStore();
   showSaveError("保存データを読み込めませんでした");
 }
 
-let history = new DrawingHistory(getPageDrawing(pageStore, activeDate));
+let activeMode = "daily";
+let activeDate = today;
+let lastDailyDate = today;
+let lastWeeklyDate = currentWeek;
+let activeNoteId = null;
+let pendingRestore = null;
+let history = new DrawingHistory(getPageDrawing(dailyPages, activeDate));
 let selectedTool = "pen";
 let selectedColor = "#2558e6";
 let activeStroke = null;
@@ -96,7 +158,6 @@ new ResizeObserver(resizeCanvas).observe(page);
 document.querySelectorAll("[data-tool]").forEach((button) => {
   button.addEventListener("click", () => selectTool(button.dataset.tool));
 });
-
 document.querySelectorAll("[data-color]").forEach((button) => {
   button.addEventListener("click", () => {
     selectedColor = button.dataset.color;
@@ -109,24 +170,40 @@ document.querySelectorAll("[data-color]").forEach((button) => {
   });
 });
 
-previousDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, -1)));
-nextDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, 1)));
-todayButton.addEventListener("click", () => switchDate(today));
+previousDateButton.addEventListener("click", () => shiftActivePage(-1));
+nextDateButton.addEventListener("click", () => shiftActivePage(1));
+todayButton.addEventListener("click", () => switchDate(activeMode === "weekly" ? currentWeek : today));
+dailyModeButton.addEventListener("click", openDailyCanvas);
+weeklyModeButton.addEventListener("click", openWeeklyCanvas);
+freeNoteButton.addEventListener("click", openNoteList);
 pageListButton.addEventListener("click", openPageList);
 closePageListButton.addEventListener("click", () => pageListDialog.close());
+closeNoteListButton.addEventListener("click", () => noteListDialog.close());
 undoButton.addEventListener("click", () => { history.undo(); clearSelection(); afterDocumentChange(); });
 redoButton.addEventListener("click", () => { history.redo(); clearSelection(); afterDocumentChange(); });
 selectionDeleteButton.addEventListener("click", deleteSelection);
+newTaskButton.addEventListener("click", openTaskDialog);
+cancelTaskButton.addEventListener("click", () => taskDialog.close());
+taskForm.addEventListener("submit", addTaskFromForm);
+newNoteForm.addEventListener("submit", addNoteFromForm);
 backupButton.addEventListener("click", downloadBackup);
+restoreButton.addEventListener("click", () => {
+  if (!saveImmediately()) return;
+  restoreFileInput.value = "";
+  restoreFileInput.click();
+});
+restoreFileInput.addEventListener("change", loadRestoreFile);
+restorePreviousButton.addEventListener("click", loadSafetyRestore);
+cancelRestoreButton.addEventListener("click", () => { pendingRestore = null; restoreDialog.close(); });
+confirmRestoreButton.addEventListener("click", applyPendingRestore);
 
 clearButton.addEventListener("click", () => {
   document.querySelector(".menu").removeAttribute("open");
   clearDialog.showModal();
 });
-
 confirmClearButton.addEventListener("click", () => {
   if (history.current.strokes.length === 0) return;
-  history.commit(emptyDrawing(activeDate));
+  history.commit(emptyDrawing(activeMode === "note" ? "" : activeDate));
   clearSelection();
   afterDocumentChange();
 });
@@ -137,12 +214,27 @@ canvas.addEventListener("pointerup", finishPointer);
 canvas.addEventListener("pointercancel", finishPointer);
 canvas.addEventListener("lostpointercapture", finishPointer);
 document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
-document.addEventListener("selectstart", (event) => event.preventDefault());
+document.addEventListener("selectstart", (event) => {
+  if (!(event.target instanceof HTMLInputElement)) event.preventDefault();
+});
 document.addEventListener("contextmenu", (event) => event.preventDefault());
 window.addEventListener("pagehide", saveImmediately);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") saveImmediately();
 });
+
+function formatDateKey(date) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(date);
+}
+
+function getWeekStart(date) {
+  const [year, month, day] = date.split("-").map(Number);
+  const value = new Date(Date.UTC(year, month - 1, day));
+  const offset = (value.getUTCDay() + 6) % 7;
+  return shiftDate(date, -offset);
+}
 
 function selectTool(tool) {
   if (tool !== selectedTool) clearSelection();
@@ -160,35 +252,122 @@ function selectTool(tool) {
   });
 }
 
+function openDailyCanvas() {
+  if (!setMode("daily")) return;
+  activeDate = lastDailyDate;
+  resetHistory();
+}
+
+function openWeeklyCanvas() {
+  if (!setMode("weekly")) return;
+  activeDate = lastWeeklyDate;
+  resetHistory();
+}
+
+function setMode(mode) {
+  document.querySelector(".menu").removeAttribute("open");
+  if (mode === activeMode) return false;
+  if (!saveImmediately()) return false;
+  clearSelection();
+  if (activeMode === "daily") lastDailyDate = activeDate;
+  if (activeMode === "weekly") lastWeeklyDate = activeDate;
+  activeMode = mode;
+  activeNoteId = mode === "note" ? activeNoteId : null;
+  return true;
+}
+
+function shiftActivePage(amount) {
+  if (activeMode === "note") return;
+  switchDate(shiftDate(activeDate, activeMode === "weekly" ? amount * 7 : amount));
+}
+
 function switchDate(nextDate) {
   if (nextDate === activeDate || activePointerId !== null) return;
   if (!saveImmediately()) return;
   clearSelection();
   activeDate = nextDate;
-  history = new DrawingHistory(getPageDrawing(pageStore, activeDate));
-  updateDateDisplay();
+  if (activeMode === "daily") lastDailyDate = activeDate;
+  if (activeMode === "weekly") lastWeeklyDate = activeDate;
+  resetHistory();
+}
+
+function resetHistory() {
+  history = new DrawingHistory(getActiveDrawing());
+  updateModeDisplay();
   updateHistoryButtons();
+  renderTaskCards();
   requestRender();
 }
 
+function getActiveDrawing() {
+  if (activeMode === "weekly") return getPageDrawing(weeklyPages, activeDate);
+  if (activeMode === "note") return getNote(notes, activeNoteId)?.drawing || emptyDrawing("");
+  return getPageDrawing(dailyPages, activeDate);
+}
+
+function updateModeDisplay() {
+  const note = activeMode === "note" ? getNote(notes, activeNoteId) : null;
+  if (activeMode === "weekly") {
+    documentTitle.textContent = activeDate === currentWeek ? "今週の目標" : "この週の目標";
+    pageDate.textContent = formatWeek(activeDate);
+    pageDate.dateTime = activeDate;
+    emptyHint.textContent = "今週の目標を自由に書いてください";
+    canvas.setAttribute("aria-label", "週間目標を書く白いキャンバス");
+  } else if (activeMode === "note") {
+    documentTitle.textContent = note?.title || "自由ノート";
+    pageDate.textContent = "自由ノート";
+    pageDate.removeAttribute("datetime");
+    emptyHint.textContent = "模試の反省や長期計画を自由に書いてください";
+    canvas.setAttribute("aria-label", "自由ノートを書く白いキャンバス");
+  } else {
+    documentTitle.textContent = activeDate === today ? "今日の計画" : "この日の計画";
+    pageDate.textContent = formatDate(activeDate);
+    pageDate.dateTime = activeDate;
+    emptyHint.textContent = "Apple Pencilまたは指で、今日の計画を書いてください";
+    canvas.setAttribute("aria-label", "今日の計画を書く白いキャンバス");
+  }
+  const noteMode = activeMode === "note";
+  previousDateButton.hidden = noteMode;
+  nextDateButton.hidden = noteMode;
+  todayButton.hidden = noteMode;
+  todayButton.disabled = activeMode === "weekly" ? activeDate === currentWeek : activeDate === today;
+  pageListButton.hidden = activeMode !== "daily";
+  newTaskButton.hidden = activeMode !== "daily";
+  taskLayer.hidden = activeMode !== "daily";
+  restorePreviousButton.hidden = !localStorage.getItem(RESTORE_SAFETY_KEY);
+}
+
+function formatDate(date) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short",
+  }).format(new Date(`${date}T00:00:00+09:00`));
+}
+
+function formatWeek(start) {
+  const end = shiftDate(start, 6);
+  const format = (date) => {
+    const [, month, day] = date.split("-").map(Number);
+    return `${month}月${day}日`;
+  };
+  return `${format(start)}〜${format(end)}`;
+}
+
 function openPageList() {
-  if (!saveImmediately()) return;
+  if (activeMode !== "daily" || !saveImmediately()) return;
   renderPageList();
   pageListDialog.showModal();
 }
 
 function renderPageList() {
   pageList.replaceChildren();
-  const dates = listWrittenPageDates(pageStore);
+  const dates = listWrittenPageDates(dailyPages);
   emptyPageList.hidden = dates.length > 0;
-
   for (const date of dates) {
-    const drawing = getPageDrawing(pageStore, date);
+    const drawing = getPageDrawing(dailyPages, date);
     const button = document.createElement("button");
     const thumbnail = document.createElement("canvas");
     const dateLabel = document.createElement("span");
     const strokeLabel = document.createElement("small");
-
     button.type = "button";
     button.className = "page-card";
     button.classList.toggle("is-current", date === activeDate);
@@ -199,7 +378,6 @@ function renderPageList() {
     dateLabel.className = "page-card-date";
     dateLabel.textContent = date === today ? `今日・${formatDate(date)}` : formatDate(date);
     strokeLabel.textContent = `${drawing.strokes.length}本の手書き`;
-
     drawThumbnail(thumbnail, drawing);
     button.append(thumbnail, dateLabel, strokeLabel);
     button.addEventListener("click", () => {
@@ -210,21 +388,258 @@ function renderPageList() {
   }
 }
 
-function formatDate(date) {
-  return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  }).format(new Date(`${date}T00:00:00+09:00`));
+function openNoteList() {
+  document.querySelector(".menu").removeAttribute("open");
+  if (!saveImmediately()) return;
+  renderNoteList();
+  noteListDialog.showModal();
 }
 
-function updateDateDisplay() {
-  documentTitle.textContent = activeDate === today ? "今日の計画" : "この日の計画";
-  pageDate.dateTime = activeDate;
-  pageDate.textContent = formatDate(activeDate);
-  todayButton.disabled = activeDate === today;
+function renderNoteList() {
+  noteList.replaceChildren();
+  const items = listNotes(notes);
+  emptyNoteList.hidden = items.length > 0;
+  for (const note of items) {
+    const button = document.createElement("button");
+    const title = document.createElement("strong");
+    const detail = document.createElement("small");
+    button.type = "button";
+    button.setAttribute("aria-label", `${note.title}を開く`);
+    title.textContent = note.title;
+    detail.textContent = `${note.drawing.strokes.length}本の手書き`;
+    button.append(title, detail);
+    button.addEventListener("click", () => openNote(note.id));
+    noteList.append(button);
+  }
+}
+
+function addNoteFromForm(event) {
+  event.preventDefault();
+  const id = globalThis.crypto?.randomUUID?.() || `note-${Date.now()}-${Math.random()}`;
+  notes = createNote(notes, id, newNoteTitle.value, new Date().toISOString());
+  localStorage.setItem(NOTE_STORE_KEY, serializeNoteStore(notes));
+  newNoteForm.reset();
+  openNote(id);
+}
+
+function openNote(id) {
+  if (activeMode !== "note" && !setMode("note")) return;
+  activeNoteId = id;
+  noteListDialog.close();
+  resetHistory();
+}
+
+function openTaskDialog() {
+  if (activeMode !== "daily") return;
+  taskForm.reset();
+  taskMinutes.value = "60";
+  taskDialog.showModal();
+  taskTitle.focus();
+}
+
+function addTaskFromForm(event) {
+  event.preventDefault();
+  const existing = getTasksForDate(tasks, activeDate);
+  const index = existing.length;
+  tasks = addTask(tasks, activeDate, {
+    id: globalThis.crypto?.randomUUID?.() || `task-${Date.now()}-${Math.random()}`,
+    subject: taskSubject.value,
+    title: taskTitle.value,
+    minutes: Number(taskMinutes.value),
+    completed: false,
+    x: 40 + (index % 3) * 380,
+    y: 40 + Math.floor(index / 3) * 150,
+  });
+  saveTasks();
+  taskDialog.close();
+  renderTaskCards();
+  requestRender();
+}
+
+function renderTaskCards() {
+  taskLayer.replaceChildren();
+  if (activeMode !== "daily") return;
+  for (const task of getTasksForDate(tasks, activeDate)) {
+    const card = document.createElement("article");
+    const handle = document.createElement("button");
+    const main = document.createElement("div");
+    const subject = document.createElement("span");
+    const title = document.createElement("span");
+    const time = document.createElement("small");
+    const complete = document.createElement("input");
+    const remove = document.createElement("button");
+    card.className = "task-card";
+    card.classList.toggle("is-completed", task.completed);
+    card.style.left = `${(task.x / BASE_WIDTH) * 100}%`;
+    card.style.top = `${(task.y / BASE_HEIGHT) * 100}%`;
+    handle.type = "button";
+    handle.className = "task-drag-handle";
+    handle.textContent = "⋮⋮";
+    handle.setAttribute("aria-label", `${task.title}を移動`);
+    main.className = "task-card-main";
+    subject.className = "task-card-subject";
+    subject.textContent = task.subject || "タスク";
+    title.className = "task-card-title";
+    title.textContent = task.title;
+    main.append(subject, title);
+    time.className = "task-card-time";
+    time.textContent = `${task.minutes}分`;
+    complete.type = "checkbox";
+    complete.className = "task-complete";
+    complete.checked = task.completed;
+    complete.setAttribute("aria-label", `${task.title}を完了にする`);
+    complete.addEventListener("change", () => {
+      tasks = updateTask(tasks, activeDate, task.id, { completed: complete.checked });
+      saveTasks();
+      renderTaskCards();
+    });
+    remove.type = "button";
+    remove.className = "task-delete-button";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", `${task.title}を削除`);
+    remove.addEventListener("click", () => {
+      if (!window.confirm(`「${task.title}」を削除しますか？`)) return;
+      tasks = deleteTask(tasks, activeDate, task.id);
+      saveTasks();
+      renderTaskCards();
+      requestRender();
+    });
+    addTaskDrag(handle, card, task);
+    card.append(handle, complete, main, remove, time);
+    taskLayer.append(card);
+  }
+}
+
+function addTaskDrag(handle, card, task) {
+  let drag = null;
+  handle.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    handle.setPointerCapture(event.pointerId);
+    drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: task.x, y: task.y };
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const rect = page.getBoundingClientRect();
+    task.x = Math.max(0, Math.min(1200, drag.x + ((event.clientX - drag.startX) / rect.width) * BASE_WIDTH));
+    task.y = Math.max(0, Math.min(840, drag.y + ((event.clientY - drag.startY) / rect.height) * BASE_HEIGHT));
+    card.style.left = `${(task.x / BASE_WIDTH) * 100}%`;
+    card.style.top = `${(task.y / BASE_HEIGHT) * 100}%`;
+  });
+  const finish = (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    tasks = updateTask(tasks, activeDate, task.id, { x: task.x, y: task.y });
+    saveTasks();
+    drag = null;
+  };
+  handle.addEventListener("pointerup", finish);
+  handle.addEventListener("pointercancel", finish);
+}
+
+function saveTasks() {
+  try {
+    localStorage.setItem(TASK_STORE_KEY, serializeTaskStore(tasks));
+    saveState.className = "save-state";
+    saveStatus.textContent = "保存済み";
+  } catch {
+    showSaveError("タスクを保存できませんでした");
+  }
+}
+
+function getAllData() {
+  return { dailyPages, tasks, weeklyPages, notes };
+}
+
+function downloadBackup() {
+  if (!saveImmediately()) return;
+  try {
+    const content = serializeBackup(getAllData(), new Date());
+    const blobUrl = URL.createObjectURL(new Blob([content], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = createBackupFilename(formatDateKey(new Date()));
+    link.rel = "noopener";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    const summary = getBackupSummary(getAllData());
+    const pageCount = summary.dailyPageCount + summary.weeklyPageCount + summary.noteCount;
+    backupStatus.textContent = `計画${pageCount}ページ・タスク${summary.taskCount}件を保存しました`;
+    backupStatus.hidden = false;
+  } catch {
+    backupStatus.textContent = "バックアップを保存できませんでした";
+    backupStatus.hidden = false;
+  }
+}
+
+async function loadRestoreFile() {
+  const [file] = restoreFileInput.files || [];
+  if (!file) return;
+  try {
+    const parsed = parseBackup(await file.text());
+    if (!parsed) throw new Error("invalid backup");
+    queueRestore(parsed, file.name);
+  } catch {
+    backupStatus.textContent = "このファイルはStudy Canvasのバックアップではありません";
+    backupStatus.hidden = false;
+  }
+}
+
+function loadSafetyRestore() {
+  document.querySelector(".menu").removeAttribute("open");
+  const parsed = parseBackup(localStorage.getItem(RESTORE_SAFETY_KEY));
+  if (!parsed) {
+    backupStatus.textContent = "復元前の安全コピーを読み込めませんでした";
+    backupStatus.hidden = false;
+    return;
+  }
+  queueRestore(parsed, "復元前の安全コピー");
+}
+
+function queueRestore(parsed, sourceName) {
+  document.querySelector(".menu").removeAttribute("open");
+  pendingRestore = parsed;
+  const data = {
+    dailyPages: parsed.data.dailyPages,
+    tasks: parsed.data.tasks || tasks,
+    weeklyPages: parsed.data.weeklyPages || weeklyPages,
+    notes: parsed.data.notes || notes,
+  };
+  const summary = getBackupSummary(data);
+  const oldBackupNote = parsed.version === 1 ? "（旧形式のため、タスク・週間目標・自由ノートは現在のまま残します）" : "";
+  restoreSummary.textContent = `${sourceName}：日別${summary.dailyPageCount}ページ、タスク${summary.taskCount}件、週間${summary.weeklyPageCount}ページ、自由ノート${summary.noteCount}冊を復元します。${oldBackupNote}`;
+  restoreDialog.showModal();
+}
+
+function applyPendingRestore() {
+  if (!pendingRestore) return;
+  try {
+    localStorage.setItem(RESTORE_SAFETY_KEY, serializeBackup(getAllData(), new Date()));
+    dailyPages = pendingRestore.data.dailyPages;
+    if (pendingRestore.data.tasks) tasks = pendingRestore.data.tasks;
+    if (pendingRestore.data.weeklyPages) weeklyPages = pendingRestore.data.weeklyPages;
+    if (pendingRestore.data.notes) notes = pendingRestore.data.notes;
+    persistAllStores();
+    pendingRestore = null;
+    activeMode = "daily";
+    activeDate = today;
+    lastDailyDate = today;
+    activeNoteId = null;
+    clearSelection();
+    restoreDialog.close();
+    backupStatus.textContent = "バックアップを復元しました";
+    backupStatus.hidden = false;
+    resetHistory();
+  } catch {
+    showSaveError("バックアップを復元できませんでした");
+  }
+}
+
+function persistAllStores() {
+  localStorage.setItem(DAILY_STORE_KEY, serializePageStore(dailyPages));
+  localStorage.setItem(TASK_STORE_KEY, serializeTaskStore(tasks));
+  localStorage.setItem(WEEKLY_STORE_KEY, serializePageStore(weeklyPages));
+  localStorage.setItem(NOTE_STORE_KEY, serializeNoteStore(notes));
 }
 
 function handlePointerDown(event) {
@@ -234,7 +649,6 @@ function handlePointerDown(event) {
   activePointerId = event.pointerId;
   canvas.setPointerCapture(event.pointerId);
   const point = getCanvasPoint(event);
-
   if (selectedTool === "pen") {
     activeStroke = {
       id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
@@ -250,12 +664,7 @@ function handlePointerDown(event) {
     const resizeHandle = bounds ? getResizeHandleAtPoint(bounds, point) : null;
     if (resizeHandle) {
       selectionActionsVisible = false;
-      selectionResize = {
-        ...resizeHandle,
-        start: point,
-        drawing: cloneDrawing(history.current),
-        moved: false,
-      };
+      selectionResize = { ...resizeHandle, start: point, drawing: cloneDrawing(history.current), moved: false };
       selectionDraft = cloneDrawing(history.current);
     } else if (bounds && pointInsideBounds(point, bounds, 24)) {
       selectionActionsVisible = false;
@@ -290,21 +699,13 @@ function handlePointerMove(event) {
       const handleLengthSquared = handleX * handleX + handleY * handleY;
       const movedX = point.x - selectionResize.start.x;
       const movedY = point.y - selectionResize.start.y;
-      const scale = handleLengthSquared > 0
-        ? 1 + (movedX * handleX + movedY * handleY) / handleLengthSquared
-        : 1;
-      selectionResize.moved = selectionResize.moved ||
-        Math.hypot(movedX, movedY) >= 0.8;
-      selectionDraft = scaleSelectedStrokes(
-        selectionResize.drawing,
-        selectedStrokeIds,
-        selectionResize.anchor,
-        scale,
-      );
+      const scale = handleLengthSquared > 0 ? 1 + (movedX * handleX + movedY * handleY) / handleLengthSquared : 1;
+      selectionResize.moved ||= Math.hypot(movedX, movedY) >= 0.8;
+      selectionDraft = scaleSelectedStrokes(selectionResize.drawing, selectedStrokeIds, selectionResize.anchor, scale);
     } else if (selectionDrag) {
       const dx = point.x - selectionDrag.start.x;
       const dy = point.y - selectionDrag.start.y;
-      selectionDrag.moved = selectionDrag.moved || Math.hypot(dx, dy) >= 0.8;
+      selectionDrag.moved ||= Math.hypot(dx, dy) >= 0.8;
       selectionDraft = moveSelectedStrokes(selectionDrag.drawing, selectedStrokeIds, dx, dy);
     }
   }
@@ -346,14 +747,12 @@ function finishPointer(event) {
 }
 
 function eraseAt(point) {
-  const radius = 18;
-  eraseDraft.strokes = eraseDraft.strokes.filter((stroke) => !strokeTouchesPoint(stroke, point, radius));
+  eraseDraft.strokes = eraseDraft.strokes.filter((stroke) => !strokeTouchesPoint(stroke, point, 18));
 }
 
 function deleteSelection() {
   if (selectedStrokeIds.size === 0) return;
-  const nextDrawing = deleteSelectedStrokes(history.current, selectedStrokeIds);
-  history.commit(nextDrawing);
+  history.commit(deleteSelectedStrokes(history.current, selectedStrokeIds));
   clearSelection();
   afterDocumentChange();
 }
@@ -378,10 +777,10 @@ function getResizeHandles(bounds) {
   const maximumX = Math.min(BASE_WIDTH - 12, bounds.maxX + padding);
   const maximumY = Math.min(BASE_HEIGHT - 12, bounds.maxY + padding);
   return [
-    { corner: "north-west", handle: { x: minimumX, y: minimumY }, anchor: { x: bounds.maxX, y: bounds.maxY } },
-    { corner: "north-east", handle: { x: maximumX, y: minimumY }, anchor: { x: bounds.minX, y: bounds.maxY } },
-    { corner: "south-east", handle: { x: maximumX, y: maximumY }, anchor: { x: bounds.minX, y: bounds.minY } },
-    { corner: "south-west", handle: { x: minimumX, y: maximumY }, anchor: { x: bounds.maxX, y: bounds.minY } },
+    { handle: { x: minimumX, y: minimumY }, anchor: { x: bounds.maxX, y: bounds.maxY } },
+    { handle: { x: maximumX, y: minimumY }, anchor: { x: bounds.minX, y: bounds.maxY } },
+    { handle: { x: maximumX, y: maximumY }, anchor: { x: bounds.minX, y: bounds.minY } },
+    { handle: { x: minimumX, y: maximumY }, anchor: { x: bounds.maxX, y: bounds.minY } },
   ];
 }
 
@@ -411,13 +810,13 @@ function render() {
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.setTransform(canvas.width / BASE_WIDTH, 0, 0, canvas.height / BASE_HEIGHT, 0, 0);
-
   const drawing = eraseDraft || selectionDraft || history.current;
   for (const stroke of drawing.strokes) drawStroke(context, stroke);
   if (activeStroke) drawStroke(context, activeStroke);
   drawSelectionOverlay(drawing);
   updateSelectionActions(drawing);
-  emptyHint.hidden = drawing.strokes.length > 0 || Boolean(activeStroke);
+  const hasTasks = activeMode === "daily" && getTasksForDate(tasks, activeDate).length > 0;
+  emptyHint.hidden = drawing.strokes.length > 0 || Boolean(activeStroke) || hasTasks;
 }
 
 function updateSelectionActions(drawing) {
@@ -439,23 +838,19 @@ function drawSelectionOverlay(drawing) {
   context.fillStyle = "rgb(37 88 230 / 8%)";
   context.lineWidth = 3;
   context.setLineDash([12, 8]);
-
   if (lassoPoints?.length) {
     context.beginPath();
     context.moveTo(lassoPoints[0].x, lassoPoints[0].y);
     for (const point of lassoPoints.slice(1)) context.lineTo(point.x, point.y);
     context.stroke();
   }
-
   const bounds = getSelectedStrokeBounds(drawing, selectedStrokeIds);
   if (bounds) {
     const padding = 14;
-    const x = bounds.minX - padding;
-    const y = bounds.minY - padding;
-    const width = bounds.maxX - bounds.minX + padding * 2;
-    const height = bounds.maxY - bounds.minY + padding * 2;
-    context.fillRect(x, y, width, height);
-    context.strokeRect(x, y, width, height);
+    context.fillRect(bounds.minX - padding, bounds.minY - padding,
+      bounds.maxX - bounds.minX + padding * 2, bounds.maxY - bounds.minY + padding * 2);
+    context.strokeRect(bounds.minX - padding, bounds.minY - padding,
+      bounds.maxX - bounds.minX + padding * 2, bounds.maxY - bounds.minY + padding * 2);
     context.setLineDash([]);
     for (const { handle } of getResizeHandles(bounds)) drawSelectionHandle(handle);
   }
@@ -509,21 +904,32 @@ function afterDocumentChange() {
   requestRender();
   scheduleSave();
 }
+
 function updateHistoryButtons() {
   undoButton.disabled = !history.canUndo;
   redoButton.disabled = !history.canRedo;
 }
+
 function scheduleSave() {
   window.clearTimeout(saveTimer);
   saveState.className = "save-state is-saving";
   saveStatus.textContent = "保存中…";
   saveTimer = window.setTimeout(saveImmediately, 250);
 }
+
 function saveImmediately() {
   window.clearTimeout(saveTimer);
   try {
-    pageStore = setPageDrawing(pageStore, activeDate, history.current);
-    localStorage.setItem(PAGE_STORE_KEY, serializePageStore(pageStore));
+    if (activeMode === "weekly") {
+      weeklyPages = setPageDrawing(weeklyPages, activeDate, history.current);
+      localStorage.setItem(WEEKLY_STORE_KEY, serializePageStore(weeklyPages));
+    } else if (activeMode === "note" && activeNoteId) {
+      notes = setNoteDrawing(notes, activeNoteId, history.current);
+      localStorage.setItem(NOTE_STORE_KEY, serializeNoteStore(notes));
+    } else {
+      dailyPages = setPageDrawing(dailyPages, activeDate, history.current);
+      localStorage.setItem(DAILY_STORE_KEY, serializePageStore(dailyPages));
+    }
     saveState.className = "save-state";
     saveStatus.textContent = "保存済み";
     return true;
@@ -532,35 +938,10 @@ function saveImmediately() {
     return false;
   }
 }
+
 function showSaveError(message) {
   saveState.className = "save-state is-error";
   saveStatus.textContent = message;
-}
-
-function downloadBackup() {
-  if (!saveImmediately()) return;
-
-  try {
-    const content = serializeBackup(pageStore, new Date());
-    const blobUrl = URL.createObjectURL(new Blob([content], { type: "application/json" }));
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = createBackupFilename(today);
-    link.rel = "noopener";
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-
-    const { writtenPageCount, strokeCount } = getBackupSummary(pageStore);
-    backupStatus.textContent = writtenPageCount > 0
-      ? `${writtenPageCount}日分・${strokeCount}本を保存しました`
-      : "白紙のバックアップを保存しました";
-    backupStatus.hidden = false;
-  } catch {
-    backupStatus.textContent = "バックアップを保存できませんでした";
-    backupStatus.hidden = false;
-  }
 }
 
 function clearSelection() {
@@ -574,12 +955,12 @@ function clearSelection() {
 }
 
 function updateSelectionHint() {
-  if (!selectionHint) return;
   selectionHint.textContent = selectedStrokeIds.size > 0
     ? `${selectedStrokeIds.size}本を選択中。枠内で移動、四隅の丸で拡大・縮小できます`
     : "手書きを囲んで選択してください";
 }
 
-updateDateDisplay();
+updateModeDisplay();
 updateHistoryButtons();
+renderTaskCards();
 requestRender();
