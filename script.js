@@ -10,7 +10,7 @@ import {
   scaleSelectedStrokes,
   selectStrokeIdsByLasso,
   strokeTouchesPoint,
-} from "./src/drawing-model.js?v=20260719-5";
+} from "./src/drawing-model.js?v=20260719-6";
 import {
   getPageDrawing,
   listWrittenPageDates,
@@ -18,12 +18,12 @@ import {
   serializePageStore,
   setPageDrawing,
   shiftDate,
-} from "./src/page-store.js?v=20260719-5";
+} from "./src/page-store.js?v=20260719-6";
 import {
   createBackupFilename,
   getBackupSummary,
   serializeBackup,
-} from "./src/backup.js?v=20260719-5";
+} from "./src/backup.js?v=20260719-6";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
@@ -554,7 +554,7 @@ function downloadBackup() {
 
     const { writtenPageCount, strokeCount } = getBackupSummary(pageStore);
     backupStatus.textContent = writtenPageCount > 0
-      ? `${writtenPageCount}日分・${strokeCount}本の手書きを保存しました`
+      ? `${writtenPageCount}日分・${strokeCount}本を保存しました`
       : "白紙のバックアップを保存しました";
     backupStatus.hidden = false;
   } catch {
