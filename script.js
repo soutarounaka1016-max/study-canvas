@@ -103,6 +103,7 @@ canvas.addEventListener("pointermove", handlePointerMove);
 canvas.addEventListener("pointerup", finishPointer);
 canvas.addEventListener("pointercancel", finishPointer);
 canvas.addEventListener("lostpointercapture", finishPointer);
+document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
 window.addEventListener("pagehide", saveImmediately);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") saveImmediately();
