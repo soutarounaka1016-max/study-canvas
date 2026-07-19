@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f4f5f7" />
     <title>Study Canvas</title>
-    <link rel="stylesheet" href="styles.css?v=20260719-6" />
+    <link rel="stylesheet" href="styles.css?v=20260720-1" />
   </head>
   <body>
     <header class="app-header">
@@ -38,6 +38,9 @@
         <button class="tool-button" type="button" data-tool="select" aria-pressed="false">
           <span aria-hidden="true">▧</span><small>選ぶ</small>
         </button>
+        <button id="newTaskButton" class="tool-button" type="button" aria-label="タスクカードを追加">
+          <span aria-hidden="true">＋</span><small>タスク</small>
+        </button>
       </nav>
 
       <div class="history-bar">
@@ -53,8 +56,15 @@
         <details class="menu">
           <summary aria-label="メニュー">☰</summary>
           <div class="menu-panel">
+            <strong>キャンバスを開く</strong>
+            <button id="dailyModeButton" type="button">今日の計画</button>
+            <button id="weeklyModeButton" type="button">週間目標</button>
+            <button id="freeNoteButton" type="button">自由ノート</button>
             <strong>ページ操作</strong>
             <button id="backupButton" class="primary-menu-button" type="button">バックアップを保存</button>
+            <button id="restoreButton" type="button">バックアップから復元</button>
+            <button id="restorePreviousButton" type="button" hidden>復元前の状態に戻す</button>
+            <input id="restoreFileInput" type="file" accept="application/json,.json" hidden />
             <p id="backupStatus" class="backup-status" role="status" aria-live="polite" hidden></p>
             <button id="clearButton" class="danger-menu-button" type="button">ページを白紙に戻す</button>
           </div>
@@ -83,6 +93,7 @@
     <main class="workspace">
       <div class="page" id="page">
         <canvas id="drawingCanvas" aria-label="今日の計画を書く白いキャンバス"></canvas>
+        <div id="taskLayer" class="task-layer" aria-label="今日のタスクカード"></div>
         <p id="emptyHint">Apple Pencilまたは指で、今日の計画を書いてください</p>
         <button id="selectionDeleteButton" class="selection-delete-button" type="button" hidden>削除</button>
       </div>
@@ -100,6 +111,43 @@
       <div id="pageList" class="page-list" aria-label="手書きしたページ"></div>
     </dialog>
 
+    <dialog id="taskDialog" class="form-dialog">
+      <form id="taskForm">
+        <h2>タスクカードを追加</h2>
+        <label>科目<input id="taskSubject" type="text" maxlength="40" placeholder="数学" /></label>
+        <label>内容<input id="taskTitle" type="text" maxlength="120" placeholder="微積の問題演習" required /></label>
+        <label>予定時間（分）<input id="taskMinutes" type="number" min="1" max="600" value="60" required /></label>
+        <div class="dialog-actions">
+          <button id="cancelTaskButton" type="button">キャンセル</button>
+          <button class="primary-button" type="submit">追加</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="restoreDialog" class="form-dialog">
+      <h2>バックアップを復元</h2>
+      <p id="restoreSummary"></p>
+      <p class="warning-text">現在の状態は安全コピーとして残してから復元します。</p>
+      <div class="dialog-actions">
+        <button id="cancelRestoreButton" type="button">キャンセル</button>
+        <button id="confirmRestoreButton" class="danger-button" type="button">復元する</button>
+      </div>
+    </dialog>
+
+    <dialog id="noteListDialog" class="note-list-dialog">
+      <div class="page-list-header">
+        <div><h2>自由ノート</h2><p>模試の反省や長期計画を、1冊ずつ自由に書けます。</p></div>
+        <button id="closeNoteListButton" class="dialog-close-button" type="button" aria-label="自由ノート一覧を閉じる">×</button>
+      </div>
+      <form id="newNoteForm" class="new-note-form">
+        <label for="newNoteTitle">新しいノート名</label>
+        <input id="newNoteTitle" type="text" maxlength="80" placeholder="7月模試の反省" required />
+        <button class="primary-button" type="submit">作成</button>
+      </form>
+      <p id="emptyNoteList" class="empty-page-list">自由ノートはまだありません。</p>
+      <div id="noteList" class="note-list" aria-label="自由ノート一覧"></div>
+    </dialog>
+
     <dialog id="clearDialog">
       <form method="dialog">
         <h2>ページを白紙に戻しますか？</h2>
@@ -112,6 +160,6 @@
     </dialog>
 
     <noscript>このアプリを使うにはJavaScriptを有効にしてください。</noscript>
-    <script type="module" src="script.js?v=20260719-6"></script>
+    <script type="module" src="script.js?v=20260720-1"></script>
   </body>
 </html>
