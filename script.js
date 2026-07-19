@@ -10,7 +10,7 @@ import {
   scaleSelectedStrokes,
   selectStrokeIdsByLasso,
   strokeTouchesPoint,
-} from "./src/drawing-model.js?v=20260719-4";
+} from "./src/drawing-model.js?v=20260719-5";
 import {
   getPageDrawing,
   listWrittenPageDates,
@@ -18,7 +18,12 @@ import {
   serializePageStore,
   setPageDrawing,
   shiftDate,
-} from "./src/page-store.js?v=20260719-4";
+} from "./src/page-store.js?v=20260719-5";
+import {
+  createBackupFilename,
+  getBackupSummary,
+  serializeBackup,
+} from "./src/backup.js?v=20260719-5";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
@@ -45,6 +50,8 @@ const pageList = document.querySelector("#pageList");
 const emptyPageList = document.querySelector("#emptyPageList");
 const saveState = document.querySelector(".save-state");
 const saveStatus = document.querySelector("#saveStatus");
+const backupButton = document.querySelector("#backupButton");
+const backupStatus = document.querySelector("#backupStatus");
 const clearButton = document.querySelector("#clearButton");
 const clearDialog = document.querySelector("#clearDialog");
 const confirmClearButton = document.querySelector("#confirmClearButton");
@@ -110,6 +117,7 @@ closePageListButton.addEventListener("click", () => pageListDialog.close());
 undoButton.addEventListener("click", () => { history.undo(); clearSelection(); afterDocumentChange(); });
 redoButton.addEventListener("click", () => { history.redo(); clearSelection(); afterDocumentChange(); });
 selectionDeleteButton.addEventListener("click", deleteSelection);
+backupButton.addEventListener("click", downloadBackup);
 
 clearButton.addEventListener("click", () => {
   document.querySelector(".menu").removeAttribute("open");
@@ -527,6 +535,32 @@ function saveImmediately() {
 function showSaveError(message) {
   saveState.className = "save-state is-error";
   saveStatus.textContent = message;
+}
+
+function downloadBackup() {
+  if (!saveImmediately()) return;
+
+  try {
+    const content = serializeBackup(pageStore, new Date());
+    const blobUrl = URL.createObjectURL(new Blob([content], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = createBackupFilename(today);
+    link.rel = "noopener";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+    const { writtenPageCount, strokeCount } = getBackupSummary(pageStore);
+    backupStatus.textContent = writtenPageCount > 0
+      ? `${writtenPageCount}日分・${strokeCount}本の手書きを保存しました`
+      : "白紙のバックアップを保存しました";
+    backupStatus.hidden = false;
+  } catch {
+    backupStatus.textContent = "バックアップを保存できませんでした";
+    backupStatus.hidden = false;
+  }
 }
 
 function clearSelection() {
