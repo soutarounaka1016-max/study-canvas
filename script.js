@@ -4,8 +4,11 @@ import {
   DrawingHistory,
   cloneDrawing,
   emptyDrawing,
+  getSelectedStrokeBounds,
+  moveSelectedStrokes,
+  selectStrokeIdsByLasso,
   strokeTouchesPoint,
-} from "./src/drawing-model.js?v=20260719-1";
+} from "./src/drawing-model.js?v=20260719-2";
 import {
   getPageDrawing,
   listWrittenPageDates,
@@ -13,7 +16,7 @@ import {
   serializePageStore,
   setPageDrawing,
   shiftDate,
-} from "./src/page-store.js?v=20260719-1";
+} from "./src/page-store.js?v=20260719-2";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
@@ -24,6 +27,9 @@ const emptyHint = document.querySelector("#emptyHint");
 const undoButton = document.querySelector("#undoButton");
 const redoButton = document.querySelector("#redoButton");
 const penWidth = document.querySelector("#penWidth");
+const colorOptions = document.querySelector(".color-options");
+const widthControl = document.querySelector(".width-control");
+const selectionHint = document.querySelector("#selectionHint");
 const documentTitle = document.querySelector("#documentTitle");
 const pageDate = document.querySelector("#pageDate");
 const previousDateButton = document.querySelector("#previousDateButton");
@@ -65,6 +71,10 @@ let selectedTool = "pen";
 let selectedColor = "#2558e6";
 let activeStroke = null;
 let eraseDraft = null;
+let lassoPoints = null;
+let selectedStrokeIds = new Set();
+let selectionDrag = null;
+let selectionDraft = null;
 let activePointerId = null;
 let frameRequest = null;
 let saveTimer = null;
@@ -92,8 +102,8 @@ nextDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, 
 todayButton.addEventListener("click", () => switchDate(today));
 pageListButton.addEventListener("click", openPageList);
 closePageListButton.addEventListener("click", () => pageListDialog.close());
-undoButton.addEventListener("click", () => { history.undo(); afterDocumentChange(); });
-redoButton.addEventListener("click", () => { history.redo(); afterDocumentChange(); });
+undoButton.addEventListener("click", () => { history.undo(); clearSelection(); afterDocumentChange(); });
+redoButton.addEventListener("click", () => { history.redo(); clearSelection(); afterDocumentChange(); });
 
 clearButton.addEventListener("click", () => {
   document.querySelector(".menu").removeAttribute("open");
@@ -103,6 +113,7 @@ clearButton.addEventListener("click", () => {
 confirmClearButton.addEventListener("click", () => {
   if (history.current.strokes.length === 0) return;
   history.commit(emptyDrawing(activeDate));
+  clearSelection();
   afterDocumentChange();
 });
 
@@ -118,8 +129,14 @@ document.addEventListener("visibilitychange", () => {
 });
 
 function selectTool(tool) {
+  if (tool !== selectedTool) clearSelection();
   selectedTool = tool;
   page.classList.toggle("is-viewing", tool === "view");
+  const selecting = tool === "select";
+  colorOptions.hidden = selecting;
+  widthControl.hidden = selecting;
+  selectionHint.hidden = !selecting;
+  updateSelectionHint();
   document.querySelectorAll("[data-tool]").forEach((button) => {
     const active = button.dataset.tool === tool;
     button.classList.toggle("is-active", active);
@@ -130,6 +147,7 @@ function selectTool(tool) {
 function switchDate(nextDate) {
   if (nextDate === activeDate || activePointerId !== null) return;
   if (!saveImmediately()) return;
+  clearSelection();
   activeDate = nextDate;
   history = new DrawingHistory(getPageDrawing(pageStore, activeDate));
   updateDateDisplay();
@@ -211,6 +229,16 @@ function handlePointerDown(event) {
   } else if (selectedTool === "eraser") {
     eraseDraft = cloneDrawing(history.current);
     eraseAt(point);
+  } else if (selectedTool === "select") {
+    const bounds = getSelectedStrokeBounds(history.current, selectedStrokeIds);
+    if (bounds && pointInsideBounds(point, bounds, 24)) {
+      selectionDrag = { start: point, drawing: cloneDrawing(history.current), moved: false };
+      selectionDraft = cloneDrawing(history.current);
+    } else {
+      selectedStrokeIds = new Set();
+      lassoPoints = [point];
+      updateSelectionHint();
+    }
   }
   requestRender();
 }
@@ -226,6 +254,14 @@ function handlePointerMove(event) {
       if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) >= 0.8) activeStroke.points.push(point);
     } else if (eraseDraft) {
       eraseAt(point);
+    } else if (lassoPoints) {
+      const previous = lassoPoints.at(-1);
+      if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) >= 2) lassoPoints.push(point);
+    } else if (selectionDrag) {
+      const dx = point.x - selectionDrag.start.x;
+      const dy = point.y - selectionDrag.start.y;
+      selectionDrag.moved = selectionDrag.moved || Math.hypot(dx, dy) >= 0.8;
+      selectionDraft = moveSelectedStrokes(selectionDrag.drawing, selectedStrokeIds, dx, dy);
     }
   }
   requestRender();
@@ -233,17 +269,30 @@ function handlePointerMove(event) {
 
 function finishPointer(event) {
   if (event.pointerId !== activePointerId) return;
+  let documentChanged = false;
   if (activeStroke) {
     const nextDrawing = cloneDrawing(history.current);
     nextDrawing.strokes.push(activeStroke);
     history.commit(nextDrawing);
+    documentChanged = true;
   } else if (eraseDraft && eraseDraft.strokes.length !== history.current.strokes.length) {
     history.commit(eraseDraft);
+    documentChanged = true;
+  } else if (lassoPoints) {
+    selectedStrokeIds = new Set(selectStrokeIdsByLasso(history.current, lassoPoints));
+  } else if (selectionDrag?.moved && selectionDraft) {
+    history.commit(selectionDraft);
+    documentChanged = true;
   }
   activeStroke = null;
   eraseDraft = null;
+  lassoPoints = null;
+  selectionDrag = null;
+  selectionDraft = null;
   activePointerId = null;
-  afterDocumentChange();
+  updateSelectionHint();
+  if (documentChanged) afterDocumentChange();
+  else requestRender();
 }
 
 function eraseAt(point) {
@@ -257,6 +306,11 @@ function getCanvasPoint(event) {
     x: Math.max(0, Math.min(BASE_WIDTH, ((event.clientX - rect.left) / rect.width) * BASE_WIDTH)),
     y: Math.max(0, Math.min(BASE_HEIGHT, ((event.clientY - rect.top) / rect.height) * BASE_HEIGHT)),
   };
+}
+
+function pointInsideBounds(point, bounds, padding = 0) {
+  return point.x >= bounds.minX - padding && point.x <= bounds.maxX + padding &&
+    point.y >= bounds.minY - padding && point.y <= bounds.maxY + padding;
 }
 
 function resizeCanvas() {
@@ -282,10 +336,38 @@ function render() {
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.setTransform(canvas.width / BASE_WIDTH, 0, 0, canvas.height / BASE_HEIGHT, 0, 0);
 
-  const drawing = eraseDraft || history.current;
+  const drawing = eraseDraft || selectionDraft || history.current;
   for (const stroke of drawing.strokes) drawStroke(context, stroke);
   if (activeStroke) drawStroke(context, activeStroke);
+  drawSelectionOverlay(drawing);
   emptyHint.hidden = drawing.strokes.length > 0 || Boolean(activeStroke);
+}
+
+function drawSelectionOverlay(drawing) {
+  context.save();
+  context.strokeStyle = "#2558e6";
+  context.fillStyle = "rgb(37 88 230 / 8%)";
+  context.lineWidth = 3;
+  context.setLineDash([12, 8]);
+
+  if (lassoPoints?.length) {
+    context.beginPath();
+    context.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+    for (const point of lassoPoints.slice(1)) context.lineTo(point.x, point.y);
+    context.stroke();
+  }
+
+  const bounds = getSelectedStrokeBounds(drawing, selectedStrokeIds);
+  if (bounds) {
+    const padding = 14;
+    const x = bounds.minX - padding;
+    const y = bounds.minY - padding;
+    const width = bounds.maxX - bounds.minX + padding * 2;
+    const height = bounds.maxY - bounds.minY + padding * 2;
+    context.fillRect(x, y, width, height);
+    context.strokeRect(x, y, width, height);
+  }
+  context.restore();
 }
 
 function drawThumbnail(thumbnail, drawing) {
@@ -351,6 +433,21 @@ function saveImmediately() {
 function showSaveError(message) {
   saveState.className = "save-state is-error";
   saveStatus.textContent = message;
+}
+
+function clearSelection() {
+  selectedStrokeIds = new Set();
+  lassoPoints = null;
+  selectionDrag = null;
+  selectionDraft = null;
+  updateSelectionHint();
+}
+
+function updateSelectionHint() {
+  if (!selectionHint) return;
+  selectionHint.textContent = selectedStrokeIds.size > 0
+    ? `${selectedStrokeIds.size}本を選択中。枠の中をドラッグして移動できます`
+    : "手書きを囲んで選択してください";
 }
 
 updateDateDisplay();

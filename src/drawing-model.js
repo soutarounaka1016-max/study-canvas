@@ -103,6 +103,91 @@ export function strokeTouchesPoint(stroke, point, radius) {
   return false;
 }
 
+export function selectStrokeIdsByLasso(drawing, polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 3) return [];
+  return drawing.strokes
+    .filter((stroke) => strokeIntersectsPolygon(stroke, polygon))
+    .map((stroke) => stroke.id);
+}
+
+export function getSelectedStrokeBounds(drawing, selectedIds) {
+  const ids = new Set(selectedIds);
+  const points = drawing.strokes
+    .filter((stroke) => ids.has(stroke.id))
+    .flatMap((stroke) => stroke.points);
+  if (points.length === 0) return null;
+  return {
+    minX: Math.min(...points.map((point) => point.x)),
+    minY: Math.min(...points.map((point) => point.y)),
+    maxX: Math.max(...points.map((point) => point.x)),
+    maxY: Math.max(...points.map((point) => point.y)),
+  };
+}
+
+export function moveSelectedStrokes(drawing, selectedIds, dx, dy) {
+  const ids = new Set(selectedIds);
+  const bounds = getSelectedStrokeBounds(drawing, ids);
+  if (!bounds || !Number.isFinite(dx) || !Number.isFinite(dy)) return cloneDrawing(drawing);
+  const safeDx = Math.max(-bounds.minX, Math.min(dx, BASE_WIDTH - bounds.maxX));
+  const safeDy = Math.max(-bounds.minY, Math.min(dy, BASE_HEIGHT - bounds.maxY));
+  const moved = cloneDrawing(drawing);
+  for (const stroke of moved.strokes) {
+    if (!ids.has(stroke.id)) continue;
+    for (const point of stroke.points) {
+      point.x += safeDx;
+      point.y += safeDy;
+    }
+  }
+  return moved;
+}
+
+function strokeIntersectsPolygon(stroke, polygon) {
+  if (stroke.points.some((point) => pointInPolygon(point, polygon))) return true;
+  for (let strokeIndex = 1; strokeIndex < stroke.points.length; strokeIndex += 1) {
+    const strokeStart = stroke.points[strokeIndex - 1];
+    const strokeEnd = stroke.points[strokeIndex];
+    for (let polygonIndex = 0; polygonIndex < polygon.length; polygonIndex += 1) {
+      const polygonStart = polygon[polygonIndex];
+      const polygonEnd = polygon[(polygonIndex + 1) % polygon.length];
+      if (segmentsIntersect(strokeStart, strokeEnd, polygonStart, polygonEnd)) return true;
+    }
+  }
+  return false;
+}
+
+function pointInPolygon(point, polygon) {
+  let inside = false;
+  for (let current = 0, previous = polygon.length - 1; current < polygon.length; previous = current, current += 1) {
+    const start = polygon[current];
+    const end = polygon[previous];
+    const crosses = (start.y > point.y) !== (end.y > point.y) &&
+      point.x < ((end.x - start.x) * (point.y - start.y)) / (end.y - start.y) + start.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+function segmentsIntersect(firstStart, firstEnd, secondStart, secondEnd) {
+  const firstA = cross(firstStart, firstEnd, secondStart);
+  const firstB = cross(firstStart, firstEnd, secondEnd);
+  const secondA = cross(secondStart, secondEnd, firstStart);
+  const secondB = cross(secondStart, secondEnd, firstEnd);
+  if (firstA === 0 && pointOnSegment(secondStart, firstStart, firstEnd)) return true;
+  if (firstB === 0 && pointOnSegment(secondEnd, firstStart, firstEnd)) return true;
+  if (secondA === 0 && pointOnSegment(firstStart, secondStart, secondEnd)) return true;
+  if (secondB === 0 && pointOnSegment(firstEnd, secondStart, secondEnd)) return true;
+  return (firstA > 0) !== (firstB > 0) && (secondA > 0) !== (secondB > 0);
+}
+
+function cross(start, end, point) {
+  return (end.x - start.x) * (point.y - start.y) - (end.y - start.y) * (point.x - start.x);
+}
+
+function pointOnSegment(point, start, end) {
+  return point.x >= Math.min(start.x, end.x) && point.x <= Math.max(start.x, end.x) &&
+    point.y >= Math.min(start.y, end.y) && point.y <= Math.max(start.y, end.y);
+}
+
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
 function distanceToSegment(point, start, end) {
