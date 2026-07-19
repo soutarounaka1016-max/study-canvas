@@ -6,6 +6,7 @@ import {
   emptyDrawing,
   moveSelectedStrokes,
   parseSavedDrawing,
+  scaleSelectedStrokes,
   selectStrokeIdsByLasso,
   strokeTouchesPoint,
 } from "../src/drawing-model.js";
@@ -70,6 +71,23 @@ test("選んだ手書きだけを削除し、元のデータは変更しない",
   const deleted = deleteSelectedStrokes(drawing, ["stroke-1"]);
   assert.deepEqual(deleted.strokes, [outside]);
   assert.deepEqual(drawing.strokes, [stroke, outside]);
+});
+
+test("選んだ手書きだけを線の太さごと拡大する", () => {
+  const outside = { ...stroke, id: "outside", points: [{ x: 500, y: 500 }, { x: 600, y: 600 }] };
+  const drawing = { version: 1, date: "2026-07-19", strokes: [stroke, outside] };
+  const scaled = scaleSelectedStrokes(drawing, ["stroke-1"], { x: 10, y: 10 }, 2);
+  assert.deepEqual(scaled.strokes[0].points, [{ x: 10, y: 10 }, { x: 190, y: 190 }]);
+  assert.equal(scaled.strokes[0].width, 10);
+  assert.deepEqual(scaled.strokes[1], outside);
+  assert.deepEqual(drawing.strokes[0], stroke);
+});
+
+test("拡大しても選択した手書きがキャンバスの外へ出ない", () => {
+  const drawing = { version: 1, date: "2026-07-19", strokes: [stroke] };
+  const scaled = scaleSelectedStrokes(drawing, ["stroke-1"], { x: 10, y: 10 }, 100);
+  assert.equal(scaled.strokes[0].points[1].x, 1000);
+  assert.equal(scaled.strokes[0].points[1].y, 1000);
 });
 
 test("履歴の最大数を超えた古い操作は破棄される", () => {
