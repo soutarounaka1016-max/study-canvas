@@ -148,6 +148,42 @@ export function deleteSelectedStrokes(drawing, selectedIds) {
   return nextDrawing;
 }
 
+export function scaleSelectedStrokes(drawing, selectedIds, anchor, scale) {
+  const ids = new Set(selectedIds);
+  const bounds = getSelectedStrokeBounds(drawing, ids);
+  if (!bounds || !Number.isFinite(anchor?.x) || !Number.isFinite(anchor?.y) || !Number.isFinite(scale)) {
+    return cloneDrawing(drawing);
+  }
+
+  const requestedScale = Math.max(0.2, scale);
+  const safeScale = Math.min(requestedScale, getMaximumScale(bounds, anchor));
+  const scaled = cloneDrawing(drawing);
+  for (const stroke of scaled.strokes) {
+    if (!ids.has(stroke.id)) continue;
+    stroke.width *= safeScale;
+    for (const point of stroke.points) {
+      point.x = anchor.x + (point.x - anchor.x) * safeScale;
+      point.y = anchor.y + (point.y - anchor.y) * safeScale;
+    }
+  }
+  return scaled;
+}
+
+function getMaximumScale(bounds, anchor) {
+  let maximum = Number.POSITIVE_INFINITY;
+  for (const x of [bounds.minX, bounds.maxX]) {
+    const distanceFromAnchor = x - anchor.x;
+    if (distanceFromAnchor > 0) maximum = Math.min(maximum, (BASE_WIDTH - anchor.x) / distanceFromAnchor);
+    if (distanceFromAnchor < 0) maximum = Math.min(maximum, -anchor.x / distanceFromAnchor);
+  }
+  for (const y of [bounds.minY, bounds.maxY]) {
+    const distanceFromAnchor = y - anchor.y;
+    if (distanceFromAnchor > 0) maximum = Math.min(maximum, (BASE_HEIGHT - anchor.y) / distanceFromAnchor);
+    if (distanceFromAnchor < 0) maximum = Math.min(maximum, -anchor.y / distanceFromAnchor);
+  }
+  return maximum;
+}
+
 function strokeIntersectsPolygon(stroke, polygon) {
   if (stroke.points.some((point) => pointInPolygon(point, polygon))) return true;
   for (let strokeIndex = 1; strokeIndex < stroke.points.length; strokeIndex += 1) {

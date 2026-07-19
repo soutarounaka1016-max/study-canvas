@@ -24,6 +24,13 @@ test("選択枠を再度押すと選んだ手書きを削除できる", () => {
   assert.match(script, /deleteSelectedStrokes/);
 });
 
+test("選択枠の四隅をドラッグして手書きを拡大縮小できる", () => {
+  assert.match(script, /getResizeHandles/);
+  assert.match(script, /drawSelectionHandle/);
+  assert.match(script, /scaleSelectedStrokes/);
+  assert.match(script, /四隅の丸で拡大・縮小できます/);
+});
+
 test("青・赤・黒とペンの太さ調整を維持する", () => {
   assert.match(html, /aria-label="青"/);
   assert.match(html, /aria-label="赤"/);
