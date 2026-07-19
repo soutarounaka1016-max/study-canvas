@@ -2,6 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 
 const requiredFiles = [
   "index.html", "styles.css", "script.js", "src/drawing-model.js", "src/page-store.js", "src/backup.js",
+  "src/task-store.js", "src/note-store.js",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
