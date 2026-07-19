@@ -15,3 +15,9 @@ test("青・赤・黒とペンの太さ調整を維持する", () => {
   assert.match(html, /aria-label="黒"/);
   assert.match(html, /id="penWidth"[^>]*type="range"/);
 });
+
+test("前日・今日・翌日のページへ移動できる操作を表示する", () => {
+  assert.match(html, /id="previousDateButton"/);
+  assert.match(html, /id="todayButton"/);
+  assert.match(html, /id="nextDateButton"/);
+});
