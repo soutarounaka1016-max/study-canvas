@@ -4,7 +4,7 @@
 
 ## 状態
 
-手書きキャンバスMVPをPull Requestで確認中。
+手書きキャンバスMVPはmainへマージ済み。GitHub Pagesの初回有効化待ち。
 
 ## 目的
 
@@ -41,7 +41,7 @@
 - ローカル静的サーバー: 主要4ファイルがHTTP 200で取得可能
 - GitHub Actions（Pull Request）: 成功
 - iPad Safari: 未確認
-- GitHub Pages公開画面: 未確認
+- GitHub Pages公開画面: 初回有効化前のため404を確認
 
 ## 保存データ
 
@@ -51,4 +51,4 @@
 
 ## 公開状況
 
-mainへのマージ前。GitHub Pagesは未公開。
+mainへのマージ済み。公開ワークフローは用意済みだが、GitHubのリポジトリ設定で初回だけPagesのソースを「GitHub Actions」にする必要がある。初回有効化後はmain更新時に自動公開する。
