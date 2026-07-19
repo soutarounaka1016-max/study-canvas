@@ -10,16 +10,19 @@
   <body>
     <header class="app-header">
       <div class="document-bar">
-        <button class="icon-button" type="button" aria-label="キャンバス一覧（今後追加）" disabled>
-          <span aria-hidden="true">‹</span><small>閉じる</small>
-        </button>
-        <button class="icon-button" type="button" aria-label="新しいページ（今後追加）" disabled>
-          <span aria-hidden="true">＋</span><small>新規</small>
+        <button id="previousDateButton" class="icon-button" type="button" aria-label="前の日">
+          <span aria-hidden="true">‹</span><small>前の日</small>
         </button>
         <div class="document-title">
-          <strong>今日の計画</strong>
+          <strong id="documentTitle">今日の計画</strong>
           <time id="pageDate"></time>
         </div>
+        <button id="nextDateButton" class="icon-button" type="button" aria-label="次の日">
+          <span aria-hidden="true">›</span><small>次の日</small>
+        </button>
+        <button id="todayButton" class="icon-button today-button" type="button" aria-label="今日へ戻る">
+          <span aria-hidden="true">●</span><small>今日</small>
+        </button>
       </div>
 
       <nav class="tool-bar" aria-label="キャンバスツール">
