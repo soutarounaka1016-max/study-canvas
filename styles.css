@@ -26,7 +26,7 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .document-bar, .tool-bar, .history-bar { display: flex; align-items: center; }
 .document-bar { gap: 8px; min-width: 0; }
-.document-title { min-width: 0; padding-left: 10px; border-left: 1px solid var(--border); }
+.document-title { min-width: 105px; padding-inline: 10px; border-inline: 1px solid var(--border); }
 .document-title strong, .document-title time {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -44,6 +44,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .tool-button small, .icon-button small { font-size: 12px; white-space: nowrap; }
 .tool-button:hover:not(:disabled), .icon-button:hover:not(:disabled) { background: #f2f4f7; }
 .tool-button.is-active { color: var(--accent); background: #eef3ff; box-shadow: inset 0 -3px var(--accent); }
+.today-button { color: var(--accent); }
+.today-button:disabled { color: #b4bac4; }
 .tool-button:disabled, .icon-button:disabled { color: #b4bac4; cursor: default; }
 
 .menu { position: relative; }
