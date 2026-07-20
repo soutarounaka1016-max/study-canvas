@@ -94,6 +94,18 @@ export function addNotePage(store) {
   return { version: NOTE_STORE_VERSION, activePageId: page.id, pages: [...normalized.pages, page] };
 }
 
+export function renameNotePage(store, pageId, title) {
+  const normalized = normalizeStore(store);
+  const pageIndex = normalized.pages.findIndex((page) => page.id === pageId);
+  if (pageIndex < 0) throw new TypeError("自由ノートのページが見つかりません");
+  const nextTitle = normalizeTitle(title, pageIndex + 1);
+  if (normalized.pages[pageIndex].title === nextTitle) return normalized;
+  const pages = normalized.pages.map((page, index) => index === pageIndex
+    ? { ...page, title: nextTitle, updatedAt: new Date().toISOString() }
+    : page);
+  return { ...normalized, pages };
+}
+
 export function deleteNotePage(store, pageId = store?.activePageId) {
   const normalized = normalizeStore(store);
   if (normalized.pages.length <= 1) return normalized;
