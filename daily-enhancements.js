@@ -1,3 +1,4 @@
+import "./taskize-entry.js?v=20260720-10";
 import { calculateMonthGrid } from "./src/canvas-viewport.js?v=20260720-5";
 
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
