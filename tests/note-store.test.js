@@ -3,74 +3,125 @@ import test from "node:test";
 
 import {
   NOTE_STORAGE_KEY,
+  NOTE_STORE_VERSION,
+  addNotePage,
+  deleteNotePage,
   emptyNoteStore,
   getNoteDrawing,
+  listNotePages,
   loadNoteStore,
   replaceStoredNoteStore,
   serializeNoteStore,
+  setActiveNotePage,
   setNoteDrawing,
 } from "../src/note-store.js";
 
-const drawing = {
-  version: 1,
-  date: "free-note",
-  strokes: [{ id: "note-1", color: "#2558e6", width: 5, points: [{ x: 12, y: 34 }] }],
-};
+function drawing(id, x = 12) {
+  return {
+    version: 1,
+    date: id,
+    strokes: [{ id: `${id}-stroke`, color: "#2558e6", width: 5, points: [{ x, y: 34 }] }],
+  };
+}
 
-test("保存値がない場合は空の自由ノートを作る", () => {
-  assert.deepEqual(loadNoteStore(null), { store: emptyNoteStore(), recovered: false });
+test("保存値がない場合は最初の自由ノートページを作る", () => {
+  const loaded = loadNoteStore(null);
+  assert.equal(loaded.recovered, false);
+  assert.equal(loaded.migrated, false);
+  assert.equal(loaded.store.version, NOTE_STORE_VERSION);
+  assert.equal(loaded.store.pages.length, 1);
+  assert.equal(loaded.store.activePageId, loaded.store.pages[0].id);
 });
 
-test("自由ノートの手書きを保存して読み出せる", () => {
-  const store = setNoteDrawing(emptyNoteStore(), drawing);
-  assert.equal(getNoteDrawing(store).strokes[0].id, "note-1");
-  assert.equal(getNoteDrawing(store).date, "free-note");
+test("旧1ページ形式を最初のページへ移行する", () => {
+  const oldDrawing = drawing("free-note");
+  const loaded = loadNoteStore(JSON.stringify({ version: 1, drawing: oldDrawing }));
+  assert.equal(loaded.migrated, true);
+  assert.equal(loaded.store.pages.length, 1);
+  assert.equal(getNoteDrawing(loaded.store).strokes[0].id, "free-note-stroke");
+});
+
+test("複数ページを追加して別々の手書きを保存できる", () => {
+  let store = emptyNoteStore();
+  const firstId = store.activePageId;
+  store = setNoteDrawing(store, drawing(firstId, 10), firstId);
+  store = addNotePage(store);
+  const secondId = store.activePageId;
+  store = setNoteDrawing(store, drawing(secondId, 20), secondId);
+
+  assert.equal(listNotePages(store).length, 2);
+  assert.equal(getNoteDrawing(store, firstId).strokes[0].points[0].x, 10);
+  assert.equal(getNoteDrawing(store, secondId).strokes[0].points[0].x, 20);
+});
+
+test("表示する自由ノートページを切り替えられる", () => {
+  let store = emptyNoteStore();
+  const firstId = store.activePageId;
+  store = addNotePage(store);
+  store = setActiveNotePage(store, firstId);
+  assert.equal(store.activePageId, firstId);
+  assert.throws(() => setActiveNotePage(store, "missing"), /見つかりません/);
+});
+
+test("複数ページがある場合だけページを削除する", () => {
+  let store = emptyNoteStore();
+  const firstId = store.activePageId;
+  store = addNotePage(store);
+  const secondId = store.activePageId;
+  store = deleteNotePage(store, secondId);
+  assert.equal(store.pages.length, 1);
+  assert.equal(store.activePageId, firstId);
+  assert.equal(deleteNotePage(store, firstId).pages.length, 1);
 });
 
 test("壊れたJSONや別形式は空のノートへ戻す", () => {
-  assert.deepEqual(loadNoteStore("not-json"), { store: emptyNoteStore(), recovered: true });
-  assert.deepEqual(loadNoteStore(JSON.stringify({ version: 2, drawing })), {
-    store: emptyNoteStore(),
-    recovered: true,
-  });
+  assert.equal(loadNoteStore("not-json").recovered, true);
+  assert.equal(loadNoteStore(JSON.stringify({ version: 99, pages: [] })).recovered, true);
 });
 
 test("不正な手書き線だけを除外して復旧を報告する", () => {
   const raw = JSON.stringify({
-    version: 1,
-    drawing: {
-      ...drawing,
-      strokes: [
-        drawing.strokes[0],
-        { id: "bad", color: "#000", width: 5, points: [{ x: -1, y: 10 }] },
-      ],
-    },
+    version: 2,
+    activePageId: "note-1",
+    pages: [{
+      id: "note-1",
+      title: "ノート 1",
+      drawing: {
+        ...drawing("note-1"),
+        strokes: [
+          drawing("note-1").strokes[0],
+          { id: "bad", color: "#000", width: 5, points: [{ x: -1, y: 10 }] },
+        ],
+      },
+    }],
   });
   const loaded = loadNoteStore(raw);
-  assert.equal(loaded.store.drawing.strokes.length, 1);
+  assert.equal(getNoteDrawing(loaded.store).strokes.length, 1);
   assert.equal(loaded.recovered, true);
 });
 
-test("直列化した自由ノートを同じ内容で読み戻せる", () => {
-  const store = setNoteDrawing(emptyNoteStore(), drawing);
+test("直列化した複数ページを同じ内容で読み戻せる", () => {
+  let store = emptyNoteStore();
+  store = setNoteDrawing(store, drawing(store.activePageId));
+  store = addNotePage(store);
   const loaded = loadNoteStore(serializeNoteStore(store));
   assert.equal(loaded.recovered, false);
+  assert.equal(loaded.migrated, false);
   assert.deepEqual(loaded.store, store);
 });
 
 test("取得した手書きを変更しても保存元は変わらない", () => {
-  const store = setNoteDrawing(emptyNoteStore(), drawing);
+  let store = emptyNoteStore();
+  store = setNoteDrawing(store, drawing(store.activePageId));
   const detached = getNoteDrawing(store);
   detached.strokes[0].points[0].x = 999;
   assert.equal(getNoteDrawing(store).strokes[0].points[0].x, 12);
 });
 
 test("保存結果が一致しない場合は以前の自由ノートへ戻す", () => {
-  const previousStore = setNoteDrawing(emptyNoteStore(), drawing);
-  const nextStore = setNoteDrawing(emptyNoteStore(), {
-    ...drawing,
-    strokes: [{ ...drawing.strokes[0], id: "note-2" }],
-  });
+  let previousStore = emptyNoteStore();
+  previousStore = setNoteDrawing(previousStore, drawing(previousStore.activePageId));
+  const nextStore = addNotePage(previousStore);
   const previousRaw = serializeNoteStore(previousStore);
   let current = previousRaw;
   let firstWrite = true;

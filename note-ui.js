@@ -8,16 +8,22 @@ import {
 } from "./src/drawing-model.js?v=20260719-6";
 import {
   NOTE_STORAGE_KEY,
+  addNotePage,
+  deleteNotePage,
   getNoteDrawing,
+  listNotePages,
   loadNoteStore,
   replaceStoredNoteStore,
+  setActiveNotePage,
   setNoteDrawing,
-} from "./src/note-store.js?v=20260720-4";
+} from "./src/note-store.js?v=20260720-5";
+import { CanvasViewport } from "./src/canvas-viewport.js?v=20260720-5";
 
 const noteButton = document.querySelector("#noteButton");
 const noteDialog = document.querySelector("#noteDialog");
 const closeNoteDialogButton = document.querySelector("#closeNoteDialogButton");
 const noteCanvasWrap = document.querySelector("#noteCanvasWrap");
+const noteCanvasStage = document.querySelector("#noteCanvasStage");
 const noteCanvas = document.querySelector("#noteCanvas");
 const noteEmptyHint = document.querySelector("#noteEmptyHint");
 const notePenWidth = document.querySelector("#notePenWidth");
@@ -25,11 +31,15 @@ const noteUndoButton = document.querySelector("#noteUndoButton");
 const noteRedoButton = document.querySelector("#noteRedoButton");
 const noteClearButton = document.querySelector("#noteClearButton");
 const noteSaveStatus = document.querySelector("#noteSaveStatus");
+const notePageSelect = document.querySelector("#notePageSelect");
+const addNotePageButton = document.querySelector("#addNotePageButton");
+const deleteNotePageButton = document.querySelector("#deleteNotePageButton");
 const noteContext = noteCanvas.getContext("2d", { alpha: false });
 
 const loaded = loadNoteStore(localStorage.getItem(NOTE_STORAGE_KEY));
 let noteStore = loaded.store;
-let history = new DrawingHistory(getNoteDrawing(noteStore));
+let activePageId = noteStore.activePageId;
+let history = new DrawingHistory(getNoteDrawing(noteStore, activePageId));
 let selectedTool = "pen";
 let selectedColor = "#2558e6";
 let activeStroke = null;
@@ -38,12 +48,19 @@ let activePointerId = null;
 let frameRequest = null;
 let saveTimer = null;
 
+const viewport = new CanvasViewport(noteCanvasWrap, noteCanvasStage, {
+  onGestureStart: cancelActiveInteraction,
+});
+
 if (loaded.recovered) showNoteSaveError("壊れた自由ノートの一部を除いて読み込みました");
+if (loaded.migrated) saveImmediately();
 
 new ResizeObserver(resizeNoteCanvas).observe(noteCanvasWrap);
 
 noteButton.addEventListener("click", () => {
   document.querySelector(".menu").removeAttribute("open");
+  renderPageControls();
+  viewport.reset();
   noteDialog.showModal();
   requestAnimationFrame(resizeNoteCanvas);
 });
@@ -55,9 +72,38 @@ noteRedoButton.addEventListener("click", () => { history.redo(); afterNoteChange
 noteClearButton.addEventListener("click", () => {
   if (history.current.strokes.length === 0) return;
   if (!window.confirm("自由ノートを白紙に戻しますか？")) return;
-  history.commit(emptyDrawing("free-note"));
+  history.commit(emptyDrawing(activePageId));
   afterNoteChange();
 });
+
+addNotePageButton.addEventListener("click", () => {
+  if (!saveImmediately()) return;
+  noteStore = addNotePage(noteStore);
+  activePageId = noteStore.activePageId;
+  history = new DrawingHistory(getNoteDrawing(noteStore, activePageId));
+  viewport.reset();
+  renderPageControls();
+  updateNoteHistoryButtons();
+  requestNoteRender();
+  saveImmediately();
+});
+
+deleteNotePageButton.addEventListener("click", () => {
+  const pages = listNotePages(noteStore);
+  if (pages.length <= 1) return;
+  const current = pages.find((page) => page.id === activePageId);
+  if (!window.confirm(`${current?.title || "このページ"}を削除しますか？`)) return;
+  noteStore = deleteNotePage(noteStore, activePageId);
+  activePageId = noteStore.activePageId;
+  history = new DrawingHistory(getNoteDrawing(noteStore, activePageId));
+  viewport.reset();
+  renderPageControls();
+  updateNoteHistoryButtons();
+  requestNoteRender();
+  saveImmediately();
+});
+
+notePageSelect.addEventListener("change", () => switchNotePage(notePageSelect.value));
 
 noteDialog.querySelectorAll("[data-note-tool]").forEach((button) => {
   button.addEventListener("click", () => selectNoteTool(button.dataset.noteTool));
@@ -97,7 +143,37 @@ function selectNoteTool(tool) {
   });
 }
 
+function switchNotePage(pageId) {
+  if (pageId === activePageId) return;
+  if (!saveImmediately()) {
+    notePageSelect.value = activePageId;
+    return;
+  }
+  noteStore = setActiveNotePage(noteStore, pageId);
+  activePageId = pageId;
+  history = new DrawingHistory(getNoteDrawing(noteStore, activePageId));
+  viewport.reset();
+  renderPageControls();
+  updateNoteHistoryButtons();
+  requestNoteRender();
+  saveImmediately();
+}
+
+function renderPageControls() {
+  const pages = listNotePages(noteStore);
+  notePageSelect.replaceChildren();
+  for (const page of pages) {
+    const option = document.createElement("option");
+    option.value = page.id;
+    option.textContent = page.title;
+    option.selected = page.id === activePageId;
+    notePageSelect.append(option);
+  }
+  deleteNotePageButton.disabled = pages.length <= 1;
+}
+
 function handleNotePointerDown(event) {
+  if (viewport.pointerDown(event)) return;
   if (activePointerId !== null) return;
   if (event.pointerType === "mouse" && event.button !== 0) return;
   event.preventDefault();
@@ -120,6 +196,7 @@ function handleNotePointerDown(event) {
 }
 
 function handleNotePointerMove(event) {
+  if (viewport.pointerMove(event)) return;
   if (event.pointerId !== activePointerId) return;
   event.preventDefault();
   const events = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [event];
@@ -136,6 +213,7 @@ function handleNotePointerMove(event) {
 }
 
 function finishNotePointer(event) {
+  if (viewport.pointerEnd(event)) return;
   if (event.pointerId !== activePointerId) return;
   let changed = false;
   if (activeStroke) {
@@ -154,6 +232,17 @@ function finishNotePointer(event) {
   else requestNoteRender();
 }
 
+function cancelActiveInteraction() {
+  const pointerId = activePointerId;
+  activeStroke = null;
+  eraseDraft = null;
+  activePointerId = null;
+  if (pointerId !== null && noteCanvas.hasPointerCapture(pointerId)) {
+    try { noteCanvas.releasePointerCapture(pointerId); } catch { /* Safari may already have released it. */ }
+  }
+  requestNoteRender();
+}
+
 function eraseNoteAt(point) {
   const radius = 18;
   eraseDraft.strokes = eraseDraft.strokes.filter((stroke) => !strokeTouchesPoint(stroke, point, radius));
@@ -170,9 +259,10 @@ function getNoteCanvasPoint(event) {
 function resizeNoteCanvas() {
   const rect = noteCanvas.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return;
+  const scale = Number(noteCanvasStage.dataset.viewScale || 1);
   const ratio = Math.min(window.devicePixelRatio || 1, 3);
-  const width = Math.max(1, Math.round(rect.width * ratio));
-  const height = Math.max(1, Math.round(rect.height * ratio));
+  const width = Math.max(1, Math.round((rect.width / scale) * ratio));
+  const height = Math.max(1, Math.round((rect.height / scale) * ratio));
   if (noteCanvas.width !== width || noteCanvas.height !== height) {
     noteCanvas.width = width;
     noteCanvas.height = height;
@@ -245,9 +335,9 @@ function scheduleNoteSave() {
 function saveImmediately() {
   window.clearTimeout(saveTimer);
   try {
-    const nextStore = setNoteDrawing(noteStore, history.current);
-    replaceStoredNoteStore(localStorage, NOTE_STORAGE_KEY, nextStore);
-    noteStore = nextStore;
+    noteStore = setNoteDrawing(noteStore, history.current, activePageId);
+    noteStore = setActiveNotePage(noteStore, activePageId);
+    replaceStoredNoteStore(localStorage, NOTE_STORAGE_KEY, noteStore);
     noteSaveStatus.className = "note-save-status";
     noteSaveStatus.textContent = "保存済み";
     return true;
@@ -262,5 +352,6 @@ function showNoteSaveError(message) {
   noteSaveStatus.textContent = message;
 }
 
+renderPageControls();
 updateNoteHistoryButtons();
 requestNoteRender();
