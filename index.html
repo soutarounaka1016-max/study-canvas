@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f4f5f7" />
     <title>Study Canvas</title>
-    <link rel="stylesheet" href="styles.css?v=20260720-6" />
-    <link rel="stylesheet" href="note.css?v=20260720-6" />
-    <link rel="stylesheet" href="enhancements.css?v=20260720-6" />
+    <link rel="stylesheet" href="styles.css?v=20260720-7" />
+    <link rel="stylesheet" href="note.css?v=20260720-7" />
+    <link rel="stylesheet" href="enhancements.css?v=20260720-7" />
   </head>
   <body>
     <header class="app-header">
@@ -17,130 +17,43 @@
         <button id="nextDateButton" class="icon-button" type="button" aria-label="次の日"><span aria-hidden="true">›</span><small>次の日</small></button>
         <button id="todayButton" class="icon-button today-button" type="button" aria-label="今日へ戻る"><span aria-hidden="true">●</span><small>今日</small></button>
       </div>
-
       <nav class="tool-bar" aria-label="キャンバスツール">
         <button class="tool-button" type="button" data-tool="view" aria-pressed="false"><span aria-hidden="true">◉</span><small>見る</small></button>
         <button class="tool-button is-active" type="button" data-tool="pen" aria-pressed="true"><span aria-hidden="true">✎</span><small>書く</small></button>
         <button class="tool-button" type="button" data-tool="eraser" aria-pressed="false"><span aria-hidden="true">◇</span><small>消す</small></button>
         <button class="tool-button" type="button" data-tool="select" aria-pressed="false"><span aria-hidden="true">▧</span><small>選ぶ</small></button>
       </nav>
-
       <div class="history-bar">
         <button id="taskButton" class="icon-button task-button" type="button" aria-label="この日のタスクを開く"><span aria-hidden="true">☑</span><small>タスク</small><b id="taskCountBadge" class="task-count-badge" hidden></b></button>
         <button id="pageListButton" class="icon-button" type="button" aria-label="ページ一覧を開く"><span aria-hidden="true">▦</span><small>一覧</small></button>
         <button id="undoButton" class="icon-button" type="button" aria-label="取り消し" disabled><span aria-hidden="true">↶</span><small>取り消し</small></button>
         <button id="redoButton" class="icon-button" type="button" aria-label="やり直し" disabled><span aria-hidden="true">↷</span><small>やり直し</small></button>
-        <details class="menu">
-          <summary aria-label="メニュー">☰</summary>
-          <div class="menu-panel">
-            <strong>ページ操作</strong>
-            <button id="weeklyButton" class="weekly-menu-button" type="button">週間目標を開く</button>
-            <button id="noteButton" class="note-menu-button" type="button">自由ノートを開く</button>
-            <button id="backupButton" class="primary-menu-button" type="button">手書きバックアップを保存</button>
-            <button id="restoreButton" type="button">手書きバックアップから復元</button>
-            <input id="restoreFile" type="file" accept="application/json,.json" hidden />
-            <p id="backupStatus" class="backup-status" role="status" aria-live="polite" hidden></p>
-            <button id="clearButton" class="danger-menu-button" type="button">ページを白紙に戻す</button>
-          </div>
-        </details>
+        <details class="menu"><summary aria-label="メニュー">☰</summary><div class="menu-panel"><strong>ページ操作</strong><button id="weeklyButton" class="weekly-menu-button" type="button">週間目標を開く</button><button id="noteButton" class="note-menu-button" type="button">自由ノートを開く</button><button id="backupButton" class="primary-menu-button" type="button">手書きバックアップを保存</button><button id="restoreButton" type="button">手書きバックアップから復元</button><input id="restoreFile" type="file" accept="application/json,.json" hidden /><p id="backupStatus" class="backup-status" role="status" aria-live="polite" hidden></p><button id="clearButton" class="danger-menu-button" type="button">ページを白紙に戻す</button></div></details>
       </div>
     </header>
-
-    <section class="pen-options" aria-label="ペン設定">
-      <div class="color-options" role="group" aria-label="ペンの色">
-        <button class="color-button is-selected" type="button" data-color="#2558e6" aria-label="青" aria-pressed="true"></button>
-        <button class="color-button" type="button" data-color="#ef4444" aria-label="赤" aria-pressed="false"></button>
-        <button class="color-button" type="button" data-color="#111827" aria-label="黒" aria-pressed="false"></button>
-      </div>
-      <label class="width-control" for="penWidth"><span>太さ</span><input id="penWidth" type="range" min="2" max="14" step="1" value="5" /></label>
-      <p id="selectionHint" class="selection-hint" hidden>手書きを囲んで選択してください</p>
-      <div class="save-state" role="status" aria-live="polite"><span id="saveDot" aria-hidden="true"></span><span id="saveStatus">保存済み</span></div>
-    </section>
-
+    <section class="pen-options" aria-label="ペン設定"><div class="color-options" role="group" aria-label="ペンの色"><button class="color-button is-selected" type="button" data-color="#2558e6" aria-label="青" aria-pressed="true"></button><button class="color-button" type="button" data-color="#ef4444" aria-label="赤" aria-pressed="false"></button><button class="color-button" type="button" data-color="#111827" aria-label="黒" aria-pressed="false"></button></div><label class="width-control" for="penWidth"><span>太さ</span><input id="penWidth" type="range" min="2" max="14" step="1" value="5" /></label><p id="selectionHint" class="selection-hint" hidden>手書きを囲んで選択してください</p><div class="save-state" role="status" aria-live="polite"><span id="saveDot" aria-hidden="true"></span><span id="saveStatus">保存済み</span></div></section>
     <p class="orientation-note">iPadを横向きにすると、広いキャンバスで書けます。</p>
-
-    <main class="workspace">
-      <div class="page" id="page">
-        <div id="dailyCanvasStage" class="canvas-stage">
-          <canvas id="drawingCanvas" aria-label="今日の計画を書く白いキャンバス"></canvas>
-          <p id="emptyHint">Apple Pencilまたは一本指で書き、二本指で移動・拡大縮小できます</p>
-          <button id="selectionDeleteButton" class="selection-delete-button" type="button" hidden>削除</button>
-        </div>
-      </div>
-    </main>
+    <main class="workspace"><div class="page" id="page"><div id="dailyCanvasStage" class="canvas-stage"><canvas id="drawingCanvas" aria-label="今日の計画を書く白いキャンバス"></canvas><p id="emptyHint">Apple Pencilまたは一本指で書き、二本指で移動・拡大縮小できます</p><button id="selectionDeleteButton" class="selection-delete-button" type="button" hidden>削除</button></div></div></main>
 
     <dialog id="taskDialog" class="task-dialog" aria-labelledby="taskDialogTitle">
       <div class="task-dialog-header"><div><h2 id="taskDialogTitle">この日のタスク</h2><time id="taskDialogDate"></time></div><button id="closeTaskDialogButton" class="dialog-close-button" type="button" aria-label="タスクを閉じる">×</button></div>
-      <form id="taskForm" class="task-form">
-        <label><span>科目</span><select id="taskSubject" required><option value="" selected disabled>選択</option><option>数学</option><option>英語</option><option>物理</option><option>化学</option><option>国語</option><option>その他</option></select></label>
-        <label class="task-title-field"><span>勉強内容</span><input id="taskTitle" type="text" maxlength="120" autocomplete="off" placeholder="例：微積の問題を2題" required /></label>
-        <label><span>予定時間</span><span class="minutes-input"><input id="taskMinutes" type="number" min="5" max="600" step="5" value="30" inputmode="numeric" required />分</span></label>
-        <div class="task-form-actions"><button id="saveTaskButton" class="primary-task-button" type="submit">タスクを追加</button><button id="cancelTaskEditButton" type="button" hidden>編集をやめる</button></div>
-        <p id="taskFormError" class="task-message is-error" role="alert" hidden></p>
-      </form>
-      <div class="task-summary"><strong id="taskProgress">タスクはまだありません</strong><span id="taskStorageStatus" class="task-message" role="status" aria-live="polite" hidden></span></div>
-      <p id="emptyTaskList" class="empty-task-list">科目・内容・予定時間を入力して、最初のタスクを追加してください。</p>
-      <div id="taskList" class="task-list" aria-label="この日のタスク一覧"></div>
-      <p class="task-backup-note">タスクカードは現在の手書きJSONバックアップには含まれません。</p>
+      <form id="taskForm" class="task-form"><label><span>科目</span><select id="taskSubject" required><option value="" selected disabled>選択</option><option>数学</option><option>英語</option><option>物理</option><option>化学</option><option>国語</option><option>その他</option></select></label><label class="task-title-field"><span>勉強内容</span><input id="taskTitle" type="text" maxlength="120" autocomplete="off" placeholder="例：微積の問題を2題" required /></label><label><span>予定時間</span><span class="minutes-input"><input id="taskMinutes" type="number" min="5" max="600" step="5" value="30" inputmode="numeric" required />分</span></label><div class="task-form-actions"><button id="saveTaskButton" class="primary-task-button" type="submit">タスクを追加</button><button id="cancelTaskEditButton" type="button" hidden>編集をやめる</button></div><p id="taskFormError" class="task-message is-error" role="alert" hidden></p></form>
+      <div class="task-summary"><strong id="taskProgress">タスクはまだありません</strong><span id="taskStorageStatus" class="task-message" role="status" aria-live="polite" hidden></span></div><p id="emptyTaskList" class="empty-task-list">科目・内容・予定時間を入力して、最初のタスクを追加してください。</p><div id="taskList" class="task-list" aria-label="この日のタスク一覧"></div><p class="task-backup-note">タスクカードは現在の手書きJSONバックアップには含まれません。</p>
     </dialog>
 
-    <dialog id="weeklyDialog" class="weekly-dialog" aria-labelledby="weeklyDialogTitle">
-      <div class="weekly-dialog-header"><div><h2 id="weeklyDialogTitle">週間目標</h2><p>1週間で達成したいことを自由に手書きします。今日のタスクは自動作成しません。</p></div><button id="closeWeeklyDialogButton" class="dialog-close-button" type="button" aria-label="週間目標を閉じる">×</button></div>
-      <div class="weekly-week-nav" aria-label="表示する週"><button id="previousWeekButton" type="button">‹ 前の週</button><strong id="weeklyRange"></strong><button id="currentWeekButton" type="button">今週</button><button id="nextWeekButton" type="button">次の週 ›</button></div>
-      <div class="weekly-toolbar" aria-label="週間目標の描画ツール">
-        <div class="weekly-tool-group" role="group" aria-label="道具"><button class="weekly-tool-button is-active" type="button" data-weekly-tool="pen" aria-pressed="true">✎ 書く</button><button class="weekly-tool-button" type="button" data-weekly-tool="eraser" aria-pressed="false">◇ 消す</button></div>
-        <div class="weekly-color-options" role="group" aria-label="週間目標のペン色"><button class="weekly-color-button is-selected" type="button" data-weekly-color="#2558e6" aria-label="青" aria-pressed="true"></button><button class="weekly-color-button" type="button" data-weekly-color="#ef4444" aria-label="赤" aria-pressed="false"></button><button class="weekly-color-button" type="button" data-weekly-color="#111827" aria-label="黒" aria-pressed="false"></button></div>
-        <label class="weekly-width-control" for="weeklyPenWidth"><span>太さ</span><input id="weeklyPenWidth" type="range" min="2" max="14" step="1" value="5" /></label>
-        <div class="weekly-history-actions"><button id="weeklyUndoButton" type="button" disabled>↶ 取り消し</button><button id="weeklyRedoButton" type="button" disabled>↷ やり直し</button><button id="weeklyClearButton" class="weekly-clear-button" type="button">白紙に戻す</button></div>
-        <span id="weeklySaveStatus" class="weekly-save-status" role="status" aria-live="polite">保存済み</span>
-      </div>
-      <div id="weeklyCanvasWrap" class="weekly-canvas-wrap"><div id="weeklyCanvasStage" class="canvas-stage"><canvas id="weeklyCanvas" aria-label="週間目標を書く白いキャンバス"></canvas><p id="weeklyEmptyHint">一本指またはApple Pencilで書き、二本指で移動・拡大縮小できます</p></div></div>
-      <p class="canvas-gesture-note">二本指の操作中は線を追加しません。</p>
-      <p class="weekly-backup-note">週間目標は現在の手書きJSONバックアップには含まれません。</p>
-    </dialog>
+    <dialog id="weeklyDialog" class="weekly-dialog" aria-labelledby="weeklyDialogTitle"><div class="weekly-dialog-header"><div><h2 id="weeklyDialogTitle">週間目標</h2><p>1週間で達成したいことを自由に手書きします。今日のタスクは自動作成しません。</p></div><button id="closeWeeklyDialogButton" class="dialog-close-button" type="button" aria-label="週間目標を閉じる">×</button></div><div class="weekly-week-nav" aria-label="表示する週"><button id="previousWeekButton" type="button">‹ 前の週</button><strong id="weeklyRange"></strong><button id="currentWeekButton" type="button">今週</button><button id="nextWeekButton" type="button">次の週 ›</button></div><div class="weekly-toolbar" aria-label="週間目標の描画ツール"><div class="weekly-tool-group" role="group" aria-label="道具"><button class="weekly-tool-button is-active" type="button" data-weekly-tool="pen" aria-pressed="true">✎ 書く</button><button class="weekly-tool-button" type="button" data-weekly-tool="eraser" aria-pressed="false">◇ 消す</button></div><div class="weekly-color-options" role="group" aria-label="週間目標のペン色"><button class="weekly-color-button is-selected" type="button" data-weekly-color="#2558e6" aria-label="青" aria-pressed="true"></button><button class="weekly-color-button" type="button" data-weekly-color="#ef4444" aria-label="赤" aria-pressed="false"></button><button class="weekly-color-button" type="button" data-weekly-color="#111827" aria-label="黒" aria-pressed="false"></button></div><label class="weekly-width-control" for="weeklyPenWidth"><span>太さ</span><input id="weeklyPenWidth" type="range" min="2" max="14" step="1" value="5" /></label><div class="weekly-history-actions"><button id="weeklyUndoButton" type="button" disabled>↶ 取り消し</button><button id="weeklyRedoButton" type="button" disabled>↷ やり直し</button><button id="weeklyClearButton" class="weekly-clear-button" type="button">白紙に戻す</button></div><span id="weeklySaveStatus" class="weekly-save-status" role="status" aria-live="polite">保存済み</span></div><div id="weeklyCanvasWrap" class="weekly-canvas-wrap"><div id="weeklyCanvasStage" class="canvas-stage"><canvas id="weeklyCanvas" aria-label="週間目標を書く白いキャンバス"></canvas><p id="weeklyEmptyHint">一本指またはApple Pencilで書き、二本指で移動・拡大縮小できます</p></div></div><p class="canvas-gesture-note">二本指の操作中は線を追加しません。</p><p class="weekly-backup-note">週間目標は現在の手書きJSONバックアップには含まれません。</p></dialog>
 
-    <dialog id="noteDialog" class="note-dialog" aria-labelledby="noteDialogTitle">
-      <div class="note-dialog-header"><div><h2 id="noteDialogTitle">自由ノート</h2><p>サムネイルからノートを選び、名前を付けて手書きできます。</p></div><button id="closeNoteDialogButton" class="dialog-close-button" type="button" aria-label="自由ノートを閉じる">×</button></div>
-      <section id="noteGalleryView" class="note-gallery-view" aria-label="自由ノート一覧">
-        <div id="noteGallery" class="note-gallery">
-          <button id="createNoteCardButton" class="note-create-card" type="button"><span class="note-create-preview" aria-hidden="true">＋</span><strong>新規ノート作成</strong></button>
-        </div>
-      </section>
-      <section id="noteEditorView" class="note-editor-view" hidden>
-        <div class="note-editor-header">
-          <button id="backToNoteGalleryButton" class="note-back-button" type="button">‹ ノート一覧</button>
-          <label class="note-title-field" for="noteTitleInput"><span>ノート名</span><input id="noteTitleInput" type="text" maxlength="40" autocomplete="off" /></label>
-          <button id="deleteNotePageButton" class="note-delete-page-button" type="button">このノートを削除</button>
-        </div>
-        <div class="note-toolbar" aria-label="自由ノートの描画ツール">
-          <div class="note-tool-group" role="group" aria-label="道具"><button class="note-tool-button is-active" type="button" data-note-tool="pen" aria-pressed="true">✎ 書く</button><button class="note-tool-button" type="button" data-note-tool="eraser" aria-pressed="false">◇ 消す</button></div>
-          <div class="note-color-options" role="group" aria-label="自由ノートのペン色"><button class="note-color-button is-selected" type="button" data-note-color="#2558e6" aria-label="青" aria-pressed="true"></button><button class="note-color-button" type="button" data-note-color="#ef4444" aria-label="赤" aria-pressed="false"></button><button class="note-color-button" type="button" data-note-color="#111827" aria-label="黒" aria-pressed="false"></button></div>
-          <label class="note-width-control" for="notePenWidth"><span>太さ</span><input id="notePenWidth" type="range" min="2" max="14" step="1" value="5" /></label>
-          <div class="note-history-actions"><button id="noteUndoButton" type="button" disabled>↶ 取り消し</button><button id="noteRedoButton" type="button" disabled>↷ やり直し</button><button id="noteClearButton" class="note-clear-button" type="button">白紙に戻す</button></div>
-          <span id="noteSaveStatus" class="note-save-status" role="status" aria-live="polite">保存済み</span>
-        </div>
-        <div id="noteCanvasWrap" class="note-canvas-wrap"><div id="noteCanvasStage" class="canvas-stage"><canvas id="noteCanvas" aria-label="自由ノートを書く白いキャンバス"></canvas><p id="noteEmptyHint">一本指またはApple Pencilで書き、二本指で移動・拡大縮小できます</p></div></div>
-        <p class="canvas-gesture-note">二本指の操作中は線を追加しません。</p>
-      </section>
-      <p class="note-backup-note">自由ノートは現在の手書きJSONバックアップには含まれません。</p>
-    </dialog>
+    <dialog id="noteDialog" class="note-dialog" aria-labelledby="noteDialogTitle"><div class="note-dialog-header"><div><h2 id="noteDialogTitle">自由ノート</h2><p>サムネイルからノートを選び、名前を付けて手書きできます。</p></div><button id="closeNoteDialogButton" class="dialog-close-button" type="button" aria-label="自由ノートを閉じる">×</button></div><section id="noteGalleryView" class="note-gallery-view" aria-label="自由ノート一覧"><div id="noteGallery" class="note-gallery"><button id="createNoteCardButton" class="note-create-card" type="button"><span class="note-create-preview" aria-hidden="true">＋</span><strong>新規ノート作成</strong></button></div></section><section id="noteEditorView" class="note-editor-view" hidden><div class="note-editor-header"><button id="backToNoteGalleryButton" class="note-back-button" type="button">‹ ノート一覧</button><label class="note-title-field" for="noteTitleInput"><span>ノート名</span><input id="noteTitleInput" type="text" maxlength="40" autocomplete="off" /></label><button id="deleteNotePageButton" class="note-delete-page-button" type="button">このノートを削除</button></div><div class="note-toolbar" aria-label="自由ノートの描画ツール"><div class="note-tool-group" role="group" aria-label="道具"><button class="note-tool-button is-active" type="button" data-note-tool="pen" aria-pressed="true">✎ 書く</button><button class="note-tool-button" type="button" data-note-tool="eraser" aria-pressed="false">◇ 消す</button></div><div class="note-color-options" role="group" aria-label="自由ノートのペン色"><button class="note-color-button is-selected" type="button" data-note-color="#2558e6" aria-label="青" aria-pressed="true"></button><button class="note-color-button" type="button" data-note-color="#ef4444" aria-label="赤" aria-pressed="false"></button><button class="note-color-button" type="button" data-note-color="#111827" aria-label="黒" aria-pressed="false"></button></div><label class="note-width-control" for="notePenWidth"><span>太さ</span><input id="notePenWidth" type="range" min="2" max="14" step="1" value="5" /></label><div class="note-history-actions"><button id="noteUndoButton" type="button" disabled>↶ 取り消し</button><button id="noteRedoButton" type="button" disabled>↷ やり直し</button><button id="noteClearButton" class="note-clear-button" type="button">白紙に戻す</button></div><span id="noteSaveStatus" class="note-save-status" role="status" aria-live="polite">保存済み</span></div><div id="noteCanvasWrap" class="note-canvas-wrap"><div id="noteCanvasStage" class="canvas-stage"><canvas id="noteCanvas" aria-label="自由ノートを書く白いキャンバス"></canvas><p id="noteEmptyHint">一本指またはApple Pencilで書き、二本指で移動・拡大縮小できます</p></div></div><p class="canvas-gesture-note">二本指の操作中は線を追加しません。</p></section><p class="note-backup-note">自由ノートは現在の手書きJSONバックアップには含まれません。</p></dialog>
 
-    <dialog id="pageListDialog" class="page-list-dialog">
-      <div class="page-list-header"><div><h2>ページ一覧</h2><p>カレンダーから手書きした日を選ぶと、その日のキャンバスを開きます。</p></div><button id="closePageListButton" class="dialog-close-button" type="button" aria-label="ページ一覧を閉じる">×</button></div>
-      <div class="calendar-nav" aria-label="表示する月"><button id="previousCalendarMonthButton" type="button">‹ 前の月</button><strong id="calendarMonthLabel"></strong><button id="nextCalendarMonthButton" type="button">次の月 ›</button></div>
-      <p id="emptyPageList" class="empty-page-list">手書きしたページはまだありません。</p>
-      <div id="pageList" class="page-list" aria-label="手書きしたページ"></div>
-    </dialog>
-
+    <dialog id="pageListDialog" class="page-list-dialog"><div class="page-list-header"><div><h2>ページ一覧</h2><p>カレンダーから手書きした日を選ぶと、その日のキャンバスを開きます。</p></div><button id="closePageListButton" class="dialog-close-button" type="button" aria-label="ページ一覧を閉じる">×</button></div><div class="calendar-nav" aria-label="表示する月"><button id="previousCalendarMonthButton" type="button">‹ 前の月</button><strong id="calendarMonthLabel"></strong><button id="nextCalendarMonthButton" type="button">次の月 ›</button></div><p id="emptyPageList" class="empty-page-list">手書きしたページはまだありません。</p><div id="pageList" class="page-list" aria-label="手書きしたページ"></div></dialog>
     <dialog id="restoreDialog"><form method="dialog"><h2>手書きバックアップから復元</h2><p>次の内容で全日付の手書きを置き換えます。まだ現在のデータは変更されていません。</p><dl><dt>ファイル</dt><dd id="restoreFileName"></dd><dt>保存日時</dt><dd id="restoreExportedAt"></dd><dt>手書きがある日</dt><dd id="restorePageCount"></dd><dt>手書き線</dt><dd id="restoreStrokeCount"></dd></dl><p><strong>復元前の現在データは、自動で別のJSONファイルに保存します。</strong></p><div class="dialog-actions"><button value="cancel">キャンセル</button><button id="confirmRestoreButton" class="danger-button" type="button">退避して復元する</button></div></form></dialog>
     <dialog id="clearDialog"><form method="dialog"><h2>ページを白紙に戻しますか？</h2><p>現在の手書きは削除されます。取り消し操作で元に戻せます。</p><div class="dialog-actions"><button value="cancel">キャンセル</button><button id="confirmClearButton" class="danger-button" value="confirm">白紙に戻す</button></div></form></dialog>
-
     <noscript>このアプリを使うにはJavaScriptを有効にしてください。</noscript>
-    <script type="module" src="script.js?v=20260720-6"></script>
-    <script type="module" src="restore-ui.js?v=20260720-6"></script>
-    <script type="module" src="task-ui.js?v=20260720-6"></script>
-    <script type="module" src="weekly-ui.js?v=20260720-6"></script>
-    <script type="module" src="note-ui.js?v=20260720-6"></script>
-    <script type="module" src="daily-enhancements.js?v=20260720-6"></script>
+    <script type="module" src="script.js?v=20260720-7"></script>
+    <script type="module" src="restore-ui.js?v=20260720-7"></script>
+    <script type="module" src="task-ui.js?v=20260720-7"></script>
+    <script type="module" src="weekly-ui.js?v=20260720-7"></script>
+    <script type="module" src="note-ui.js?v=20260720-7"></script>
+    <script type="module" src="daily-enhancements.js?v=20260720-7"></script>
   </body>
 </html>

@@ -12,6 +12,7 @@ import {
   serializeTaskStore,
   toggleTask,
   updateTask,
+  updateTaskPosition,
   validateTaskInput,
 } from "../src/task-store.js";
 
@@ -24,9 +25,14 @@ test("空の保存値から空のタスクストアを作る", () => {
 
 test("日付ごとにタスクを追加して読み出せる", () => {
   const store = addTask(emptyTaskStore(), date, input, "task-1");
-  assert.deepEqual(getTasksForDate(store, date), [
-    { id: "task-1", subject: "数学", title: "微積の演習", plannedMinutes: 60, completed: false },
-  ]);
+  const [task] = getTasksForDate(store, date);
+  assert.equal(task.id, "task-1");
+  assert.equal(task.subject, "数学");
+  assert.equal(task.title, "微積の演習");
+  assert.equal(task.plannedMinutes, 60);
+  assert.equal(task.completed, false);
+  assert.equal(typeof task.x, "number");
+  assert.equal(typeof task.y, "number");
   assert.deepEqual(getTasksForDate(store, "2026-07-21"), []);
 });
 
@@ -39,12 +45,37 @@ test("タスク入力を検証する", () => {
   assert.throws(() => validateTaskInput({ subject: "英語", title: "長文", plannedMinutes: 0 }), /予定時間/);
 });
 
-test("タスクを編集しても別日付のタスクを維持する", () => {
+test("タスクを編集しても位置と別日付のタスクを維持する", () => {
   let store = addTask(emptyTaskStore(), date, input, "task-1");
+  store = updateTaskPosition(store, date, "task-1", { x: 0.4, y: 0.5 });
   store = addTask(store, "2026-07-21", { subject: "物理", title: "力学", plannedMinutes: 45 }, "task-2");
   store = updateTask(store, date, "task-1", { subject: "数学", title: "微積を2題", plannedMinutes: 50 });
   assert.equal(getTasksForDate(store, date)[0].title, "微積を2題");
+  assert.equal(getTasksForDate(store, date)[0].x, 0.4);
+  assert.equal(getTasksForDate(store, date)[0].y, 0.5);
   assert.equal(getTasksForDate(store, "2026-07-21")[0].title, "力学");
+});
+
+test("カード位置をキャンバス内へ制限する", () => {
+  let store = addTask(emptyTaskStore(), date, input, "task-1");
+  store = updateTaskPosition(store, date, "task-1", { x: -10, y: 10 });
+  const [task] = getTasksForDate(store, date);
+  assert.equal(task.x, 0);
+  assert.ok(task.y < 1);
+});
+
+test("旧タスクデータに位置がなくても自動配置して読み込める", () => {
+  const raw = JSON.stringify({
+    version: 1,
+    tasksByDate: {
+      [date]: [{ id: "old", ...input, completed: false }],
+    },
+  });
+  const loaded = loadTaskStore(raw);
+  assert.equal(loaded.recovered, false);
+  const [task] = getTasksForDate(loaded.store, date);
+  assert.equal(typeof task.x, "number");
+  assert.equal(typeof task.y, "number");
 });
 
 test("完了状態を切り替えられる", () => {
