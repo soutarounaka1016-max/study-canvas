@@ -6,6 +6,8 @@ const MAX_TASKS_PER_DATE = 200;
 const MAX_TITLE_LENGTH = 120;
 const MIN_PLANNED_MINUTES = 5;
 const MAX_PLANNED_MINUTES = 600;
+const DEFAULT_CARD_WIDTH = 0.24;
+const DEFAULT_CARD_HEIGHT = 0.18;
 
 export function emptyTaskStore() {
   return { version: TASK_STORE_VERSION, tasksByDate: {} };
@@ -33,8 +35,8 @@ export function loadTaskStore(raw) {
 
       const normalized = [];
       const ids = new Set();
-      for (const task of tasks.slice(0, MAX_TASKS_PER_DATE)) {
-        const safeTask = normalizeStoredTask(task);
+      for (const [index, task] of tasks.slice(0, MAX_TASKS_PER_DATE).entries()) {
+        const safeTask = normalizeStoredTask(task, index);
         if (!safeTask || ids.has(safeTask.id)) {
           recovered = true;
           continue;
@@ -88,13 +90,23 @@ export function addTask(store, date, input, id) {
 
   return setTasksForDate(store, date, [
     ...current,
-    { id: safeId, ...safeInput, completed: false },
+    {
+      id: safeId,
+      ...safeInput,
+      completed: false,
+      ...getDefaultPosition(current.length),
+    },
   ]);
 }
 
 export function updateTask(store, date, taskId, input) {
   const safeInput = validateTaskInput(input);
   return changeTask(store, date, taskId, (task) => ({ ...task, ...safeInput }));
+}
+
+export function updateTaskPosition(store, date, taskId, position) {
+  const safePosition = normalizePosition(position, 0);
+  return changeTask(store, date, taskId, (task) => ({ ...task, ...safePosition }));
 }
 
 export function toggleTask(store, date, taskId) {
@@ -150,17 +162,41 @@ function setTasksForDate(store, date, tasks) {
   return { version: TASK_STORE_VERSION, tasksByDate };
 }
 
-function normalizeStoredTask(task) {
+function normalizeStoredTask(task, index) {
   if (!isPlainObject(task) || typeof task.completed !== "boolean") return null;
   try {
     return {
       id: validateId(task.id),
       ...validateTaskInput(task),
       completed: task.completed,
+      ...normalizePosition(task, index),
     };
   } catch {
     return null;
   }
+}
+
+function normalizePosition(position, index) {
+  const fallback = getDefaultPosition(index);
+  const x = Number(position?.x);
+  const y = Number(position?.y);
+  return {
+    x: Number.isFinite(x) ? clamp(x, 0, 1 - DEFAULT_CARD_WIDTH) : fallback.x,
+    y: Number.isFinite(y) ? clamp(y, 0, 1 - DEFAULT_CARD_HEIGHT) : fallback.y,
+  };
+}
+
+function getDefaultPosition(index) {
+  const column = index % 3;
+  const row = Math.floor(index / 3) % 4;
+  return {
+    x: 0.035 + column * 0.31,
+    y: 0.05 + row * 0.22,
+  };
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function validateId(id) {
