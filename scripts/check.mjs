@@ -1,8 +1,8 @@
 import { readFile, stat } from "node:fs/promises";
 
 const requiredFiles = [
-  "index.html", "styles.css", "script.js", "restore-ui.js",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js",
+  "index.html", "styles.css", "script.js", "restore-ui.js", "task-ui.js",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -37,7 +37,7 @@ for (const file of textFiles) {
 }
 
 const html = await readFile("index.html", "utf8");
-for (const reference of ["styles.css", "script.js", "restore-ui.js"]) {
+for (const reference of ["styles.css", "script.js", "restore-ui.js", "task-ui.js"]) {
   if (!html.includes(reference)) {
     console.error(`index.htmlから${reference}が読み込まれていません`);
     failed = true;
