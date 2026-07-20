@@ -2,6 +2,7 @@ if (typeof document !== "undefined") {
   ensureStyle();
   ensureWeeklyControls();
   ensureNoteControls();
+  await import("../taskize-entry.js?v=20260720-10");
 }
 
 function ensureStyle() {
