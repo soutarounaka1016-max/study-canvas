@@ -1,0 +1,56 @@
+.canvas-selection-hint {
+  margin: 0;
+  min-width: 220px;
+  color: #3154b8;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.canvas-selection-actions {
+  position: absolute;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(360px, 70%);
+  padding: 7px 8px 7px 11px;
+  border: 1px solid #8aa4f7;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 18%);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.canvas-selection-actions[hidden] {
+  display: none;
+}
+
+.canvas-selection-actions span {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.canvas-selection-actions button {
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid #dc2626;
+  border-radius: 9px;
+  background: #fff;
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .canvas-selection-actions span {
+    display: none;
+  }
+
+  .canvas-selection-hint {
+    width: 100%;
+    min-width: 0;
+  }
+}
