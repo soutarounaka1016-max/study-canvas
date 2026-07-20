@@ -8,4 +8,4 @@ if (!existingStyle) {
 }
 
 await import("./taskize-ui.js?v=20260720-10");
-await import("./dashboard-entry.js?v=20260720-11");
+await import("./dashboard-entry.js?v=20260720-13");

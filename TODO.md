@@ -4,57 +4,59 @@
 
 ## 完了済み
 
-- [x] 日別手書きキャンバス
-- [x] 日付別ページ管理と月間カレンダー
-- [x] 投げ縄選択・移動・拡大縮小・削除
-- [x] 日別手書きのJSONバックアップと復元
-- [x] 日付別タスクカード
-- [x] 週間目標キャンバス
-- [x] 自由ノートの複数ページ化
-- [x] 日別・週間目標・自由ノートの二本指移動と拡大縮小
-- [x] 今日の日付だけ点灯する「今日」ランプ
-- [x] Pull Request #21の公開と利用者実機確認
-- [x] 自由ノートをサムネイル一覧から選ぶ形式へ変更
-- [x] 自由ノート名の編集と更新日時表示
-- [x] Pull Request #22の公開と利用者実機確認
-- [x] キャンバス上へタスクカードを表示
-- [x] タスクカードの追加・編集・完了切り替え
-- [x] タスクカードのドラッグ移動と日付別位置保存
-- [x] Pull Request #24の自動テストとビルド
+- [x] 日別手書きキャンバスと月間カレンダー
+- [x] 日別・週間目標・自由ノートの選択、移動、拡大縮小、削除
+- [x] 日付別タスクカードの追加・編集・完了・削除・自由配置
+- [x] 前日の未完了タスクを選んで今日へ繰り越す
+- [x] 選択した手書き範囲のプレビューと手動タスク化
+- [x] 今日やることダッシュボード
+- [x] 複数ページ自由ノート
+- [x] 統合バックアップ、項目別復元、復元前退避、失敗時ロールバック
+- [x] Pull Request #27から#30の公開と利用者iPad Safari確認
 
-## 公開前
+## AI手書き認識の実装
 
-- [ ] Pull Request #24をmainへマージする
-- [ ] GitHub Pagesへの反映を確認する
+- [x] Gemini 2.5 Flashを使用する設計
+- [x] Cloudflare WorkerをAPIキー保護用の中継にする
+- [x] 選択画像だけを送信するクライアント処理
+- [x] 科目・内容・予定時間・信頼度を構造化JSONで受け取る
+- [x] AI候補を確認・修正してからタスクへ追加する
+- [x] 利用者確認なしの自動タスク保存を禁止
+- [x] 無料枠超過時に停止し、有料モデルへ切り替えない
+- [x] 公開元制限、アクセストークン、画像サイズ制限
+- [x] AI設定画面、接続テスト、設定削除
+- [x] 秘密情報の検査と`.env`・`.dev.vars`除外
+- [x] クライアントと中継コードの単体テスト
+- [x] 無料セットアップ手順を`AI_SETUP.md`へ記録
+
+## 外部設定が必要
+
+- [ ] Google AI StudioでGemini APIキーを作成する
+- [ ] Gemini側へ請求先を登録していないことを確認する
+- [ ] Cloudflare FreeプランでWorkerを作成する
+- [ ] `cloudflare-worker.js`をWorkerへ反映する
+- [ ] `GEMINI_API_KEY`と`ACCESS_TOKEN`をCloudflare Secretへ登録する
+- [ ] `ALLOWED_ORIGIN`を`https://soutarounaka1016-max.github.io`へ設定する
+- [ ] Worker URLをStudy CanvasのAI設定へ入力する
+- [ ] 接続テストで`gemini-2.5-flash`と有料切替なしを確認する
 
 ## iPad Safariで確認する項目
 
-- [ ] タスク追加後、キャンバス上にカードが表示される
-- [ ] カード左側のハンドルで位置を移動できる
-- [ ] 再読み込み後もカード位置が残る
-- [ ] カード上のチェックで完了・未完了を切り替えられる
-- [ ] カード本文を押して編集できる
-- [ ] 日付を変えると、その日のカードだけが表示される
-- [ ] カード操作中に手書き線が増えない
-- [ ] 既存の手書き、二本指操作、タスク一覧が引き続き使える
-
-## 今後の候補
-
-- [ ] タスクカード、週間目標、自由ノートを含む統合バックアップ方式を検討する
-- [ ] 選択した手書き範囲のAIタスク変換を検討する
+- [ ] 手書きを囲み「AIで読み取る（無料枠）」を押せる
+- [ ] 送信前に外部送信の確認が必要になる
+- [ ] 科目・内容・予定時間の候補がフォームへ入る
+- [ ] AI候補を修正できる
+- [ ] 「タスクを追加」を押すまでタスクが保存されない
+- [ ] 信頼度が低い場合に注意が表示される
+- [ ] 無料枠超過時に課金へ切り替わらずエラーになる
+- [ ] AI設定を削除すると端末内のWorker URLとアクセストークンが消える
+- [ ] 既存の手書き、タスク、週間目標、自由ノート、バックアップが維持される
 
 ## 制約
 
 - localStorageはSafariのサイトデータ削除で消える可能性がある。
-- 現在のJSONバックアップは日別手書き専用である。
-- iPad SafariとApple Pencilの最終操作確認は利用者が行う。
-
-## Latest verified status
-
-- [x] Pull Request #24 was merged, published, and confirmed by the user on iPad Safari.
-- [x] Previous-day unfinished task carryover was implemented in Pull Request #25.
-- [x] Carryover unit tests passed.
-- [x] The full test suite and build passed for Pull Request #25.
-- [x] Pull Request #25 was merged into main.
-- [ ] Confirm GitHub Pages reflects the carryover assets.
-- [ ] Confirm the carryover flow on the published iPad Safari app.
+- 別端末とは自動同期しない。
+- Gemini無料枠の条件は提供元が変更する可能性がある。
+- 無料枠では送信内容がGoogleのサービス改善に使われる場合がある。
+- AIは週間目標を自動で今日の予定へ変換しない。
+- AIは利用者の確認なしにタスクを追加しない。
