@@ -5,7 +5,7 @@ const requiredFiles = [
   "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
   "taskize-entry.js", "taskize-ui.js", "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-settings-ui.js", "ai-action-ui.js",
   "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js", "src/local-ocr.js",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -55,15 +55,22 @@ if (!noteEntry.includes("note-selection-ui.js")) {
 
 const dashboardEntry = await readFile("dashboard-entry.js", "utf8");
 if (!dashboardEntry.includes("ai-recognition-entry.js")) {
-  console.error("AI手書き認識の公開入口が接続されていません");
+  console.error("手書き認識の公開入口が接続されていません");
+  failed = true;
+}
+
+const localOcr = await readFile("src/local-ocr.js", "utf8");
+const localOcrAction = await readFile("ai-action-ui.js", "utf8");
+if (!localOcr.includes("tesseract.js@7.0.0") || !localOcr.includes("createWorker(\"jpn\"") || !localOcrAction.includes("recognizeTaskWithLocalOcr")) {
+  console.error("端末内OCRの固定バージョンまたは画面接続を確認できません");
   failed = true;
 }
 
 const worker = await readFile("cloudflare-worker.js", "utf8");
 if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) {
-  console.error("無料枠専用のAI中継設定を確認できません");
+  console.error("保留中の無料枠AI中継設定を確認できません");
   failed = true;
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリの構成、AI中継、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリの構成、端末内OCR、AI中継、コンフリクト記号、秘密情報を確認しました。");
