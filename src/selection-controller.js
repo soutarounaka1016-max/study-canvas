@@ -1,3 +1,4 @@
+import "./selection-dom.js";
 import {
   cloneDrawing,
   deleteSelectedStrokes,
