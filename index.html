@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f4f5f7" />
     <title>Study Canvas</title>
-    <link rel="stylesheet" href="styles.css?v=20260720-2" />
+    <link rel="stylesheet" href="styles.css?v=20260720-3" />
   </head>
   <body>
     <header class="app-header">
@@ -57,6 +57,7 @@
           <summary aria-label="メニュー">☰</summary>
           <div class="menu-panel">
             <strong>ページ操作</strong>
+            <button id="weeklyButton" class="weekly-menu-button" type="button">週間目標を開く</button>
             <button id="backupButton" class="primary-menu-button" type="button">手書きバックアップを保存</button>
             <button id="restoreButton" type="button">手書きバックアップから復元</button>
             <input id="restoreFile" type="file" accept="application/json,.json" hidden />
@@ -139,6 +140,48 @@
       <p class="task-backup-note">タスクカードは現在の手書きJSONバックアップには含まれません。</p>
     </dialog>
 
+    <dialog id="weeklyDialog" class="weekly-dialog" aria-labelledby="weeklyDialogTitle">
+      <div class="weekly-dialog-header">
+        <div>
+          <h2 id="weeklyDialogTitle">週間目標</h2>
+          <p>1週間で達成したいことを自由に手書きします。今日のタスクは自動作成しません。</p>
+        </div>
+        <button id="closeWeeklyDialogButton" class="dialog-close-button" type="button" aria-label="週間目標を閉じる">×</button>
+      </div>
+
+      <div class="weekly-week-nav" aria-label="表示する週">
+        <button id="previousWeekButton" type="button">‹ 前の週</button>
+        <strong id="weeklyRange"></strong>
+        <button id="currentWeekButton" type="button">今週</button>
+        <button id="nextWeekButton" type="button">次の週 ›</button>
+      </div>
+
+      <div class="weekly-toolbar" aria-label="週間目標の描画ツール">
+        <div class="weekly-tool-group" role="group" aria-label="道具">
+          <button class="weekly-tool-button is-active" type="button" data-weekly-tool="pen" aria-pressed="true">✎ 書く</button>
+          <button class="weekly-tool-button" type="button" data-weekly-tool="eraser" aria-pressed="false">◇ 消す</button>
+        </div>
+        <div class="weekly-color-options" role="group" aria-label="週間目標のペン色">
+          <button class="weekly-color-button is-selected" type="button" data-weekly-color="#2558e6" aria-label="青" aria-pressed="true"></button>
+          <button class="weekly-color-button" type="button" data-weekly-color="#ef4444" aria-label="赤" aria-pressed="false"></button>
+          <button class="weekly-color-button" type="button" data-weekly-color="#111827" aria-label="黒" aria-pressed="false"></button>
+        </div>
+        <label class="weekly-width-control" for="weeklyPenWidth"><span>太さ</span><input id="weeklyPenWidth" type="range" min="2" max="14" step="1" value="5" /></label>
+        <div class="weekly-history-actions">
+          <button id="weeklyUndoButton" type="button" disabled>↶ 取り消し</button>
+          <button id="weeklyRedoButton" type="button" disabled>↷ やり直し</button>
+          <button id="weeklyClearButton" class="weekly-clear-button" type="button">白紙に戻す</button>
+        </div>
+        <span id="weeklySaveStatus" class="weekly-save-status" role="status" aria-live="polite">保存済み</span>
+      </div>
+
+      <div id="weeklyCanvasWrap" class="weekly-canvas-wrap">
+        <canvas id="weeklyCanvas" aria-label="週間目標を書く白いキャンバス"></canvas>
+        <p id="weeklyEmptyHint">この週の目標、重点科目、振り返る日などを自由に書いてください</p>
+      </div>
+      <p class="weekly-backup-note">週間目標は現在の手書きJSONバックアップには含まれません。</p>
+    </dialog>
+
     <dialog id="pageListDialog" class="page-list-dialog">
       <div class="page-list-header">
         <div>
@@ -181,8 +224,9 @@
     </dialog>
 
     <noscript>このアプリを使うにはJavaScriptを有効にしてください。</noscript>
-    <script type="module" src="script.js?v=20260720-2"></script>
-    <script type="module" src="restore-ui.js?v=20260720-2"></script>
-    <script type="module" src="task-ui.js?v=20260720-2"></script>
+    <script type="module" src="script.js?v=20260720-3"></script>
+    <script type="module" src="restore-ui.js?v=20260720-3"></script>
+    <script type="module" src="task-ui.js?v=20260720-3"></script>
+    <script type="module" src="weekly-ui.js?v=20260720-3"></script>
   </body>
 </html>
