@@ -4,7 +4,9 @@ import test from "node:test";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const css = await readFile(new URL("../note.css", import.meta.url), "utf8");
-const ui = await readFile(new URL("../note-ui.js", import.meta.url), "utf8");
+const uiEntry = await readFile(new URL("../note-ui.js", import.meta.url), "utf8");
+const uiImplementation = await readFile(new URL("../note-selection-ui.js", import.meta.url), "utf8");
+const ui = `${uiEntry}\n${uiImplementation}`;
 const store = await readFile(new URL("../src/note-store.js", import.meta.url), "utf8");
 
 test("自由ノートをサムネイル一覧から選べる", () => {

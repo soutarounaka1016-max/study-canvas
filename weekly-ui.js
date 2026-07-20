@@ -17,6 +17,7 @@ import {
   shiftWeek,
 } from "./src/weekly-store.js?v=20260720-3";
 import { CanvasViewport } from "./src/canvas-viewport.js?v=20260720-5";
+import { SelectionController } from "./src/selection-controller.js?v=20260720-9";
 
 const pageDate = document.querySelector("#pageDate");
 const weeklyButton = document.querySelector("#weeklyButton");
@@ -35,6 +36,11 @@ const weeklyUndoButton = document.querySelector("#weeklyUndoButton");
 const weeklyRedoButton = document.querySelector("#weeklyRedoButton");
 const weeklyClearButton = document.querySelector("#weeklyClearButton");
 const weeklySaveStatus = document.querySelector("#weeklySaveStatus");
+const weeklySelectionHint = document.querySelector("#weeklySelectionHint");
+const weeklySelectionActions = document.querySelector("#weeklySelectionActions");
+const weeklyDeleteSelectionButton = document.querySelector("#weeklyDeleteSelectionButton");
+const weeklyColorOptions = weeklyDialog.querySelector(".weekly-color-options");
+const weeklyWidthControl = weeklyDialog.querySelector(".weekly-width-control");
 const weeklyContext = weeklyCanvas.getContext("2d", { alpha: false });
 
 const today = new Intl.DateTimeFormat("sv-SE", {
@@ -53,12 +59,15 @@ let activePointerId = null;
 let frameRequest = null;
 let saveTimer = null;
 
+const selection = new SelectionController(
+  () => history.current,
+  (drawing) => history.commit(drawing),
+);
 const viewport = new CanvasViewport(weeklyCanvasWrap, weeklyCanvasStage, {
   onGestureStart: cancelWeeklyInteraction,
 });
 
 if (loaded.recovered) showWeeklySaveError("壊れた週間データを除いて読み込みました");
-
 new ResizeObserver(resizeWeeklyCanvas).observe(weeklyCanvasWrap);
 
 weeklyButton.addEventListener("click", () => {
@@ -75,12 +84,25 @@ weeklyDialog.addEventListener("close", saveImmediately);
 previousWeekButton.addEventListener("click", () => switchWeek(shiftWeek(activeWeekStart, -1)));
 nextWeekButton.addEventListener("click", () => switchWeek(shiftWeek(activeWeekStart, 1)));
 currentWeekButton.addEventListener("click", () => switchWeek(getWeekStart(today)));
-weeklyUndoButton.addEventListener("click", () => { history.undo(); afterWeeklyChange(); });
-weeklyRedoButton.addEventListener("click", () => { history.redo(); afterWeeklyChange(); });
+weeklyUndoButton.addEventListener("click", () => {
+  history.undo();
+  selection.clear();
+  afterWeeklyChange();
+});
+weeklyRedoButton.addEventListener("click", () => {
+  history.redo();
+  selection.clear();
+  afterWeeklyChange();
+});
 weeklyClearButton.addEventListener("click", () => {
   if (history.current.strokes.length === 0) return;
   if (!window.confirm("この週の週間目標を白紙に戻しますか？")) return;
   history.commit(emptyDrawing(activeWeekStart));
+  selection.clear();
+  afterWeeklyChange();
+});
+weeklyDeleteSelectionButton.addEventListener("click", () => {
+  if (!selection.deleteSelected()) return;
   afterWeeklyChange();
 });
 
@@ -114,12 +136,20 @@ document.addEventListener("visibilitychange", () => {
 });
 
 function selectWeeklyTool(tool) {
-  selectedTool = tool === "eraser" ? "eraser" : "pen";
+  const nextTool = ["pen", "eraser", "select"].includes(tool) ? tool : "pen";
+  if (nextTool !== selectedTool) selection.clear();
+  selectedTool = nextTool;
+  const selecting = selectedTool === "select";
+  weeklyColorOptions.hidden = selecting;
+  weeklyWidthControl.hidden = selecting;
+  weeklySelectionHint.hidden = !selecting;
+  updateWeeklySelectionHint();
   weeklyDialog.querySelectorAll("[data-weekly-tool]").forEach((button) => {
     const active = button.dataset.weeklyTool === selectedTool;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   });
+  requestWeeklyRender();
 }
 
 function switchWeek(nextWeekStart, force = false) {
@@ -128,6 +158,7 @@ function switchWeek(nextWeekStart, force = false) {
   if (!saveImmediately()) return;
   activeWeekStart = normalized;
   history = new DrawingHistory(getWeeklyDrawing(weeklyStore, activeWeekStart));
+  selection.clear();
   viewport.reset();
   updateWeeklyHeader();
   updateWeeklyHistoryButtons();
@@ -150,9 +181,11 @@ function handleWeeklyPointerDown(event) {
       width: Number(weeklyPenWidth.value),
       points: [point],
     };
-  } else {
+  } else if (selectedTool === "eraser") {
     eraseDraft = cloneDrawing(history.current);
     eraseWeeklyAt(point);
+  } else {
+    selection.begin(point);
   }
   requestWeeklyRender();
 }
@@ -169,6 +202,8 @@ function handleWeeklyPointerMove(event) {
       if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) >= 0.8) activeStroke.points.push(point);
     } else if (eraseDraft) {
       eraseWeeklyAt(point);
+    } else if (selectedTool === "select") {
+      selection.move(point);
     }
   }
   requestWeeklyRender();
@@ -186,10 +221,13 @@ function finishWeeklyPointer(event) {
   } else if (eraseDraft && eraseDraft.strokes.length !== history.current.strokes.length) {
     history.commit(eraseDraft);
     changed = true;
+  } else if (selectedTool === "select") {
+    changed = selection.end();
   }
   activeStroke = null;
   eraseDraft = null;
   activePointerId = null;
+  updateWeeklySelectionHint();
   if (changed) afterWeeklyChange();
   else requestWeeklyRender();
 }
@@ -198,10 +236,12 @@ function cancelWeeklyInteraction() {
   const pointerId = activePointerId;
   activeStroke = null;
   eraseDraft = null;
+  selection.cancel();
   activePointerId = null;
   if (pointerId !== null && weeklyCanvas.hasPointerCapture(pointerId)) {
     try { weeklyCanvas.releasePointerCapture(pointerId); } catch { /* Safari may already have released it. */ }
   }
+  updateWeeklySelectionHint();
   requestWeeklyRender();
 }
 
@@ -246,10 +286,29 @@ function renderWeeklyCanvas() {
   weeklyContext.fillStyle = "#ffffff";
   weeklyContext.fillRect(0, 0, weeklyCanvas.width, weeklyCanvas.height);
   weeklyContext.setTransform(weeklyCanvas.width / BASE_WIDTH, 0, 0, weeklyCanvas.height / BASE_HEIGHT, 0, 0);
-  const drawing = eraseDraft || history.current;
+  const drawing = eraseDraft || selection.displayDrawing;
   for (const stroke of drawing.strokes) drawWeeklyStroke(stroke);
   if (activeStroke) drawWeeklyStroke(activeStroke);
+  if (selectedTool === "select") selection.drawOverlay(weeklyContext);
+  updateWeeklySelectionActions();
   weeklyEmptyHint.hidden = drawing.strokes.length > 0 || Boolean(activeStroke);
+}
+
+function updateWeeklySelectionActions() {
+  const bounds = selectedTool === "select" ? selection.bounds : null;
+  weeklySelectionActions.hidden = !bounds;
+  if (!bounds) return;
+  const left = Math.max(0, Math.min(BASE_WIDTH, bounds.maxX + 14));
+  const top = Math.max(0, Math.min(BASE_HEIGHT, bounds.minY - 14));
+  weeklySelectionActions.style.left = `${(left / BASE_WIDTH) * 100}%`;
+  weeklySelectionActions.style.top = `${(top / BASE_HEIGHT) * 100}%`;
+  weeklySelectionActions.style.transform = top < 80 ? "translate(-100%, 0)" : "translate(-100%, -100%)";
+}
+
+function updateWeeklySelectionHint() {
+  weeklySelectionHint.textContent = selection.hasSelection
+    ? `${selection.selectedIds.size}本を選択中。枠内をドラッグして移動、四隅で拡大・縮小できます`
+    : "手書きを囲んで選択してください";
 }
 
 function drawWeeklyStroke(stroke) {
@@ -278,6 +337,7 @@ function drawWeeklyStroke(stroke) {
 
 function afterWeeklyChange() {
   updateWeeklyHistoryButtons();
+  updateWeeklySelectionHint();
   requestWeeklyRender();
   scheduleWeeklySave();
 }
@@ -328,4 +388,5 @@ function formatShortDate(date) {
 
 updateWeeklyHeader();
 updateWeeklyHistoryButtons();
+updateWeeklySelectionHint();
 requestWeeklyRender();

@@ -1,8 +1,9 @@
 import { readFile, stat } from "node:fs/promises";
 
 const requiredFiles = [
-  "index.html", "styles.css", "note.css", "script.js", "restore-ui.js", "task-ui.js", "weekly-ui.js", "note-ui.js",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/weekly-store.js", "src/note-store.js",
+  "index.html", "styles.css", "note.css", "enhancements.css", "carryover.css", "selection.css",
+  "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -32,16 +33,22 @@ for (const file of textFiles) {
       failed = true;
     }
   } catch {
-    // 必須ファイルの不足は上で報告する。
+    // Missing required files are reported above.
   }
 }
 
 const html = await readFile("index.html", "utf8");
-for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js", "task-ui.js", "weekly-ui.js", "note-ui.js"]) {
+for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js"]) {
   if (!html.includes(reference)) {
     console.error(`index.htmlから${reference}が読み込まれていません`);
     failed = true;
   }
+}
+
+const noteEntry = await readFile("note-ui.js", "utf8");
+if (!noteEntry.includes("note-selection-ui.js")) {
+  console.error("note-ui.jsからnote-selection-ui.jsが読み込まれていません");
+  failed = true;
 }
 
 if (failed) process.exit(1);
