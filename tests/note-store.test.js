@@ -10,6 +10,7 @@ import {
   getNoteDrawing,
   listNotePages,
   loadNoteStore,
+  renameNotePage,
   replaceStoredNoteStore,
   serializeNoteStore,
   setActiveNotePage,
@@ -52,6 +53,16 @@ test("複数ページを追加して別々の手書きを保存できる", () =>
   assert.equal(listNotePages(store).length, 2);
   assert.equal(getNoteDrawing(store, firstId).strokes[0].points[0].x, 10);
   assert.equal(getNoteDrawing(store, secondId).strokes[0].points[0].x, 20);
+});
+
+test("自由ノートへ名前を付けられる", () => {
+  let store = emptyNoteStore();
+  const pageId = store.activePageId;
+  store = renameNotePage(store, pageId, "  模試の反省  ");
+  assert.equal(listNotePages(store)[0].title, "模試の反省");
+  store = renameNotePage(store, pageId, "");
+  assert.equal(listNotePages(store)[0].title, "ノート 1");
+  assert.throws(() => renameNotePage(store, "missing", "数学"), /見つかりません/);
 });
 
 test("表示する自由ノートページを切り替えられる", () => {
@@ -104,6 +115,7 @@ test("直列化した複数ページを同じ内容で読み戻せる", () => {
   let store = emptyNoteStore();
   store = setNoteDrawing(store, drawing(store.activePageId));
   store = addNotePage(store);
+  store = renameNotePage(store, store.activePageId, "数学質問");
   const loaded = loadNoteStore(serializeNoteStore(store));
   assert.equal(loaded.recovered, false);
   assert.equal(loaded.migrated, false);
