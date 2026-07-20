@@ -16,6 +16,7 @@ import {
   setWeeklyDrawing,
   shiftWeek,
 } from "./src/weekly-store.js?v=20260720-3";
+import { CanvasViewport } from "./src/canvas-viewport.js?v=20260720-5";
 
 const pageDate = document.querySelector("#pageDate");
 const weeklyButton = document.querySelector("#weeklyButton");
@@ -26,6 +27,7 @@ const nextWeekButton = document.querySelector("#nextWeekButton");
 const currentWeekButton = document.querySelector("#currentWeekButton");
 const weeklyRange = document.querySelector("#weeklyRange");
 const weeklyCanvasWrap = document.querySelector("#weeklyCanvasWrap");
+const weeklyCanvasStage = document.querySelector("#weeklyCanvasStage");
 const weeklyCanvas = document.querySelector("#weeklyCanvas");
 const weeklyEmptyHint = document.querySelector("#weeklyEmptyHint");
 const weeklyPenWidth = document.querySelector("#weeklyPenWidth");
@@ -51,6 +53,10 @@ let activePointerId = null;
 let frameRequest = null;
 let saveTimer = null;
 
+const viewport = new CanvasViewport(weeklyCanvasWrap, weeklyCanvasStage, {
+  onGestureStart: cancelWeeklyInteraction,
+});
+
 if (loaded.recovered) showWeeklySaveError("壊れた週間データを除いて読み込みました");
 
 new ResizeObserver(resizeWeeklyCanvas).observe(weeklyCanvasWrap);
@@ -59,6 +65,7 @@ weeklyButton.addEventListener("click", () => {
   document.querySelector(".menu").removeAttribute("open");
   const requestedWeek = getWeekStart(pageDate.dateTime || today);
   switchWeek(requestedWeek, true);
+  viewport.reset();
   weeklyDialog.showModal();
   requestAnimationFrame(resizeWeeklyCanvas);
 });
@@ -121,12 +128,14 @@ function switchWeek(nextWeekStart, force = false) {
   if (!saveImmediately()) return;
   activeWeekStart = normalized;
   history = new DrawingHistory(getWeeklyDrawing(weeklyStore, activeWeekStart));
+  viewport.reset();
   updateWeeklyHeader();
   updateWeeklyHistoryButtons();
   requestWeeklyRender();
 }
 
 function handleWeeklyPointerDown(event) {
+  if (viewport.pointerDown(event)) return;
   if (activePointerId !== null) return;
   if (event.pointerType === "mouse" && event.button !== 0) return;
   event.preventDefault();
@@ -149,6 +158,7 @@ function handleWeeklyPointerDown(event) {
 }
 
 function handleWeeklyPointerMove(event) {
+  if (viewport.pointerMove(event)) return;
   if (event.pointerId !== activePointerId) return;
   event.preventDefault();
   const events = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [event];
@@ -165,6 +175,7 @@ function handleWeeklyPointerMove(event) {
 }
 
 function finishWeeklyPointer(event) {
+  if (viewport.pointerEnd(event)) return;
   if (event.pointerId !== activePointerId) return;
   let changed = false;
   if (activeStroke) {
@@ -183,6 +194,17 @@ function finishWeeklyPointer(event) {
   else requestWeeklyRender();
 }
 
+function cancelWeeklyInteraction() {
+  const pointerId = activePointerId;
+  activeStroke = null;
+  eraseDraft = null;
+  activePointerId = null;
+  if (pointerId !== null && weeklyCanvas.hasPointerCapture(pointerId)) {
+    try { weeklyCanvas.releasePointerCapture(pointerId); } catch { /* Safari may already have released it. */ }
+  }
+  requestWeeklyRender();
+}
+
 function eraseWeeklyAt(point) {
   const radius = 18;
   eraseDraft.strokes = eraseDraft.strokes.filter((stroke) => !strokeTouchesPoint(stroke, point, radius));
@@ -199,9 +221,10 @@ function getWeeklyCanvasPoint(event) {
 function resizeWeeklyCanvas() {
   const rect = weeklyCanvas.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return;
+  const scale = Number(weeklyCanvasStage.dataset.viewScale || 1);
   const ratio = Math.min(window.devicePixelRatio || 1, 3);
-  const width = Math.max(1, Math.round(rect.width * ratio));
-  const height = Math.max(1, Math.round(rect.height * ratio));
+  const width = Math.max(1, Math.round((rect.width / scale) * ratio));
+  const height = Math.max(1, Math.round((rect.height / scale) * ratio));
   if (weeklyCanvas.width !== width || weeklyCanvas.height !== height) {
     weeklyCanvas.width = width;
     weeklyCanvas.height = height;
