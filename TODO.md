@@ -48,3 +48,12 @@
 - localStorageはSafariのサイトデータ削除で消える可能性がある。
 - 現在のJSONバックアップは日別手書き専用である。
 - iPad SafariとApple Pencilの最終操作確認は利用者が行う。
+
+## Latest verified status
+
+- [x] Pull Request #24 was merged, published, and confirmed by the user on iPad Safari.
+- [x] Previous-day unfinished task carryover was implemented in Pull Request #25.
+- [x] Carryover unit tests passed.
+- [x] The full test suite and build passed for Pull Request #25.
+- [ ] Merge Pull Request #25 into main.
+- [ ] Confirm the carryover flow on the published iPad Safari app.

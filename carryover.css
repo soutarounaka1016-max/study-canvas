@@ -1,0 +1,147 @@
+.canvas-task-carryover-button {
+  position: absolute;
+  right: 18px;
+  bottom: 76px;
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid #e5a50a;
+  border-radius: 999px;
+  background: rgb(255 249 230 / 96%);
+  color: #7a4f01;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 7px 20px rgb(15 23 42 / 14%);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.canvas-task-carryover-button[hidden] { display: none; }
+
+.carryover-dialog {
+  width: min(720px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.carryover-dialog-form { margin: 0; }
+
+.carryover-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.carryover-dialog-header h2 { margin-bottom: 6px; }
+.carryover-dialog-header p { margin: 0; color: var(--muted); line-height: 1.55; }
+
+.carryover-task-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.carryover-task-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  min-height: 82px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+}
+
+.carryover-task-row:has(input:checked) {
+  border-color: #8aa4f7;
+  background: #f6f8ff;
+}
+
+.carryover-task-row input {
+  width: 24px;
+  height: 24px;
+  margin: 0 auto;
+  accent-color: var(--accent);
+}
+
+.carryover-task-body {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px 12px 4px;
+  min-width: 0;
+}
+
+.carryover-task-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.carryover-task-heading b {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e9efff;
+  color: #2558e6;
+  font-size: 11px;
+}
+
+.carryover-task-heading strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+
+.carryover-task-body small { color: var(--muted); }
+
+.carryover-message {
+  margin: 14px 0 0;
+  color: #067647;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.carryover-message.is-error { color: #b42318; }
+.carryover-message[hidden] { display: none; }
+
+.carryover-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.carryover-dialog-actions button {
+  min-height: 46px;
+  padding: 9px 15px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: white;
+  color: var(--text);
+}
+
+.carryover-dialog-actions .carryover-primary-button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+  font-weight: 800;
+}
+
+.carryover-dialog-actions button:disabled {
+  opacity: 0.48;
+}
+
+@media (max-width: 900px) {
+  .canvas-task-carryover-button {
+    right: 12px;
+    bottom: 70px;
+  }
+
+  .carryover-dialog { padding: 18px; }
+  .carryover-dialog-actions button { flex: 1 1 auto; }
+  .carryover-dialog-actions .carryover-primary-button { flex-basis: 100%; }
+}
