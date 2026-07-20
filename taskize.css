@@ -1,0 +1,209 @@
+.taskize-tool-button.is-active {
+  border-color: #7c3aed;
+  background: #f3e8ff;
+  color: #5b21b6;
+}
+
+.taskize-lasso-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  cursor: crosshair;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.taskize-lasso-canvas[hidden] {
+  display: none;
+}
+
+.taskize-guide {
+  position: absolute;
+  z-index: 31;
+  top: 14px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 28px);
+  padding: 9px 12px;
+  border: 1px solid #a78bfa;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 16%);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.taskize-guide[hidden] {
+  display: none;
+}
+
+.taskize-guide span {
+  color: #4c1d95;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.taskize-guide button {
+  min-height: 36px;
+  padding: 6px 11px;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  background: #fff;
+  color: #5b21b6;
+  font-weight: 800;
+}
+
+.taskize-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+.taskize-dialog-form {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+
+.taskize-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.taskize-dialog-header h2,
+.taskize-dialog-header p {
+  margin: 0;
+}
+
+.taskize-dialog-header p {
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.taskize-preview {
+  width: 100%;
+  max-height: 210px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.taskize-fields {
+  display: grid;
+  grid-template-columns: minmax(130px, .8fr) minmax(260px, 2fr) minmax(120px, .7fr) minmax(150px, .9fr);
+  gap: 12px;
+}
+
+.taskize-fields label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.taskize-fields input,
+.taskize-fields select {
+  min-height: 44px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+}
+
+.taskize-ai-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d8b4fe;
+  border-radius: 12px;
+  background: #faf5ff;
+}
+
+.taskize-ai-panel button {
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid #8b5cf6;
+  border-radius: 9px;
+  background: #7c3aed;
+  color: #fff;
+  font-weight: 800;
+}
+
+.taskize-ai-panel p {
+  margin: 0;
+  color: #5b21b6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.taskize-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.taskize-dialog-actions button {
+  min-height: 44px;
+  padding: 9px 16px;
+  border-radius: 9px;
+  font-weight: 800;
+}
+
+.taskize-primary-button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.taskize-message {
+  margin: 0;
+  color: #166534;
+  font-weight: 800;
+}
+
+.taskize-message.is-error {
+  color: #b91c1c;
+}
+
+@media (max-width: 780px) {
+  .taskize-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .taskize-fields .taskize-title-field {
+    grid-column: 1 / -1;
+  }
+
+  .taskize-ai-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .taskize-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .taskize-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .taskize-dialog-actions button {
+    width: 100%;
+  }
+}
