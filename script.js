@@ -24,11 +24,13 @@ import {
   getBackupSummary,
   serializeBackup,
 } from "./src/backup.js?v=20260719-6";
+import { CanvasViewport } from "./src/canvas-viewport.js?v=20260720-5";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
 const canvas = document.querySelector("#drawingCanvas");
 const page = document.querySelector("#page");
+const dailyCanvasStage = document.querySelector("#dailyCanvasStage");
 const context = canvas.getContext("2d", { alpha: false });
 const emptyHint = document.querySelector("#emptyHint");
 const undoButton = document.querySelector("#undoButton");
@@ -90,6 +92,10 @@ let selectionActionsVisible = false;
 let activePointerId = null;
 let frameRequest = null;
 let saveTimer = null;
+
+const viewport = new CanvasViewport(page, dailyCanvasStage, {
+  onGestureStart: cancelActiveInteraction,
+});
 
 new ResizeObserver(resizeCanvas).observe(page);
 
@@ -164,6 +170,7 @@ function switchDate(nextDate) {
   if (nextDate === activeDate || activePointerId !== null) return;
   if (!saveImmediately()) return;
   clearSelection();
+  viewport.reset();
   activeDate = nextDate;
   history = new DrawingHistory(getPageDrawing(pageStore, activeDate));
   updateDateDisplay();
@@ -179,6 +186,7 @@ function openPageList() {
 
 function renderPageList() {
   pageList.replaceChildren();
+  pageList.className = "page-list";
   const dates = listWrittenPageDates(pageStore);
   emptyPageList.hidden = dates.length > 0;
 
@@ -228,6 +236,7 @@ function updateDateDisplay() {
 }
 
 function handlePointerDown(event) {
+  if (viewport.pointerDown(event)) return;
   if (selectedTool === "view" || activePointerId !== null) return;
   if (event.pointerType === "mouse" && event.button !== 0) return;
   event.preventDefault();
@@ -271,6 +280,7 @@ function handlePointerDown(event) {
 }
 
 function handlePointerMove(event) {
+  if (viewport.pointerMove(event)) return;
   if (event.pointerId !== activePointerId) return;
   event.preventDefault();
   const events = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [event];
@@ -293,8 +303,7 @@ function handlePointerMove(event) {
       const scale = handleLengthSquared > 0
         ? 1 + (movedX * handleX + movedY * handleY) / handleLengthSquared
         : 1;
-      selectionResize.moved = selectionResize.moved ||
-        Math.hypot(movedX, movedY) >= 0.8;
+      selectionResize.moved = selectionResize.moved || Math.hypot(movedX, movedY) >= 0.8;
       selectionDraft = scaleSelectedStrokes(
         selectionResize.drawing,
         selectedStrokeIds,
@@ -312,6 +321,7 @@ function handlePointerMove(event) {
 }
 
 function finishPointer(event) {
+  if (viewport.pointerEnd(event)) return;
   if (event.pointerId !== activePointerId) return;
   let documentChanged = false;
   if (activeStroke) {
@@ -343,6 +353,23 @@ function finishPointer(event) {
   updateSelectionHint();
   if (documentChanged) afterDocumentChange();
   else requestRender();
+}
+
+function cancelActiveInteraction() {
+  const pointerId = activePointerId;
+  activeStroke = null;
+  eraseDraft = null;
+  lassoPoints = null;
+  selectionDrag = null;
+  selectionResize = null;
+  selectionDraft = null;
+  selectionActionsVisible = false;
+  activePointerId = null;
+  if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
+    try { canvas.releasePointerCapture(pointerId); } catch { /* Safari may already have released it. */ }
+  }
+  updateSelectionHint();
+  requestRender();
 }
 
 function eraseAt(point) {
@@ -391,9 +418,10 @@ function getResizeHandleAtPoint(bounds, point) {
 
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
+  const scale = Number(dailyCanvasStage.dataset.viewScale || 1);
   const ratio = Math.min(window.devicePixelRatio || 1, 3);
-  const width = Math.max(1, Math.round(rect.width * ratio));
-  const height = Math.max(1, Math.round(rect.height * ratio));
+  const width = Math.max(1, Math.round((rect.width / scale) * ratio));
+  const height = Math.max(1, Math.round((rect.height / scale) * ratio));
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
