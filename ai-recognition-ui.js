@@ -1,0 +1,1 @@
+export const AI_RECOGNITION_UI_VERSION = 1;
