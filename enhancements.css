@@ -9,7 +9,8 @@
 
 .page,
 .weekly-canvas-wrap,
-.note-canvas-wrap {
+.note-canvas-wrap,
+.page.is-viewing #drawingCanvas {
   touch-action: none;
 }
 
