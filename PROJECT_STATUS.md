@@ -8,7 +8,7 @@
 
 日付別タスクカードは利用者がiPad Safariで追加・編集・完了・削除・日付別保存・再読み込み保持を確認済み。
 
-週間目標キャンバスはPull Request #19からmainへマージ済み。最新main同期後の自動テスト67件とビルドは成功。GitHub Pagesへの反映とiPad Safariでの実機確認は未実施。
+週間目標キャンバスはPull Request #19からmainへマージ済み。最新main同期後の自動テスト67件とビルドに成功し、利用者がiPad Safariで週移動・描画・消去・履歴・再読み込み保持・既存データ維持・タスク非自動生成を確認済み。
 
 ## 目的
 
@@ -54,15 +54,16 @@
 
 ## 動作確認
 
-- mainの自動テスト: 週間目標追加前55件成功
+- mainの自動テスト: 67件成功
 - タスクカード: iPad Safariで主要操作と日付別保存を確認済み
-- 週間目標PRの最新main同期後テスト: 67件成功
+- 週間目標: iPad Safariで週移動・描画・消去・履歴・再読み込み保持を確認済み
+- 週間目標追加後も日別手書きとタスクカードが残ることを確認済み
+- 週間目標からタスクが自動作成されないことを確認済み
 - 静的構成、コンフリクト記号、秘密情報の検査: 成功
 - `npm run build`: 成功
 - GitHub Actions（Pull Request #19）: 成功
-- GitHub Pages公開画面: タスクカードまで確認済み
+- GitHub Pages公開画面: タスクカードと週間目標まで確認済み
 - Apple Pencil: 未確認
-- 週間目標のiPad Safari公開確認: 未確認
 
 ## 保存データ
 
@@ -79,4 +80,4 @@
 
 公開URL: https://soutarounaka1016-max.github.io/study-canvas/
 
-週間目標はGitHub Pagesへの反映後、利用者がiPad Safariで確認する。
+タスクカードと週間目標は利用者がiPad Safariの公開画面で確認済み。次はPull Request #20の自由ノートを最新main基準へ同期して再テストする。
