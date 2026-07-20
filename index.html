@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f4f5f7" />
     <title>Study Canvas</title>
-    <link rel="stylesheet" href="styles.css?v=20260720-3" />
+    <link rel="stylesheet" href="styles.css?v=20260720-4" />
+    <link rel="stylesheet" href="note.css?v=20260720-4" />
   </head>
   <body>
     <header class="app-header">
@@ -58,6 +59,7 @@
           <div class="menu-panel">
             <strong>ページ操作</strong>
             <button id="weeklyButton" class="weekly-menu-button" type="button">週間目標を開く</button>
+            <button id="noteButton" class="note-menu-button" type="button">自由ノートを開く</button>
             <button id="backupButton" class="primary-menu-button" type="button">手書きバックアップを保存</button>
             <button id="restoreButton" type="button">手書きバックアップから復元</button>
             <input id="restoreFile" type="file" accept="application/json,.json" hidden />
@@ -182,6 +184,41 @@
       <p class="weekly-backup-note">週間目標は現在の手書きJSONバックアップには含まれません。</p>
     </dialog>
 
+    <dialog id="noteDialog" class="note-dialog" aria-labelledby="noteDialogTitle">
+      <div class="note-dialog-header">
+        <div>
+          <h2 id="noteDialogTitle">自由ノート</h2>
+          <p>模試の反省、参考書の使い方、長期計画などを日付に縛られず自由に手書きできます。</p>
+        </div>
+        <button id="closeNoteDialogButton" class="dialog-close-button" type="button" aria-label="自由ノートを閉じる">×</button>
+      </div>
+
+      <div class="note-toolbar" aria-label="自由ノートの描画ツール">
+        <div class="note-tool-group" role="group" aria-label="道具">
+          <button class="note-tool-button is-active" type="button" data-note-tool="pen" aria-pressed="true">✎ 書く</button>
+          <button class="note-tool-button" type="button" data-note-tool="eraser" aria-pressed="false">◇ 消す</button>
+        </div>
+        <div class="note-color-options" role="group" aria-label="自由ノートのペン色">
+          <button class="note-color-button is-selected" type="button" data-note-color="#2558e6" aria-label="青" aria-pressed="true"></button>
+          <button class="note-color-button" type="button" data-note-color="#ef4444" aria-label="赤" aria-pressed="false"></button>
+          <button class="note-color-button" type="button" data-note-color="#111827" aria-label="黒" aria-pressed="false"></button>
+        </div>
+        <label class="note-width-control" for="notePenWidth"><span>太さ</span><input id="notePenWidth" type="range" min="2" max="14" step="1" value="5" /></label>
+        <div class="note-history-actions">
+          <button id="noteUndoButton" type="button" disabled>↶ 取り消し</button>
+          <button id="noteRedoButton" type="button" disabled>↷ やり直し</button>
+          <button id="noteClearButton" class="note-clear-button" type="button">白紙に戻す</button>
+        </div>
+        <span id="noteSaveStatus" class="note-save-status" role="status" aria-live="polite">保存済み</span>
+      </div>
+
+      <div id="noteCanvasWrap" class="note-canvas-wrap">
+        <canvas id="noteCanvas" aria-label="自由ノートを書く白いキャンバス"></canvas>
+        <p id="noteEmptyHint">模試の反省、覚えておきたい考え方、長期計画などを自由に書いてください</p>
+      </div>
+      <p class="note-backup-note">自由ノートは現在の手書きJSONバックアップには含まれません。</p>
+    </dialog>
+
     <dialog id="pageListDialog" class="page-list-dialog">
       <div class="page-list-header">
         <div>
@@ -224,9 +261,10 @@
     </dialog>
 
     <noscript>このアプリを使うにはJavaScriptを有効にしてください。</noscript>
-    <script type="module" src="script.js?v=20260720-3"></script>
-    <script type="module" src="restore-ui.js?v=20260720-3"></script>
-    <script type="module" src="task-ui.js?v=20260720-3"></script>
-    <script type="module" src="weekly-ui.js?v=20260720-3"></script>
+    <script type="module" src="script.js?v=20260720-4"></script>
+    <script type="module" src="restore-ui.js?v=20260720-4"></script>
+    <script type="module" src="task-ui.js?v=20260720-4"></script>
+    <script type="module" src="weekly-ui.js?v=20260720-4"></script>
+    <script type="module" src="note-ui.js?v=20260720-4"></script>
   </body>
 </html>
