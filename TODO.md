@@ -17,10 +17,10 @@
 - [x] 自由ノートをサムネイル一覧から選ぶ形式へ変更
 - [x] 自由ノート名の編集と更新日時表示
 - [x] Pull Request #22の自動テストとビルド
+- [x] Pull Request #22をmainへマージ
 
-## 公開前
+## 公開確認
 
-- [ ] Pull Request #22をmainへマージする
 - [ ] GitHub Pagesへの反映を確認する
 
 ## iPad Safariで確認する項目
