@@ -3,7 +3,7 @@ name: Test
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, agent/four-usability-improvements]
 
 permissions:
   contents: read
