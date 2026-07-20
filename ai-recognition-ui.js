@@ -1,5 +1,4 @@
-import { installAiAction } from "./ai-action-ui.js?v=20260720-13";
-import { installAiSettings } from "./ai-settings-ui.js?v=20260720-13";
+import { installAiAction } from "./ai-action-ui.js?v=20260720-14";
 
 const aiButton = document.querySelector("#taskizeAiButton");
 const panel = aiButton?.closest(".taskize-ai-panel");
@@ -15,11 +14,9 @@ if (aiButton && panel && previewCanvas && subjectInput && titleInput && minutesI
     message.classList.toggle("is-error", isError);
     message.hidden = false;
   };
-  const settings = installAiSettings({ panel, showTaskMessage: showMessage });
   installAiAction({
     aiButton,
     panel,
-    settings,
     previewCanvas,
     subjectInput,
     titleInput,
