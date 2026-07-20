@@ -55,5 +55,6 @@
 - [x] Previous-day unfinished task carryover was implemented in Pull Request #25.
 - [x] Carryover unit tests passed.
 - [x] The full test suite and build passed for Pull Request #25.
-- [ ] Merge Pull Request #25 into main.
+- [x] Pull Request #25 was merged into main.
+- [ ] Confirm GitHub Pages reflects the carryover assets.
 - [ ] Confirm the carryover flow on the published iPad Safari app.
