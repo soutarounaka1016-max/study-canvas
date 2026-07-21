@@ -14,7 +14,7 @@ function watchCriticalErrors(page) {
 }
 
 async function gotoHome(page) {
-  await page.goto(`/?e2e=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
+  await page.goto(`./?e2e=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#homeScreen")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Study Canvas" })).toBeVisible();
 }
@@ -27,7 +27,7 @@ test("@published 最新版が起動し重大なJavaScriptエラーがない", as
   test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 660_000 : 30_000);
   const errors = watchCriticalErrors(page);
   await expect.poll(async () => {
-    await page.goto(`/?release-check=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
+    await page.goto(`./?release-check=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
     return page.locator('meta[name="study-canvas-release"]').getAttribute("content");
   }, {
     message: "GitHub Pagesへ今回のリリースが反映されるのを待機",
