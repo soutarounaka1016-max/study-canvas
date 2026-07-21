@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   test:
+    name: Unit and build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,3 +21,72 @@ jobs:
       - run: npm install --ignore-scripts
       - run: npm test
       - run: npm run build
+
+  browser:
+    name: Browser (${{ matrix.project }})
+    needs: test
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+          - project: webkit
+            browser: webkit
+          - project: ipad-portrait
+            browser: webkit
+          - project: ipad-landscape
+            browser: webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --ignore-scripts
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run browser checks
+        run: npm run test:browser -- --project=${{ matrix.project }}
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-${{ matrix.project }}-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  pages-smoke:
+    name: GitHub Pages startup
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: browser
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --ignore-scripts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Wait for and verify published app
+        env:
+          PLAYWRIGHT_BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
+        run: npm run test:browser -- --project=chromium --grep @published
+      - name: Upload published-page failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-pages-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
