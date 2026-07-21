@@ -60,8 +60,11 @@
 - [x] テスト用タスクが再読み込み後も残ることを確認
 - [x] JavaScriptの重大なエラーを失敗扱いにする
 - [x] 失敗時のスクリーンショット、動画、トレース、HTMLレポートを成果物へ保存
-- [x] main反映後のGitHub Pages起動確認ジョブを追加
-- [ ] main反映後の公開URL確認ジョブが成功する
+- [x] GitHub Pages公式デプロイをmainへ接続
+- [x] Pagesデプロイ後に公開URLをChromiumで確認
+- [x] 公開確認で`/study-canvas/`配下を保持
+- [x] 古いPages実行を新しいmainで中断する
+- [x] main反映後の公開URL確認ジョブが成功
 
 ## 次の候補
 
