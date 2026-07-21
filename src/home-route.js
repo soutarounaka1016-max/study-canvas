@@ -12,7 +12,7 @@ const ROUTE_SET = new Set(HOME_ROUTES);
 
 export function normalizeHomeRoute(hash) {
   const value = typeof hash === "string"
-    ? hash.replace(/^#/, "").trim().toLowerCase()
+    ? hash.trim().replace(/^#/, "").trim().toLowerCase()
     : "";
   return ROUTE_SET.has(value) ? value : "home";
 }
