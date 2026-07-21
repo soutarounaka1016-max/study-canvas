@@ -4,10 +4,11 @@ const requiredFiles = [
   "index.html", "styles.css", "note.css", "enhancements.css", "carryover.css", "selection.css", "taskize.css",
   "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
   "release-entry.js", "taskize-entry.js", "taskize-ui.js", "dashboard-entry.js", "dashboard-ui.js", "dashboard-style.js",
+  "home-entry.js", "home-ui.js", "home-style.js",
   "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-action-ui.js",
   "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
   "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -48,6 +49,10 @@ for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js",
     failed = true;
   }
 }
+if (!html.includes("release-entry.js?v=20260721-3")) {
+  console.error("ホーム画面向けの公開キャッシュ版へ更新されていません");
+  failed = true;
+}
 
 const noteEntry = await readFile("note-ui.js", "utf8");
 if (!noteEntry.includes("note-selection-ui.js")) {
@@ -56,8 +61,24 @@ if (!noteEntry.includes("note-selection-ui.js")) {
 }
 
 const releaseEntry = await readFile("release-entry.js", "utf8");
-if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js")) {
-  console.error("release-entry.jsから日別拡張またはタスク化入口が読み込まれていません");
+if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js")) {
+  console.error("release-entry.jsから日別拡張、タスク化、ホーム画面の入口が読み込まれていません");
+  failed = true;
+}
+
+const homeEntry = await readFile("home-entry.js", "utf8");
+const homeUi = await readFile("home-ui.js", "utf8");
+const homeRoute = await readFile("src/home-route.js", "utf8");
+if (!homeEntry.includes("home-style.js") || !homeEntry.includes("home-ui.js")) {
+  console.error("ホーム画面の表示とスタイルが公開入口へ接続されていません");
+  failed = true;
+}
+if (!homeUi.includes("data-home-route") || !homeUi.includes("homeButton") || !homeUi.includes("hashchange") || !homeUi.includes("TASK_STORAGE_KEY")) {
+  console.error("ホーム画面のメニュー、戻る操作、集計表示を確認できません");
+  failed = true;
+}
+if (!homeRoute.includes("HOME_ROUTES") || !homeRoute.includes("normalizeHomeRoute") || !homeRoute.includes("homeRouteHash")) {
+  console.error("ホーム画面のURLルート定義を確認できません");
   failed = true;
 }
 
@@ -111,4 +132,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリの構成、学習時間集計、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリの構成、ホーム画面、学習時間集計、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
