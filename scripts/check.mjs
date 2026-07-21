@@ -9,6 +9,7 @@ const requiredFiles = [
   "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
   "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
   "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
+  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", ".github/workflows/ci.yml",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -49,11 +50,15 @@ for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js",
     failed = true;
   }
 }
-if (!html.includes("release-entry.js?v=20260721-3")) {
-  console.error("ホーム画面向けの公開キャッシュ版へ更新されていません");
+if (!html.includes('meta name="study-canvas-release" content="20260721-playwright-1"')) {
+  console.error("公開確認用のリリース識別子がありません");
   failed = true;
 }
-if (!html.includes("note-ui.js?v=20260721-1")) {
+if (!html.includes("release-entry.js?v=20260721-4")) {
+  console.error("ブラウザ確認版の公開入口へ更新されていません");
+  failed = true;
+}
+if (!html.includes("note-ui.js?v=20260721-2")) {
   console.error("自由ノート修正版の公開キャッシュへ更新されていません");
   failed = true;
 }
@@ -65,13 +70,13 @@ for (const id of ["noteSelectionHint", "noteSelectionActions", "noteDeleteSelect
 }
 
 const noteEntry = await readFile("note-ui.js", "utf8");
-if (!noteEntry.includes("note-selection-ui.js")) {
-  console.error("note-ui.jsからnote-selection-ui.jsが読み込まれていません");
+if (!noteEntry.includes("note-selection-ui.js?v=20260721-2") || !noteEntry.includes("NOTE_ROUTE") || !noteEntry.includes("hashchange")) {
+  console.error("自由ノートの初期化完了後に#notesを開く処理を確認できません");
   failed = true;
 }
 
 const releaseEntry = await readFile("release-entry.js", "utf8");
-if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js")) {
+if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2")) {
   console.error("release-entry.jsから日別拡張、タスク化、ホーム画面の入口が読み込まれていません");
   failed = true;
 }
@@ -79,7 +84,7 @@ if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("t
 const homeEntry = await readFile("home-entry.js", "utf8");
 const homeUi = await readFile("home-ui.js", "utf8");
 const homeRoute = await readFile("src/home-route.js", "utf8");
-if (!homeEntry.includes("home-style.js") || !homeEntry.includes("home-ui.js")) {
+if (!homeEntry.includes("home-style.js?v=20260721-2") || !homeEntry.includes("home-ui.js?v=20260721-2")) {
   console.error("ホーム画面の表示とスタイルが公開入口へ接続されていません");
   failed = true;
 }
@@ -135,6 +140,31 @@ try {
   // The rejected OCR implementation must remain absent.
 }
 
+const packageJson = await readFile("package.json", "utf8");
+const playwrightConfig = await readFile("playwright.config.js", "utf8");
+const browserTests = await readFile("tests/e2e/app.spec.js", "utf8");
+const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+if (!packageJson.includes('"@playwright/test": "1.61.1"') || !packageJson.includes('"test:browser"')) {
+  console.error("Playwrightの固定版と実行コマンドを確認できません");
+  failed = true;
+}
+for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"]) {
+  if (!playwrightConfig.includes(`name: "${project}"`) || !workflow.includes(`project: ${project}`)) {
+    console.error(`${project}のブラウザ確認構成がありません`);
+    failed = true;
+  }
+}
+for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth"]) {
+  if (!browserTests.includes(requirement)) {
+    console.error(`ブラウザテストに${requirement}の確認がありません`);
+    failed = true;
+  }
+}
+if (!workflow.includes("playwright install --with-deps") || !workflow.includes("actions/upload-artifact@v4") || !workflow.includes("GitHub Pages startup") || !workflow.includes("https://soutarounaka1016-max.github.io/study-canvas/")) {
+  console.error("ブラウザ導入、失敗成果物、GitHub Pages確認のCI設定が不足しています");
+  failed = true;
+}
+
 const worker = await readFile("cloudflare-worker.js", "utf8");
 if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) {
   console.error("保留中の無料枠AI中継設定を確認できません");
@@ -142,4 +172,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリの構成、ホーム画面、自由ノート初期化、学習時間集計、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリ、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages確認、コンフリクト記号、秘密情報を確認しました。");
