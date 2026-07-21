@@ -1,72 +1,87 @@
-import {
-  recognizeTaskWithLocalOcr,
-  shutdownLocalOcr,
-} from "./src/local-ocr.js?v=20260720-14";
+const QUICK_SUBJECTS = ["数学", "英語", "物理", "化学", "国語", "その他"];
+const QUICK_MINUTES = [30, 45, 60, 90, 120];
 
-export function installAiAction({ aiButton, panel, previewCanvas, subjectInput, titleInput, minutesInput, showMessage }) {
-  aiButton.textContent = "端末内OCRで読み取る";
-  panel.querySelector("p").textContent = "囲んだ画像をiPad内で文字認識し、候補を入力します。タスクは確認してから追加します。";
+export function installTaskAssist({ aiButton, panel, subjectInput, titleInput, minutesInput }) {
+  if (!panel || !subjectInput || !titleInput || !minutesInput) return;
+  if (panel.querySelector(".taskize-quick-groups")) return;
 
-  const privacy = document.createElement("small");
-  privacy.className = "taskize-ai-privacy";
-  privacy.textContent = "画像は端末外へ送信しません。初回だけOCR本体と日本語データを読み込み、以後はブラウザへキャッシュされます。";
-  panel.append(privacy);
+  aiButton?.remove();
+  panel.classList.add("taskize-assist-panel");
 
-  aiButton.addEventListener("click", async (event) => {
-    event.preventDefault();
-    event.stopImmediatePropagation();
+  const description = panel.querySelector("p");
+  if (description) {
+    description.textContent = "端末内OCRは実機で日本語の手書きを読み取れなかったため停止しました。科目と時間を選び、勉強内容だけ入力してください。";
+  }
 
-    aiButton.disabled = true;
-    aiButton.textContent = "OCR準備中…";
-    showMessage("端末内OCRを準備しています。初回は日本語データの読み込みに時間がかかる場合があります。", false);
+  const groups = document.createElement("div");
+  groups.className = "taskize-quick-groups";
 
-    try {
-      const candidate = await recognizeTaskWithLocalOcr({
-        image: previewCanvas,
-        onProgress: ({ status, progress }) => {
-          const percent = Math.round(progress * 100);
-          aiButton.textContent = progress > 0 ? `${percent}%` : "OCR準備中…";
-          showMessage(formatProgress(status, percent), false);
-        },
-      });
+  const subjectGroup = createQuickGroup("科目", QUICK_SUBJECTS, (value) => {
+    subjectInput.value = value;
+    subjectInput.dispatchEvent(new Event("change", { bubbles: true }));
+    titleInput.focus();
+  });
+  subjectGroup.classList.add("taskize-subject-quick-group");
 
-      subjectInput.value = candidate.subject;
-      titleInput.value = candidate.title;
-      minutesInput.value = String(candidate.minutes);
-      titleInput.focus();
-      titleInput.select();
+  const minutesGroup = createQuickGroup("予定時間", QUICK_MINUTES.map(String), (value) => {
+    minutesInput.value = value;
+    minutesInput.dispatchEvent(new Event("input", { bubbles: true }));
+    titleInput.focus();
+  }, "分");
+  minutesGroup.classList.add("taskize-minutes-quick-group");
 
-      const confidence = Math.round(candidate.confidence * 100);
-      const caution = candidate.confidence < 0.65
-        ? " 読み取りの確信が低いため、内容をよく確認してください。"
-        : "";
-      const warning = candidate.warning ? ` ${candidate.warning}。` : "";
-      const rawText = candidate.rawText ? ` 認識文字:「${candidate.rawText}」` : "";
-      showMessage(
-        `端末内OCRの候補を入力しました（信頼度 ${confidence}%）。確認してから「タスクを追加」を押してください。${caution}${warning}${rawText}`,
-        candidate.confidence < 0.45,
-      );
-    } catch (error) {
-      showMessage(error?.message || "端末内OCRで読み取れませんでした。手動入力を利用してください。", true);
-    } finally {
-      aiButton.disabled = false;
-      aiButton.textContent = "端末内OCRで読み取る";
-    }
-  }, { capture: true });
+  groups.append(subjectGroup, minutesGroup);
 
-  window.addEventListener("pagehide", () => {
-    void shutdownLocalOcr();
-  }, { once: true });
+  const note = document.createElement("small");
+  note.className = "taskize-assist-note";
+  note.textContent = "勉強内容欄はキーボード入力に加え、対応しているiPadではApple Pencilの手書き入力も利用できます。";
+
+  panel.append(groups, note);
+  titleInput.placeholder = "例：微積の問題を2題";
+
+  const syncButtons = () => {
+    syncGroup(subjectGroup, subjectInput.value);
+    syncGroup(minutesGroup, String(minutesInput.value));
+  };
+
+  subjectInput.addEventListener("change", syncButtons);
+  minutesInput.addEventListener("input", syncButtons);
+  panel.closest("dialog")?.addEventListener("close", syncButtons);
+  syncButtons();
 }
 
-function formatProgress(status, percent) {
-  const labels = {
-    "loading tesseract core": "OCRエンジンを読み込んでいます",
-    "initializing tesseract": "OCRエンジンを準備しています",
-    "loading language traineddata": "日本語の認識データを読み込んでいます",
-    "initializing api": "日本語OCRを準備しています",
-    "recognizing text": "選択した手書きを読み取っています",
-  };
-  const label = labels[status] || "端末内OCRを処理しています";
-  return percent > 0 ? `${label}（${percent}%）` : `${label}…`;
+function createQuickGroup(label, values, onSelect, suffix = "") {
+  const group = document.createElement("section");
+  group.className = "taskize-quick-group";
+  group.setAttribute("aria-label", `${label}の入力補助`);
+
+  const heading = document.createElement("strong");
+  heading.className = "taskize-quick-label";
+  heading.textContent = label;
+
+  const buttons = document.createElement("div");
+  buttons.className = "taskize-quick-buttons";
+  buttons.setAttribute("role", "group");
+
+  for (const value of values) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "taskize-quick-button";
+    button.dataset.quickValue = value;
+    button.setAttribute("aria-pressed", "false");
+    button.textContent = `${value}${suffix}`;
+    button.addEventListener("click", () => onSelect(value));
+    buttons.append(button);
+  }
+
+  group.append(heading, buttons);
+  return group;
+}
+
+function syncGroup(group, value) {
+  group.querySelectorAll(".taskize-quick-button").forEach((button) => {
+    const selected = button.dataset.quickValue === value;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", selected ? "true" : "false");
+  });
 }

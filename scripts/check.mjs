@@ -3,9 +3,11 @@ import { readFile, stat } from "node:fs/promises";
 const requiredFiles = [
   "index.html", "styles.css", "note.css", "enhancements.css", "carryover.css", "selection.css", "taskize.css",
   "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
-  "taskize-entry.js", "taskize-ui.js", "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-settings-ui.js", "ai-action-ui.js",
-  "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js", "src/local-ocr.js",
+  "release-entry.js", "taskize-entry.js", "taskize-ui.js", "dashboard-entry.js", "dashboard-ui.js", "dashboard-style.js",
+  "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-action-ui.js",
+  "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
+  "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -40,7 +42,7 @@ for (const file of textFiles) {
 }
 
 const html = await readFile("index.html", "utf8");
-for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js"]) {
+for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "release-entry.js"]) {
   if (!html.includes(reference)) {
     console.error(`index.htmlから${reference}が読み込まれていません`);
     failed = true;
@@ -53,17 +55,34 @@ if (!noteEntry.includes("note-selection-ui.js")) {
   failed = true;
 }
 
-const dashboardEntry = await readFile("dashboard-entry.js", "utf8");
-if (!dashboardEntry.includes("ai-recognition-entry.js")) {
-  console.error("手書き認識の公開入口が接続されていません");
+const releaseEntry = await readFile("release-entry.js", "utf8");
+if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js")) {
+  console.error("release-entry.jsから日別拡張またはタスク化入口が読み込まれていません");
   failed = true;
 }
 
-const localOcr = await readFile("src/local-ocr.js", "utf8");
-const localOcrAction = await readFile("ai-action-ui.js", "utf8");
-if (!localOcr.includes("tesseract.js@7.0.0") || !localOcr.includes("createWorker(\"jpn\"") || !localOcrAction.includes("recognizeTaskWithLocalOcr")) {
-  console.error("端末内OCRの固定バージョンまたは画面接続を確認できません");
+const dashboardEntry = await readFile("dashboard-entry.js", "utf8");
+if (!dashboardEntry.includes("ai-recognition-entry.js")) {
+  console.error("タスク入力補助の公開入口が接続されていません");
   failed = true;
+}
+
+const taskAssist = await readFile("ai-action-ui.js", "utf8");
+if (!taskAssist.includes("QUICK_SUBJECTS") || !taskAssist.includes("QUICK_MINUTES") || !taskAssist.includes("installTaskAssist")) {
+  console.error("科目・予定時間のクイック入力を確認できません");
+  failed = true;
+}
+if (/tesseract|recognizeTaskWithLocalOcr/i.test(taskAssist)) {
+  console.error("停止した端末内OCRへの参照が入力補助へ残っています");
+  failed = true;
+}
+
+try {
+  await stat("src/local-ocr.js");
+  console.error("不採用の端末内OCR本体が残っています");
+  failed = true;
+} catch {
+  // The rejected OCR implementation must remain absent.
 }
 
 const worker = await readFile("cloudflare-worker.js", "utf8");
@@ -73,4 +92,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリの構成、端末内OCR、AI中継、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリの構成、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
