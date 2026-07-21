@@ -24,6 +24,7 @@ async function expectNoCriticalErrors(errors) {
 }
 
 test("@published 最新版が起動し重大なJavaScriptエラーがない", async ({ page }) => {
+  test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 660_000 : 30_000);
   const errors = watchCriticalErrors(page);
   await expect.poll(async () => {
     await page.goto(`/?release-check=${Date.now()}#home`, { waitUntil: "domcontentloaded" });

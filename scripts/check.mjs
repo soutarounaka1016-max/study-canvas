@@ -9,7 +9,7 @@ const requiredFiles = [
   "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
   "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
   "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
-  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", ".github/workflows/ci.yml",
+  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", ".github/workflows/ci.yml", ".github/workflows/pages.yml",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -144,6 +144,7 @@ const packageJson = await readFile("package.json", "utf8");
 const playwrightConfig = await readFile("playwright.config.js", "utf8");
 const browserTests = await readFile("tests/e2e/app.spec.js", "utf8");
 const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+const pagesWorkflow = await readFile(".github/workflows/pages.yml", "utf8");
 if (!packageJson.includes('"@playwright/test": "1.61.1"') || !packageJson.includes('"test:browser"')) {
   console.error("Playwrightの固定版と実行コマンドを確認できません");
   failed = true;
@@ -154,7 +155,7 @@ for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"])
     failed = true;
   }
 }
-for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth"]) {
+for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "test.setTimeout"]) {
   if (!browserTests.includes(requirement)) {
     console.error(`ブラウザテストに${requirement}の確認がありません`);
     failed = true;
@@ -164,6 +165,12 @@ if (!workflow.includes("playwright install --with-deps") || !workflow.includes("
   console.error("ブラウザ導入、失敗成果物、GitHub Pages確認のCI設定が不足しています");
   failed = true;
 }
+for (const requirement of ["pages: write", "id-token: write", "actions/configure-pages@v5", "actions/upload-pages-artifact@v4", "actions/deploy-pages@v4", "path: _site", "touch _site/.nojekyll"]) {
+  if (!pagesWorkflow.includes(requirement)) {
+    console.error(`GitHub Pages公式デプロイに${requirement}がありません`);
+    failed = true;
+  }
+}
 
 const worker = await readFile("cloudflare-worker.js", "utf8");
 if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) {
@@ -172,4 +179,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリ、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages確認、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリ、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages公式デプロイ、コンフリクト記号、秘密情報を確認しました。");
