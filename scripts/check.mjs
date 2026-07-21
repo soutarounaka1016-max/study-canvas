@@ -161,13 +161,26 @@ for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "lo
     failed = true;
   }
 }
-if (!workflow.includes("playwright install --with-deps") || !workflow.includes("actions/upload-artifact@v4") || !workflow.includes("GitHub Pages startup") || !workflow.includes("https://soutarounaka1016-max.github.io/study-canvas/")) {
-  console.error("ブラウザ導入、失敗成果物、GitHub Pages確認のCI設定が不足しています");
+if (!workflow.includes("playwright install --with-deps") || !workflow.includes("actions/upload-artifact@v4")) {
+  console.error("通常ブラウザ確認と失敗成果物のCI設定が不足しています");
   failed = true;
 }
-for (const requirement of ["pages: write", "id-token: write", "actions/configure-pages@v5", "actions/upload-pages-artifact@v4", "actions/deploy-pages@v4", "path: _site", "touch _site/.nojekyll"]) {
+for (const requirement of [
+  "pages: write",
+  "id-token: write",
+  "actions/configure-pages@v5",
+  "actions/upload-pages-artifact@v4",
+  "actions/deploy-pages@v4",
+  "path: _site",
+  "touch _site/.nojekyll",
+  "Verify published Study Canvas",
+  "playwright install --with-deps chromium",
+  "https://soutarounaka1016-max.github.io/study-canvas/",
+  "study-canvas/pages-startup",
+  "actions/upload-artifact@v4",
+]) {
   if (!pagesWorkflow.includes(requirement)) {
-    console.error(`GitHub Pages公式デプロイに${requirement}がありません`);
+    console.error(`GitHub Pagesの公開・起動確認に${requirement}がありません`);
     failed = true;
   }
 }
@@ -179,4 +192,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリ、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages公式デプロイ、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリ、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");
