@@ -88,7 +88,7 @@ test("主要操作で追加したタスクが再読み込み後も残る", async
   await page.locator("#taskMinutes").fill("35");
   await page.locator("#taskForm").getByRole("button", { name: "タスクを追加" }).click();
   await expect(page.locator("#taskList")).toContainText("Playwright確認タスク");
-  await page.locator("#closeTaskDialogButton").click();
+  await expect(page.locator("#taskDialog")).not.toHaveAttribute("open", "");
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator("#taskButton").click();
