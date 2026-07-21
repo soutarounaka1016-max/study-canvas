@@ -44,31 +44,31 @@ test("主要画面へ移動し自由ノートを開ける", async ({ page }) => 
   const errors = watchCriticalErrors(page);
   await gotoHome(page);
 
-  await page.getByRole("button", { name: "今日のキャンバスを開く" }).click();
+  await page.locator('[data-home-route="daily"]').click();
   await expect(page.locator("#drawingCanvas")).toBeVisible();
   await page.locator("#homeButton").click();
 
-  await page.getByRole("button", { name: /週間目標/ }).click();
+  await page.locator('[data-home-route="weekly"]').click();
   await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
   await page.locator("#closeWeeklyDialogButton").click();
   await expect(page.locator("#homeScreen")).toBeVisible();
 
-  await page.getByRole("button", { name: /自由ノート/ }).click();
+  await page.locator('[data-home-route="notes"]').click();
   await expect(page.locator("#noteDialog[open]")).toBeVisible();
   await expect(page.locator("#noteGalleryView")).toBeVisible();
   await expect(page.locator("#noteGallery")).toContainText("ノート 1");
   await page.locator("#closeNoteDialogButton").click();
   await expect(page.locator("#homeScreen")).toBeVisible();
 
-  await page.getByRole("button", { name: /学習時間の集計/ }).click();
+  await page.locator('[data-home-route="stats"]').click();
   await expect(page.locator(".study-dashboard")).toBeVisible();
   await page.locator("#homeButton").click();
 
-  await page.getByRole("button", { name: /ページ一覧/ }).click();
+  await page.locator('[data-home-route="pages"]').click();
   await expect(page.locator("#pageListDialog[open]")).toBeVisible();
   await page.locator("#closePageListButton").click();
 
-  await page.getByRole("button", { name: /バックアップ・復元/ }).click();
+  await page.locator('[data-home-route="backup"]').click();
   await expect(page.locator("details.menu")).toHaveAttribute("open", "");
   await expect(page.locator("#backupButton")).toBeVisible();
   await expectNoCriticalErrors(errors);
@@ -80,7 +80,7 @@ test("主要操作で追加したタスクが再読み込み後も残る", async
   await page.evaluate((key) => localStorage.removeItem(key), TASK_STORAGE_KEY);
   await page.reload({ waitUntil: "domcontentloaded" });
 
-  await page.getByRole("button", { name: "今日のキャンバスを開く" }).click();
+  await page.locator('[data-home-route="daily"]').click();
   await page.locator("#taskButton").click();
   await expect(page.locator("#taskDialog[open]")).toBeVisible();
   await page.locator("#taskSubject").selectOption({ label: "数学" });
@@ -120,6 +120,6 @@ test("主要部分が画面幅から大きくはみ出さない", async ({ page 
     expect(box.left, `${box.selector}が左へはみ出しています`).toBeGreaterThanOrEqual(-4);
     expect(box.right, `${box.selector}が右へはみ出しています`).toBeLessThanOrEqual(layout.viewportWidth + 4);
   }
-  await expect(page.getByRole("button", { name: "今日のキャンバスを開く" })).toBeVisible();
+  await expect(page.locator('[data-home-route="daily"]')).toBeVisible();
   await expectNoCriticalErrors(errors);
 });
