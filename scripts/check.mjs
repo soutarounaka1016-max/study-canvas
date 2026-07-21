@@ -53,6 +53,16 @@ if (!html.includes("release-entry.js?v=20260721-3")) {
   console.error("ホーム画面向けの公開キャッシュ版へ更新されていません");
   failed = true;
 }
+if (!html.includes("note-ui.js?v=20260721-1")) {
+  console.error("自由ノート修正版の公開キャッシュへ更新されていません");
+  failed = true;
+}
+for (const id of ["noteSelectionHint", "noteSelectionActions", "noteDeleteSelectionButton"]) {
+  if (!html.includes(`id="${id}"`)) {
+    console.error(`自由ノートの初期化に必要な${id}がありません`);
+    failed = true;
+  }
+}
 
 const noteEntry = await readFile("note-ui.js", "utf8");
 if (!noteEntry.includes("note-selection-ui.js")) {
@@ -132,4 +142,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリの構成、ホーム画面、学習時間集計、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリの構成、ホーム画面、自由ノート初期化、学習時間集計、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
