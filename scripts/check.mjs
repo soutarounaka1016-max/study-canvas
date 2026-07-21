@@ -7,7 +7,7 @@ const requiredFiles = [
   "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-action-ui.js",
   "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
   "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -62,8 +62,27 @@ if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("t
 }
 
 const dashboardEntry = await readFile("dashboard-entry.js", "utf8");
+if (!dashboardEntry.includes("dashboard-ui.js?v=20260721-2") || !dashboardEntry.includes("dashboard-style.js?v=20260721-2")) {
+  console.error("学習時間集計ダッシュボードの公開版が更新されていません");
+  failed = true;
+}
 if (!dashboardEntry.includes("ai-recognition-entry.js")) {
   console.error("タスク入力補助の公開入口が接続されていません");
+  failed = true;
+}
+
+const dashboard = await readFile("dashboard-ui.js", "utf8");
+const stats = await readFile("src/study-stats.js", "utf8");
+if (!dashboard.includes("summarizeTasksForDate") || !dashboard.includes("summarizeTasksForRange") || !dashboard.includes("dashboardSubjectList")) {
+  console.error("日別・週別・科目別の集計表示を確認できません");
+  failed = true;
+}
+if (!stats.includes("getWeekRange") || !stats.includes("completedMinutes") || !stats.includes("subjectBreakdown")) {
+  console.error("学習時間集計ロジックを確認できません");
+  failed = true;
+}
+if (!dashboard.includes("実際に計測した勉強時間ではありません")) {
+  console.error("完了換算時間と実測時間の区別が表示されていません");
   failed = true;
 }
 
@@ -92,4 +111,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリの構成、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリの構成、学習時間集計、入力補助、OCR削除、AI中継、コンフリクト記号、秘密情報を確認しました。");
