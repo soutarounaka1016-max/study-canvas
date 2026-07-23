@@ -35,7 +35,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Install Playwright browsers once
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install chromium webkit
       - name: "Run project: chromium"
         run: npm run test:browser -- --project=chromium
       - name: "Run project: webkit"
