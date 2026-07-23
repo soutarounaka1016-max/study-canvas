@@ -34,6 +34,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
+      # GitHub標準ランナーでは `playwright install --with-deps` のOS依存処理が長時間停止したため、固定版ブラウザ本体だけを一度取得し、実起動テストで不足を検出する。
       - name: Install Playwright browsers once
         run: npx playwright install chromium webkit
       - name: "Run project: chromium"
