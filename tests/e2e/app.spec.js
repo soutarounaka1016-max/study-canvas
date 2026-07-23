@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260721-playwright-1";
+const EXPECTED_RELEASE = "20260724-backup-guidance-1";
 const TASK_STORAGE_KEY = "study-canvas:tasks:v1";
 
 function watchCriticalErrors(page) {
