@@ -26,7 +26,7 @@ jobs:
     name: Browser checks
     needs: test
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,9 +34,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
-      # GitHub標準ランナーでは `playwright install --with-deps` のOS依存処理が長時間停止したため、固定版ブラウザ本体だけを一度取得し、実起動テストで不足を検出する。
-      - name: Install Playwright browsers once
-        run: npx playwright install chromium webkit
+      - name: Install Playwright browsers and dependencies once
+        run: npx playwright install --with-deps chromium webkit
       - name: "Run project: chromium"
         run: npm run test:browser -- --project=chromium
       - name: "Run project: webkit"
