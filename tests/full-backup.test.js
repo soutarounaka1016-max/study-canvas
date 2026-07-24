@@ -26,7 +26,7 @@ function sampleState() {
   const tasks = addTask(emptyTaskStore(), "2026-07-20", {
     subject: "数学", title: "微積", plannedMinutes: 30,
   }, "task-1");
-  const weekly = setWeeklyDrawing(emptyPageStore(), "2026-07-20", drawing("2026-07-20", "week-1"));
+  const weekly = setWeeklyDrawing({}, "2026-07-20", "数学", drawing("2026-07-20", "week-1"));
   const noteBase = emptyNoteStore();
   const notes = setNoteDrawing(noteBase, drawing(noteBase.activePageId, "note-stroke"));
   return { pages, tasks, weekly, notes };
@@ -64,6 +64,7 @@ test("summary counts all saved content", () => {
     dailyStrokeCount: 1,
     taskCount: 1,
     weeklyPageCount: 1,
+    weeklySubjectPageCount: 1,
     weeklyStrokeCount: 1,
     notePageCount: 1,
     noteStrokeCount: 1,
