@@ -1,6 +1,6 @@
 import { loadPageStore, serializePageStore } from "./page-store.js";
 import { loadTaskStore, serializeTaskStore } from "./task-store.js";
-import { loadWeeklyStore, serializeWeeklyStore } from "./weekly-store.js";
+import { listWeeklyDrawings, loadWeeklyStore, serializeWeeklyStore } from "./weekly-store.js";
 import { loadNoteStore, serializeNoteStore } from "./note-store.js";
 import { parseBackupForRestore } from "./restore.js";
 
@@ -121,14 +121,16 @@ export function applyFullRestore(storage, parsedBackup, sections) {
 export function summarizeFullState(state) {
   const pages = Object.values(state?.pages?.pages || {});
   const taskDates = Object.values(state?.tasks?.tasksByDate || {});
-  const weeks = Object.values(state?.weekly?.pages || {});
+  const weeklyDrawings = listWeeklyDrawings(state?.weekly);
+  const writtenWeeks = new Set(weeklyDrawings.map((item) => item.weekStart));
   const notes = Array.isArray(state?.notes?.pages) ? state.notes.pages : [];
   return {
     dailyPageCount: pages.filter((drawing) => drawing?.strokes?.length > 0).length,
     dailyStrokeCount: countPageStoreStrokes(state?.pages),
     taskCount: taskDates.reduce((sum, tasks) => sum + tasks.length, 0),
-    weeklyPageCount: weeks.filter((drawing) => drawing?.strokes?.length > 0).length,
-    weeklyStrokeCount: countPageStoreStrokes(state?.weekly),
+    weeklyPageCount: writtenWeeks.size,
+    weeklySubjectPageCount: weeklyDrawings.length,
+    weeklyStrokeCount: weeklyDrawings.reduce((sum, item) => sum + item.drawing.strokes.length, 0),
     notePageCount: notes.length,
     noteStrokeCount: notes.reduce((sum, page) => sum + (page?.drawing?.strokes?.length || 0), 0),
   };
