@@ -29,7 +29,7 @@ export function emptyWeeklyStore() {
 }
 
 export function loadWeeklyStore(raw, currentDate) {
-  const currentWeekStart = getWeekStart(currentDate);
+  getWeekStart(currentDate);
   if (!raw) return { store: emptyWeeklyStore(), recovered: false, migrated: false };
 
   let value;
@@ -65,7 +65,7 @@ export function loadWeeklyStore(raw, currentDate) {
     return { store: { version: WEEKLY_STORE_VERSION, weeks }, recovered, migrated: true };
   }
 
-  return { store: emptyWeeklyStore(), recovered: true, migrated: false, currentWeekStart };
+  return { store: emptyWeeklyStore(), recovered: true, migrated: false };
 }
 
 export function getWeeklyDrawing(store, weekStart, subject = DEFAULT_SUBJECT) {
@@ -76,13 +76,19 @@ export function getWeeklyDrawing(store, weekStart, subject = DEFAULT_SUBJECT) {
 }
 
 export function setWeeklyDrawing(store, weekStart, subject, drawing) {
+  // 旧呼び出し setWeeklyDrawing(store, weekStart, drawing) は「その他」として保持する。
+  if (drawing === undefined && subject && typeof subject === "object") {
+    drawing = subject;
+    subject = DEFAULT_SUBJECT;
+  }
   const week = getWeekStart(weekStart);
   const normalizedSubject = normalizeSubject(subject);
-  const currentWeek = store?.weeks?.[week] || { subjects: {} };
+  const migratedBase = store?.weeks ? store : loadWeeklyStore(JSON.stringify(store || {}), week).store;
+  const currentWeek = migratedBase?.weeks?.[week] || { subjects: {} };
   return {
     version: WEEKLY_STORE_VERSION,
     weeks: {
-      ...(store?.weeks || {}),
+      ...(migratedBase?.weeks || {}),
       [week]: {
         subjects: {
           ...(currentWeek.subjects || {}),
@@ -94,7 +100,8 @@ export function setWeeklyDrawing(store, weekStart, subject, drawing) {
 }
 
 export function serializeWeeklyStore(store) {
-  return JSON.stringify(parseSubjectStore(store).store);
+  const normalized = store?.weeks ? store : loadWeeklyStore(JSON.stringify(store || {}), "2000-01-03").store;
+  return JSON.stringify(parseSubjectStore(normalized).store);
 }
 
 export function replaceStoredWeeklyStore(storage, key, nextStore) {
@@ -117,8 +124,9 @@ export function replaceStoredWeeklyStore(storage, key, nextStore) {
 }
 
 export function listWeeklyDrawings(store) {
+  const normalized = store?.weeks ? store : loadWeeklyStore(JSON.stringify(store || {}), "2000-01-03").store;
   const result = [];
-  for (const [weekStart, week] of Object.entries(store?.weeks || {})) {
+  for (const [weekStart, week] of Object.entries(normalized?.weeks || {})) {
     for (const subject of WEEKLY_SUBJECTS) {
       const drawing = week?.subjects?.[subject];
       if (drawing?.strokes?.length > 0) result.push({ weekStart, subject, drawing: cloneDrawing(drawing) });
