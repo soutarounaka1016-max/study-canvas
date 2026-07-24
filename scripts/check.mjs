@@ -50,7 +50,7 @@ for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js",
     failed = true;
   }
 }
-if (!html.includes('meta name="study-canvas-release" content="20260721-playwright-1"')) {
+if (!html.includes('meta name="study-canvas-release" content="20260724-backup-guidance-1"')) {
   console.error("公開確認用のリリース識別子がありません");
   failed = true;
 }
@@ -65,6 +65,28 @@ if (!html.includes("note-ui.js?v=20260721-2")) {
 for (const id of ["noteSelectionHint", "noteSelectionActions", "noteDeleteSelectionButton"]) {
   if (!html.includes(`id="${id}"`)) {
     console.error(`自由ノートの初期化に必要な${id}がありません`);
+    failed = true;
+  }
+}
+for (const guidance of [
+  "全データをバックアップ",
+  "バックアップから復元",
+  "タスクカードと配置は全データバックアップに含まれます。",
+  "週間目標は全データバックアップに含まれます。",
+  "自由ノートは全データバックアップに含まれます。",
+]) {
+  if (!html.includes(guidance)) {
+    console.error(`統合バックアップの正しい案内がありません: ${guidance}`);
+    failed = true;
+  }
+}
+for (const obsoleteGuidance of [
+  "タスクカードは現在の手書きJSONバックアップには含まれません。",
+  "週間目標は現在の手書きJSONバックアップには含まれません。",
+  "自由ノートは現在の手書きJSONバックアップには含まれません。",
+]) {
+  if (html.includes(obsoleteGuidance)) {
+    console.error(`古いバックアップ案内が残っています: ${obsoleteGuidance}`);
     failed = true;
   }
 }
@@ -192,4 +214,4 @@ if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) 
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリ、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリ、バックアップ案内、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");
