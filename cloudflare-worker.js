@@ -55,43 +55,64 @@ export async function handleRequest(request, env) {
   if (!image.ok) return jsonError(image.status, image.code, image.message, cors);
 
   const mode = payload?.mode === "weekly" ? "weekly" : "single";
+  let subject;
+  let weekStart;
   try {
     if (mode === "weekly") {
-      const subject = validateWeeklySubject(payload?.subject);
-      const weekStart = validateWeekStart(payload?.weekStart);
-      const result = await env.AI.run(WORKERS_AI_MODEL, createWeeklyRequest(image.value, subject));
-      const parsed = parseAiJson(result);
-      const tasks = normalizeWeeklyTasks(parsed?.tasks, subject);
-      return json({ tasks, subject, weekStart, model: WORKERS_AI_MODEL }, 200, cors);
+      subject = validateWeeklySubject(payload?.subject);
+      weekStart = validateWeekStart(payload?.weekStart);
     }
+  } catch (error) {
+    return jsonError(400, "INVALID_REQUEST", safeErrorMessage(error) || "入力が正しくありません", cors);
+  }
 
-    const result = await env.AI.run(WORKERS_AI_MODEL, createSingleRequest(image.value));
-    const parsed = parseAiJson(result);
-    const candidate = normalizeSingleCandidate(parsed);
-    return json({ candidate, model: WORKERS_AI_MODEL }, 200, cors);
+  let result;
+  try {
+    const input = mode === "weekly"
+      ? createWeeklyRequest(image.value, subject)
+      : createSingleRequest(image.value);
+    result = await env.AI.run(WORKERS_AI_MODEL, input);
   } catch (error) {
     const message = safeErrorMessage(error);
     if (/429|quota|limit|neuron|capacity/i.test(message)) {
       return jsonError(429, "FREE_TIER_LIMIT", "Workers AIの無料枠または利用上限に達しました", cors);
     }
-    if (/JSON Mode couldn't be met/i.test(message)) {
-      return jsonError(422, "INVALID_AI_RESULT", "AIが読み取り結果を指定形式で返せませんでした", cors);
-    }
     return jsonError(502, "AI_REQUEST_FAILED", message || "Workers AIへ接続できません", cors);
+  }
+
+  try {
+    const parsed = parseAiJson(result);
+    if (mode === "weekly") {
+      const tasks = normalizeWeeklyTasks(parsed?.tasks, subject);
+      return json({ tasks, subject, weekStart, model: WORKERS_AI_MODEL }, 200, cors);
+    }
+    const candidate = normalizeSingleCandidate(parsed);
+    return json({ candidate, model: WORKERS_AI_MODEL }, 200, cors);
+  } catch (error) {
+    return jsonError(422, "INVALID_AI_RESULT", safeErrorMessage(error) || "AIの読み取り結果が正しくありません", cors);
   }
 }
 
 export function createWeeklyRequest(image, subject) {
   return {
-    prompt: [
-      `画像は高校生が手書きした${subject}の週間目標です。`,
-      "画像内に実際に書かれている内容だけを、1行または1項目につき1件の勉強タスクとして抽出してください。",
-      "参考書名、ページ番号、問題数、単元名を可能な限りそのまま残してください。",
-      "予定時間や画像にない内容は推測しないでください。空白や罫線は無視してください。",
-      "読めない部分はwarningへ短く書き、titleへ勝手な補完をしすぎないでください。",
-      "日本語で返してください。",
-    ].join("\n"),
-    image: `data:${image.mimeType};base64,${image.data}`,
+    messages: [
+      {
+        role: "system",
+        content: "画像内の文字を正確に読み取り、指定されたJSON Schemaにだけ従って返してください。説明文やMarkdownは不要です。",
+      },
+      {
+        role: "user",
+        content: [
+          `画像は高校生が手書きした${subject}の週間目標です。`,
+          "画像内に実際に書かれている内容だけを、1行または1項目につき1件の勉強タスクとして抽出してください。",
+          "参考書名、ページ番号、問題数、単元名を可能な限りそのまま残してください。",
+          "予定時間や画像にない内容は推測しないでください。空白や罫線は無視してください。",
+          "読めない部分はwarningへ短く書き、titleへ勝手な補完をしすぎないでください。",
+          "日本語で返してください。",
+        ].join("\n"),
+      },
+    ],
+    image: image.data,
     max_tokens: 900,
     temperature: 0.1,
     response_format: {
@@ -123,8 +144,17 @@ export function createWeeklyRequest(image, subject) {
 
 export function createSingleRequest(image) {
   return {
-    prompt: "画像は高校生の受験勉強メモです。画像内の手書きだけを読み、実行可能な勉強タスク1件へ整理してください。科目は数学、英語、物理、化学、国語、その他のいずれかです。予定時間が書かれていない場合は30分としてください。日本語で返してください。",
-    image: `data:${image.mimeType};base64,${image.data}`,
+    messages: [
+      {
+        role: "system",
+        content: "画像内の文字を正確に読み取り、指定されたJSON Schemaにだけ従って返してください。説明文やMarkdownは不要です。",
+      },
+      {
+        role: "user",
+        content: "画像は高校生の受験勉強メモです。画像内の手書きだけを読み、実行可能な勉強タスク1件へ整理してください。科目は数学、英語、物理、化学、国語、その他のいずれかです。予定時間が書かれていない場合は30分としてください。日本語で返してください。",
+      },
+    ],
+    image: image.data,
     max_tokens: 360,
     temperature: 0.1,
     response_format: {
@@ -146,16 +176,51 @@ export function createSingleRequest(image) {
 }
 
 export function parseAiJson(result) {
-  const value = result?.response ?? result;
+  const candidates = [
+    result?.response,
+    result?.description,
+    result?.choices?.[0]?.message?.content,
+    result?.result?.response,
+    result?.result?.description,
+  ];
+
+  if (result && typeof result === "object" && !Array.isArray(result) && (Array.isArray(result.tasks) || typeof result.title === "string")) {
+    candidates.push(result);
+  }
+
+  for (const candidate of candidates) {
+    const parsed = parseJsonCandidate(candidate);
+    if (parsed) return parsed;
+  }
+  throw new Error("AIからJSONが返りませんでした");
+}
+
+function parseJsonCandidate(value) {
   if (value && typeof value === "object" && !Array.isArray(value)) return value;
-  if (typeof value !== "string") throw new Error("AIからJSONが返りませんでした");
-  const cleaned = value.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  if (Array.isArray(value)) {
+    const text = value
+      .map((part) => typeof part === "string" ? part : typeof part?.text === "string" ? part.text : "")
+      .join("\n")
+      .trim();
+    return text ? parseJsonText(text) : null;
+  }
+  if (typeof value !== "string" || !value.trim()) return null;
+  return parseJsonText(value);
+}
+
+function parseJsonText(text) {
+  const unfenced = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const firstBrace = unfenced.indexOf("{");
+  const lastBrace = unfenced.lastIndexOf("}");
+  const candidate = firstBrace >= 0 && lastBrace > firstBrace
+    ? unfenced.slice(firstBrace, lastBrace + 1)
+    : unfenced;
   try {
-    const parsed = JSON.parse(cleaned);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    const parsed = JSON.parse(candidate);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
     return parsed;
   } catch {
-    throw new Error("AIの回答をJSONとして読み取れませんでした");
+    return null;
   }
 }
 
