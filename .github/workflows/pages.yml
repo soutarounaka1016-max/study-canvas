@@ -116,9 +116,14 @@ jobs:
             if node -e '
               try {
                 const value = JSON.parse(process.argv[1]);
+                const primary = "@cf/moondream/moondream3.1-9B-A2B";
+                const fallback = "@cf/google/gemma-4-26b-a4b-it";
                 const valid = value.ok === true
                   && value.noPaidFallback === true
-                  && value.model === "@cf/google/gemma-4-26b-a4b-it";
+                  && value.model === primary
+                  && value.primaryModel === primary
+                  && value.fallbackModel === fallback
+                  && value.maxRecognitionMs === 18000;
                 process.exit(valid ? 0 : 1);
               } catch {
                 process.exit(1);
@@ -150,45 +155,79 @@ jobs:
           weekly="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-recognition-entry.js?v=20260727-1")"
           grep -F 'weeklyRunRecognition' <<<"${weekly}"
           grep -F 'weeklySaveCandidates' <<<"${weekly}"
-      - name: Verify live Workers AI recognition
+      - name: Verify consecutive English and Japanese Workers AI recognition
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
           import { chromium } from "@playwright/test";
           const browser = await chromium.launch({ headless: true });
-          const context = await browser.newContext({ viewport: { width: 900, height: 360 } });
-          const page = await context.newPage();
-          await page.setContent(`<!doctype html><style>body{margin:0;background:white;font-family:Arial,sans-serif}.sheet{padding:36px;color:#111}.subject{font-size:48px;font-weight:700}.task{margin-top:34px;font-size:64px;font-weight:700}</style><div class="sheet"><div class="subject">MATH WEEKLY PLAN</div><div class="task">INTEGRAL 3 QUESTIONS</div></div>`);
-          await page.screenshot({ path: "weekly-ai-live-request.png" });
+          const cases = [
+            {
+              path: "weekly-ai-live-en.png",
+              html: `<!doctype html><style>body{margin:0;background:white;font-family:Arial,sans-serif}.sheet{padding:36px;color:#111}.subject{font-size:48px;font-weight:700}.task{margin-top:34px;font-size:64px;font-weight:700}</style><div class="sheet"><div class="subject">MATH WEEKLY PLAN</div><div class="task">INTEGRAL 3 QUESTIONS</div></div>`,
+            },
+            {
+              path: "weekly-ai-live-ja.png",
+              html: `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:white;font-family:"Noto Sans CJK JP","Noto Sans JP",sans-serif}.sheet{padding:36px;color:#111}.subject{font-size:48px;font-weight:700}.task{margin-top:26px;font-size:58px;font-weight:700}</style><div class="sheet"><div class="subject">数学 週間目標</div><div class="task">微積分 3問</div><div class="task">チョイス A</div></div>`,
+            },
+          ];
+          for (const item of cases) {
+            const context = await browser.newContext({ viewport: { width: 900, height: 420 } });
+            const page = await context.newPage();
+            await page.setContent(item.html);
+            await page.screenshot({ path: item.path });
+            await context.close();
+          }
           await browser.close();
           NODE
-          image_data="$(base64 -w0 weekly-ai-live-request.png)"
-          payload="$(IMAGE_DATA="${image_data}" node -e 'process.stdout.write(JSON.stringify({mode:"weekly",subject:"数学",weekStart:"2026-07-27",image:{mimeType:"image/png",data:process.env.IMAGE_DATA}}))')"
-          http_code="$(curl --silent --show-error --max-time 120 \
-            --output weekly-ai-live-response.json \
-            --write-out '%{http_code}' \
-            -X POST \
-            -H 'Origin: https://soutarounaka1016-max.github.io' \
-            -H 'Content-Type: application/json' \
-            --data-binary "${payload}" \
-            'https://study-canvas.soutarou-naka-1016.workers.dev/recognize' || true)"
-          echo "Workers AI HTTP status: ${http_code}"
-          cat weekly-ai-live-response.json || true
-          if [ "${http_code}" != "200" ]; then
-            exit 1
-          fi
-          response="$(cat weekly-ai-live-response.json)"
-          node -e '
-            const value = JSON.parse(process.argv[1]);
+
+          recognize_case() {
+            local name="$1"
+            local expected_regex="$2"
+            local image_file="weekly-ai-live-${name}.png"
+            local response_file="weekly-ai-live-${name}-response.json"
+            local image_data payload http_code
+            image_data="$(base64 -w0 "${image_file}")"
+            payload="$(IMAGE_DATA="${image_data}" node -e 'process.stdout.write(JSON.stringify({mode:"weekly",subject:"数学",weekStart:"2026-07-27",image:{mimeType:"image/png",data:process.env.IMAGE_DATA}}))')"
+            http_code="$(curl --silent --show-error --max-time 40 \
+              --output "${response_file}" \
+              --write-out '%{http_code}' \
+              -X POST \
+              -H 'Origin: https://soutarounaka1016-max.github.io' \
+              -H 'Content-Type: application/json' \
+              --data-binary "${payload}" \
+              'https://study-canvas.soutarou-naka-1016.workers.dev/recognize' || true)"
+            echo "${name} Workers AI HTTP status: ${http_code}"
+            cat "${response_file}" || true
+            if [ "${http_code}" != "200" ]; then
+              return 1
+            fi
+            RESPONSE_FILE="${response_file}" EXPECTED_REGEX="${expected_regex}" node --input-type=module <<'NODE'
+            import { readFileSync } from "node:fs";
+            const value = JSON.parse(readFileSync(process.env.RESPONSE_FILE, "utf8"));
+            const titles = Array.isArray(value.tasks) ? value.tasks.map((task) => task?.title || "").join("\n") : "";
             const valid = value.subject === "数学"
               && value.weekStart === "2026-07-27"
+              && value.model === "@cf/moondream/moondream3.1-9B-A2B"
+              && value.fallbackUsed === false
+              && Number.isFinite(value.latencyMs)
+              && value.latencyMs >= 0
+              && value.latencyMs < 10000
               && Array.isArray(value.tasks)
               && value.tasks.length > 0
-              && value.tasks.every((task) => typeof task.title === "string" && task.title.trim());
-            if (!valid) { console.error(value); process.exit(1); }
-            console.log("Workers AI live recognition succeeded with " + value.tasks.length + " task(s).");
-          ' "${response}"
+              && value.tasks.every((task) => typeof task.title === "string" && task.title.trim())
+              && new RegExp(process.env.EXPECTED_REGEX, "i").test(titles);
+            if (!valid) {
+              console.error({ value, titles, expected: process.env.EXPECTED_REGEX });
+              process.exit(1);
+            }
+            console.log(`Workers AI recognized ${value.tasks.length} task(s) in ${value.latencyMs}ms using the primary model.`);
+            NODE
+          }
+
+          recognize_case en 'integral|積分'
+          recognize_case ja '微積|積分|チョイス|choice'
       - name: Verify the published app
         env:
           PLAYWRIGHT_BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
@@ -227,7 +266,9 @@ jobs:
           path: |
             test-results/
             playwright-report/
-            weekly-ai-live-request.png
-            weekly-ai-live-response.json
+            weekly-ai-live-en.png
+            weekly-ai-live-en-response.json
+            weekly-ai-live-ja.png
+            weekly-ai-live-ja-response.json
           if-no-files-found: ignore
           retention-days: 14
