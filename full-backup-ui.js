@@ -6,7 +6,7 @@ import {
   readCurrentFullState,
   serializeFullBackup,
   summarizeFullState,
-} from "./src/full-backup.js?v=20260720-12";
+} from "./src/full-backup.js?v=20260727-1";
 
 const backupButton = document.querySelector("#backupButton");
 const restoreButton = document.querySelector("#restoreButton");
@@ -82,6 +82,7 @@ function renderRestorePreview() {
     `日別 ${summary.dailyPageCount}日・${summary.dailyStrokeCount}本`,
     `タスク ${summary.taskCount}件`,
     `週間目標 ${summary.weeklyPageCount}週・${summary.weeklyStrokeCount}本`,
+    `週間カード ${summary.weeklyCardCount || 0}件`,
     `自由ノート ${summary.notePageCount}ページ・${summary.noteStrokeCount}本`,
   ].join(" / ");
 
@@ -136,11 +137,12 @@ function createRestoreDialog() {
     <fieldset class="full-restore-sections">
       <legend>復元する項目</legend>
       <label><input type="checkbox" name="fullRestoreSection" value="pages" />日別手書き</label>
-      <label><input type="checkbox" name="fullRestoreSection" value="tasks" />タスクとカード位置</label>
+      <label><input type="checkbox" name="fullRestoreSection" value="tasks" />日別タスクとカード位置</label>
       <label><input type="checkbox" name="fullRestoreSection" value="weekly" />週間目標</label>
+      <label><input type="checkbox" name="fullRestoreSection" value="weeklyCards" />週間カード</label>
       <label><input type="checkbox" name="fullRestoreSection" value="notes" />自由ノート</label>
     </fieldset>
-    <p id="legacyBackupNote" class="full-restore-note" hidden>旧形式のバックアップなので、日別手書きだけ復元できます。</p>
+    <p id="legacyBackupNote" class="full-restore-note" hidden>旧形式のバックアップなので、含まれている項目だけ復元できます。</p>
     <p class="full-restore-warning"><strong>復元前の現在データは、統合バックアップとして自動保存します。</strong></p>
     <p id="fullRestoreMessage" class="full-restore-message" role="status" aria-live="polite"></p>
     <div class="full-restore-actions">
