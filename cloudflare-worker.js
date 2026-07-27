@@ -1,4 +1,4 @@
-const WORKERS_AI_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
+const WORKERS_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 const MAX_IMAGE_BYTES = 1_250_000;
 const MAX_REQUEST_BYTES = 1_800_000;
 const WEEKLY_SUBJECTS = ["数学", "英語", "物理", "化学", "その他"];

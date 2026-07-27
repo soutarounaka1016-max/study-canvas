@@ -50,14 +50,23 @@ for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js",
     failed = true;
   }
 }
-if (!html.includes('meta name="study-canvas-release" content="20260724-backup-guidance-1"')) {
+if (!html.includes('meta name="study-canvas-release" content="20260728-weekly-ai-cache-1"')) {
   console.error("公開確認用のリリース識別子がありません");
   failed = true;
 }
-if (!html.includes("release-entry.js?v=20260721-4")) {
+if (!html.includes("release-entry.js?v=20260728-1")) {
   console.error("ブラウザ確認版の公開入口へ更新されていません");
   failed = true;
 }
+const releaseMetaMatch = html.match(/meta name="study-canvas-release" content="([^"]+)"/);
+const releaseEntryMatch = html.match(/release-entry\.js\?v=([^"']+)/);
+const releaseMetaDate = releaseMetaMatch?.[1].match(/^(\d{8})-/)?.[1];
+const releaseEntryDate = releaseEntryMatch?.[1].match(/^(\d{8})-/)?.[1];
+if (!releaseMetaDate || !releaseEntryDate || releaseMetaDate !== releaseEntryDate) {
+  console.error("公開識別子とrelease-entry.jsのキャッシュ日付が一致していません");
+  failed = true;
+}
+
 if (!html.includes("note-ui.js?v=20260721-2")) {
   console.error("自由ノート修正版の公開キャッシュへ更新されていません");
   failed = true;
@@ -100,6 +109,13 @@ if (!noteEntry.includes("note-selection-ui.js?v=20260721-2") || !noteEntry.inclu
 const releaseEntry = await readFile("release-entry.js", "utf8");
 if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2") || !releaseEntry.includes("weekly-recognition-entry.js?v=20260727-1")) {
   console.error("release-entry.jsから日別拡張、タスク化、ホーム、週間AI読み取りの入口が読み込まれていません");
+  failed = true;
+}
+
+const publicEntryDate = Number(releaseEntryMatch?.[1].match(/^(\d{8})-/)?.[1]);
+const importedEntryDates = [...releaseEntry.matchAll(/\?v=(\d{8})-\d+/g)].map((match) => Number(match[1]));
+if (!Number.isFinite(publicEntryDate) || importedEntryDates.some((date) => date > publicEntryDate)) {
+  console.error("release-entry.jsより新しい子モジュールがあるのに公開キャッシュ番号が更新されていません");
   failed = true;
 }
 
@@ -223,9 +239,22 @@ for (const requirement of [
   }
 }
 
+for (const publishedRequirement of [
+  "Verify published release chain",
+  "Verify live Workers AI recognition",
+  "weeklyRunRecognition",
+  "weeklySaveCandidates",
+  "Cache-Control: no-cache",
+]) {
+  if (!pagesWorkflow.includes(publishedRequirement)) {
+    console.error(`公開版のキャッシュ・AI実動確認に${publishedRequirement}がありません`);
+    failed = true;
+  }
+}
+
 const worker = await readFile("cloudflare-worker.js", "utf8");
 const wrangler = await readFile("wrangler.jsonc", "utf8");
-if (!worker.includes("@cf/meta/llama-3.2-11b-vision-instruct") || !worker.includes("env.AI.run") || !worker.includes("noPaidFallback") || worker.includes("GEMINI_API_KEY")) {
+if (!worker.includes("@cf/google/gemma-4-26b-a4b-it") || !worker.includes("env.AI.run") || !worker.includes("noPaidFallback") || worker.includes("GEMINI_API_KEY")) {
   console.error("Workers AIによる画像認識中継を確認できません");
   failed = true;
 }
