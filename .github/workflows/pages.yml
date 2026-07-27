@@ -155,7 +155,7 @@ jobs:
           weekly="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-recognition-entry.js?v=20260727-1")"
           grep -F 'weeklyRunRecognition' <<<"${weekly}"
           grep -F 'weeklySaveCandidates' <<<"${weekly}"
-      - name: Verify consecutive English and Japanese Workers AI recognition
+      - name: Verify live Workers AI recognition consecutively
         shell: bash
         run: |
           set -euo pipefail
