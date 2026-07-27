@@ -10,6 +10,14 @@ async function openWeekly(page) {
   await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
 }
 
+async function ensureWeeklyOpen(page) {
+  const dialog = page.locator("#weeklyDialog[open]");
+  if (await dialog.isVisible()) return;
+  await expect(page.locator("#homeScreen")).toBeVisible();
+  await page.locator('[data-home-route="weekly"]').click();
+  await expect(dialog).toBeVisible();
+}
+
 test("AI候補を修正・選択してカード化し、再読み込み後も保持する", async ({ page }) => {
   await page.route(ENDPOINT, async (route) => {
     await route.fulfill({
@@ -26,7 +34,7 @@ test("AI候補を修正・選択してカード化し、再読み込み後も保
   await openWeekly(page);
   await page.evaluate((key) => localStorage.removeItem(key), CARD_STORAGE_KEY);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.locator('[data-home-route="weekly"]').click();
+  await ensureWeeklyOpen(page);
 
   await page.locator("#weeklyRecognitionButton").click();
   await expect(page.locator("#weeklyRecognitionDialog[open]")).toBeVisible();
@@ -45,7 +53,7 @@ test("AI候補を修正・選択してカード化し、再読み込み後も保
   expect(savedBeforeReload).toContain("青チャート 125〜130");
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.locator('[data-home-route="weekly"]').click();
+  await ensureWeeklyOpen(page);
   await expect(page.locator("#weeklyCardList")).toContainText("青チャート 125〜130");
 
   await page.unroute(ENDPOINT);
