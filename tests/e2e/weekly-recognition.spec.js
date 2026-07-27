@@ -3,19 +3,19 @@ import { expect, test } from "@playwright/test";
 const CARD_STORAGE_KEY = "study-canvas:weekly-cards:v1";
 const ENDPOINT = "https://study-canvas.soutarou-naka-1016.workers.dev/recognize";
 
-async function openWeekly(page) {
+async function gotoHome(page) {
   await page.goto(`./?weekly-ai=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#homeScreen")).toBeVisible();
+}
+
+async function openWeeklyFromHome(page) {
   await page.locator('[data-home-route="weekly"]').click();
   await expect(page.locator("#weeklyDialog")).toHaveAttribute("open", "");
 }
 
-async function ensureWeeklyOpen(page) {
-  const dialog = page.locator("#weeklyDialog");
-  if ((await dialog.getAttribute("open")) !== null) return;
+async function closeWeeklyToHome(page) {
+  await page.locator("#closeWeeklyDialogButton").click();
   await expect(page.locator("#homeScreen")).toBeVisible();
-  await page.locator('[data-home-route="weekly"]').click();
-  await expect(dialog).toHaveAttribute("open", "");
 }
 
 test("AI候補を修正・選択してカード化し、再読み込み後も保持する", async ({ page }) => {
@@ -31,10 +31,11 @@ test("AI候補を修正・選択してカード化し、再読み込み後も保
     });
   });
 
-  await openWeekly(page);
+  await gotoHome(page);
   await page.evaluate((key) => localStorage.removeItem(key), CARD_STORAGE_KEY);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await ensureWeeklyOpen(page);
+  await expect(page.locator("#homeScreen")).toBeVisible();
+  await openWeeklyFromHome(page);
 
   await page.locator("#weeklyRecognitionButton").click();
   await expect(page.locator("#weeklyRecognitionDialog")).toHaveAttribute("open", "");
@@ -52,8 +53,10 @@ test("AI候補を修正・選択してカード化し、再読み込み後も保
   const savedBeforeReload = await page.evaluate((key) => localStorage.getItem(key), CARD_STORAGE_KEY);
   expect(savedBeforeReload).toContain("青チャート 125〜130");
 
+  await closeWeeklyToHome(page);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await ensureWeeklyOpen(page);
+  await expect(page.locator("#homeScreen")).toBeVisible();
+  await openWeeklyFromHome(page);
   await expect(page.locator("#weeklyCardList")).toContainText("青チャート 125〜130");
 
   await page.unroute(ENDPOINT);
