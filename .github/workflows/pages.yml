@@ -99,13 +99,39 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${COMMIT_SHA}" \
-            -d "{\"state\":\"pending\",\"target_url\":\"${RUN_URL}\",\"description\":\"Checking published Study Canvas\",\"context\":\"study-canvas/pages-startup\"}"
+            -d "{\"state\":\"pending\",\"target_url\":\"${RUN_URL}\",\"description\":\"Checking published Study Canvas and Workers AI\",\"context\":\"study-canvas/pages-startup\"}"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Verify Workers AI health
+        shell: bash
+        run: |
+          set -euo pipefail
+          health_url="https://study-canvas.soutarou-naka-1016.workers.dev/health"
+          for attempt in $(seq 1 60); do
+            body="$(curl --silent --show-error --fail --max-time 20 "${health_url}" || true)"
+            if node -e '
+              try {
+                const value = JSON.parse(process.argv[1]);
+                const valid = value.ok === true
+                  && value.noPaidFallback === true
+                  && value.model === "@cf/meta/llama-3.2-11b-vision-instruct";
+                process.exit(valid ? 0 : 1);
+              } catch {
+                process.exit(1);
+              }
+            ' "${body}"; then
+              echo "Workers AI health check succeeded: ${body}"
+              exit 0
+            fi
+            echo "Workers AI is not ready yet (${attempt}/60)."
+            sleep 5
+          done
+          echo "Workers AI health check failed after 5 minutes."
+          exit 1
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify the published app
@@ -124,7 +150,7 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${COMMIT_SHA}" \
-            -d "{\"state\":\"success\",\"target_url\":\"${RUN_URL}\",\"description\":\"Published Study Canvas started successfully\",\"context\":\"study-canvas/pages-startup\"}"
+            -d "{\"state\":\"success\",\"target_url\":\"${RUN_URL}\",\"description\":\"Published Study Canvas and Workers AI verified\",\"context\":\"study-canvas/pages-startup\"}"
       - name: Record published-page failure
         if: failure()
         env:
@@ -137,7 +163,7 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${COMMIT_SHA}" \
-            -d "{\"state\":\"failure\",\"target_url\":\"${RUN_URL}\",\"description\":\"Published Study Canvas failed to start\",\"context\":\"study-canvas/pages-startup\"}"
+            -d "{\"state\":\"failure\",\"target_url\":\"${RUN_URL}\",\"description\":\"Published Study Canvas or Workers AI verification failed\",\"context\":\"study-canvas/pages-startup\"}"
       - name: Upload published-page failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
