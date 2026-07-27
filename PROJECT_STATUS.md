@@ -1,16 +1,16 @@
 # PROJECT_STATUS
 
-更新日: 2026-07-21
+更新日: 2026-07-28
 
 ## 現在の状態
 
-Study Canvasは、日別の手書き計画、タスクカード、週間目標、自由ノート、学習時間集計をまとめて使えるiPad Safari向け受験勉強管理Webアプリです。
+Study Canvasは、日別の手書き計画、タスクカード、科目別週間目標、Workers AIによる週間目標の読み取り、自由ノート、学習時間集計をまとめて使えるiPad Safari向け受験勉強管理Webアプリです。
 
 アプリ起動時に表示するメインメニューから、今日のキャンバス、週間目標、自由ノート、学習時間集計、ページ一覧、バックアップ・復元へ移動できます。自由ノートがホームから開かない不具合は、自由ノート本体の読み込み完了後に`#notes`ルートを再確認する方式へ変更し、Chromium、WebKit、iPad縦向き相当、iPad横向き相当でノート一覧が開くことを確認しています。
 
-Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テスト、ビルド、主要画面移動、タスク保存、画面幅、GitHub Pagesへのデプロイ、公開URLでの起動確認まで自動化しています。公開URL確認ではリポジトリ配下の`/study-canvas/`を保持し、古いPages実行は新しいmainで置き換えます。
+Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テスト、ビルド、主要画面移動、保存、Chromium、WebKit、iPad縦横、GitHub Pagesへのデプロイ、公開URLでの起動確認まで自動化しています。公開URL確認ではリポジトリ配下の`/study-canvas/`を保持し、古いPages実行は新しいmainで置き換えます。
 
-端末内OCRは利用者がiPad Safariで確認した結果、日本語の自由手書きを全く読み取れず、不採用として削除しました。現在のタスク入力補助は、科目と予定時間をワンタップで選び、勉強内容だけ入力する方式です。
+端末内OCRは日本語の自由手書きを実用精度で読めず不採用としました。現在の正式な画像認識は、Cloudflare WorkerとWorkers AIの`@cf/google/gemma-4-26b-a4b-it`を使用します。
 
 ## 実装済み・利用者確認済み
 
@@ -27,6 +27,53 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 複数ページ自由ノートとサムネイル一覧
 - 全データの統合バックアップ、項目別復元、失敗時ロールバック
 - Tesseract.jsによる日本語自由手書きOCRが実用にならないことの実機確認
+
+## Workers AI週間目標認識
+
+### 実装済み
+
+- 週間目標を数学・英語・物理・化学・その他の5科目へ分離
+- 表示中の1科目分だけをPNGへ変換
+- 「AIで読み取る」を押した時だけ画像を外部送信
+- Cloudflare WorkerからWorkers AI bindingを呼び出す
+- 科目は表示中のタブで固定し、AIに推測させない
+- 複数のタスク候補を取得
+- 候補の内容修正、選択解除、削除、手動追加
+- 選択した候補だけを週間カードとして保存
+- 週・科目別に週間カードを永続化
+- 再読み込み後の週間カード復元
+- 週間カードを統合バックアップ・項目別復元へ含める
+- 通信・タイムアウト・AI形式不正では既存データを変更しない
+- 保存失敗時は以前のlocalStorage値へロールバック
+- JSON Schemaが守られない場合は、最終回答の箇条書きを確認付き候補へ補正
+
+### 自動確認済み
+
+- 単体テスト、ビルド
+- Chromium、WebKit、iPad縦向き相当、iPad横向き相当
+- 候補修正と一部選択保存
+- 再読み込み後のカード保持
+- AI失敗時の既存データ不変
+- 本番Workerの`/health`
+- 公開HTMLから公開入口・週間AI JavaScriptまでのno-cache取得連鎖
+- 本番Workerへ合成PNGを送信し、1件以上のタスク候補を取得
+- 公開版の完成したAI読み取り画面をChromiumで確認
+
+### 実機未確認
+
+- 学校支給iPad Safariで本人の日本語手書きを送った場合の認識精度
+- 参考書名、漢字、ページ番号、問題数の誤読率
+- 実際の回線での応答時間
+- 無料枠を日常利用した場合の上限到達頻度
+
+## 公開キャッシュ再発防止
+
+- 公開識別子と`release-entry.js`の参照番号を更新
+- 親の公開入口より新しい子モジュールがある場合は静的テストを失敗させる
+- 公開後にHTML、入口JavaScript、対象機能JavaScriptをno-cacheで取得する
+- 公開版の実DOMでAI操作ボタンを確認する
+- AI変更時は`/health`だけでなく、本番WorkerへPNGを送る実動試験を必須とする
+- この運用ルールを`AGENTS.md`と`DECISIONS.md`へ記録
 
 ## メインメニュー
 
@@ -88,7 +135,7 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - mainの静的ファイルを`_site`へまとめて公開
 - GitHub Pagesへのデプロイ成功をコミット状態へ記録
 - 公開URLでStudy Canvasが起動したことをPlaywrightで確認し、成功状態を記録
-- 公開確認失敗時はスクリーンショット、動画、トレース、HTMLレポートを成果物へ保存
+- 公開確認失敗時はスクリーンショット、動画、トレース、HTMLレポート、AI実動試験のPNGと応答JSONを成果物へ保存
 
 ## 学習時間集計
 
@@ -111,10 +158,9 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 
 ## Gemini連携の旧構成
 
-- Gemini 2.5 FlashとCloudflare Workerを使うコード、テスト、設定手順は保留資料として残しています。
-- Google AI Studioの年齢確認・アカウント条件により、現在は設定と実運用を行いません。
-- 年齢確認、本人確認、保護者承認を回避して利用しません。
-- 再検討には、利用条件を正規に満たすことと、外部画像送信・費用・秘密情報への明示的承認が必要です。
+- Gemini 2.5 FlashとAPIキーを使う旧構成は不採用の資料として残している
+- Google AI Studioの年齢確認・アカウント条件を回避して利用しない
+- 現在の正式構成はCloudflare Workers AI bindingであり、ブラウザ側へAPIキーを保存しない
 
 ## 保存領域
 
@@ -122,10 +168,9 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 旧手書き: `study-canvas:drawing:v1`
 - 日付別タスク: `study-canvas:tasks:v1`
 - 週間目標: `study-canvas:weekly:v1`
+- 週間AIカード: `study-canvas:weekly-cards:v1`
 - 自由ノート: `study-canvas:free-note:v1`内のversion 2形式
 - 旧Gemini接続設定: `study-canvas:ai:v1`
-
-自由ノート導線修正、Playwright導入、GitHub Pages公開自動化では、新しい保存キー、保存形式、バックアップ形式、データ移行を追加していません。画面の現在位置はURLハッシュだけで管理します。
 
 ## 公開先
 
@@ -134,3 +179,4 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 公開URL: `https://soutarounaka1016-max.github.io/study-canvas/`
 - GitHub Pagesデプロイ: 自動確認成功
 - 公開URL起動確認: Chromiumで自動確認成功
+- Workers AI本番PNG実動確認: 成功
