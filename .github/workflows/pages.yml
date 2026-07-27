@@ -160,17 +160,25 @@ jobs:
           const context = await browser.newContext({ viewport: { width: 900, height: 360 } });
           const page = await context.newPage();
           await page.setContent(`<!doctype html><style>body{margin:0;background:white;font-family:Arial,sans-serif}.sheet{padding:36px;color:#111}.subject{font-size:48px;font-weight:700}.task{margin-top:34px;font-size:64px;font-weight:700}</style><div class="sheet"><div class="subject">MATH WEEKLY PLAN</div><div class="task">INTEGRAL 3 QUESTIONS</div></div>`);
-          await page.screenshot({ path: "/tmp/weekly-ai-smoke.png" });
+          await page.screenshot({ path: "weekly-ai-live-request.png" });
           await browser.close();
           NODE
-          image_data="$(base64 -w0 /tmp/weekly-ai-smoke.png)"
+          image_data="$(base64 -w0 weekly-ai-live-request.png)"
           payload="$(IMAGE_DATA="${image_data}" node -e 'process.stdout.write(JSON.stringify({mode:"weekly",subject:"数学",weekStart:"2026-07-27",image:{mimeType:"image/png",data:process.env.IMAGE_DATA}}))')"
-          response="$(curl --silent --show-error --fail-with-body --max-time 120 \
+          http_code="$(curl --silent --show-error --max-time 120 \
+            --output weekly-ai-live-response.json \
+            --write-out '%{http_code}' \
             -X POST \
             -H 'Origin: https://soutarounaka1016-max.github.io' \
             -H 'Content-Type: application/json' \
             --data-binary "${payload}" \
-            'https://study-canvas.soutarou-naka-1016.workers.dev/recognize')"
+            'https://study-canvas.soutarou-naka-1016.workers.dev/recognize' || true)"
+          echo "Workers AI HTTP status: ${http_code}"
+          cat weekly-ai-live-response.json || true
+          if [ "${http_code}" != "200" ]; then
+            exit 1
+          fi
+          response="$(cat weekly-ai-live-response.json)"
           node -e '
             const value = JSON.parse(process.argv[1]);
             const valid = value.subject === "数学"
@@ -219,5 +227,7 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            weekly-ai-live-request.png
+            weekly-ai-live-response.json
           if-no-files-found: ignore
           retention-days: 14
