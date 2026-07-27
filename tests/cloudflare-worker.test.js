@@ -99,7 +99,7 @@ test("healthは主系、補助、最大待ち時間を返す", async () => {
   assert.equal(payload.model, primaryModel);
   assert.equal(payload.primaryModel, primaryModel);
   assert.equal(payload.fallbackModel, fallbackModel);
-  assert.equal(payload.maxRecognitionMs, 28_000);
+  assert.equal(payload.maxRecognitionMs, 18_000);
   assert.equal(payload.noPaidFallback, true);
 });
 
