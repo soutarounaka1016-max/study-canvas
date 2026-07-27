@@ -22,9 +22,10 @@ jobs:
           node-version: 20
       - name: Apply the one-time fix
         run: node scripts/apply-weekly-ai-cache-fix-wrapper.mjs
-      - name: Restore normal CI and commit the completed fix
+      - name: Restore workflow files and commit app changes
         run: |
           git checkout origin/main -- .github/workflows/ci.yml
+          git checkout HEAD -- .github/workflows/pages.yml .github/workflows/apply-weekly-ai-cache-fix.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
