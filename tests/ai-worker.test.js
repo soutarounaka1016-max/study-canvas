@@ -4,7 +4,10 @@ import { createSingleRequest, normalizeSingleCandidate, parseAiJson } from "../c
 
 test("AI service uses the Workers AI vision and JSON payload", () => {
   const payload = createSingleRequest({ mimeType: "image/png", data: "QUJD" });
-  assert.match(payload.image, /^data:image\/png;base64,QUJD$/);
+  assert.equal(payload.image, "QUJD");
+  assert.doesNotMatch(payload.image, /^data:/);
+  assert.equal(payload.messages[0].role, "system");
+  assert.equal(payload.messages[1].role, "user");
   assert.equal(payload.response_format.type, "json_schema");
   assert.equal(payload.response_format.json_schema.additionalProperties, false);
   assert.equal(payload.temperature, 0.1);
