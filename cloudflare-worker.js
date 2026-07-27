@@ -1,4 +1,7 @@
-const WORKERS_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it";
+const PRIMARY_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
+const FALLBACK_MODEL = "@cf/google/gemma-4-26b-a4b-it";
+const PRIMARY_TIMEOUT_MS = 8_000;
+const FALLBACK_TIMEOUT_MS = 10_000;
 const MAX_IMAGE_BYTES = 1_250_000;
 const MAX_REQUEST_BYTES = 1_800_000;
 const WEEKLY_SUBJECTS = ["数学", "英語", "物理", "化学", "その他"];
@@ -27,7 +30,14 @@ export async function handleRequest(request, env) {
     if (!env?.AI || !env?.ALLOWED_ORIGIN) {
       return jsonError(503, "NOT_CONFIGURED", "Workers AIバインディングが設定されていません", cors);
     }
-    return json({ ok: true, model: WORKERS_AI_MODEL, noPaidFallback: true }, 200, cors);
+    return json({
+      ok: true,
+      model: PRIMARY_MODEL,
+      primaryModel: PRIMARY_MODEL,
+      fallbackModel: FALLBACK_MODEL,
+      maxRecognitionMs: PRIMARY_TIMEOUT_MS + FALLBACK_TIMEOUT_MS,
+      noPaidFallback: true,
+    }, 200, cors);
   }
 
   if (!env?.AI || !env?.ALLOWED_ORIGIN) {
@@ -67,79 +77,142 @@ export async function handleRequest(request, env) {
     return jsonError(400, "INVALID_REQUEST", safeErrorMessage(error) || "入力が正しくありません", cors);
   }
 
-  let result;
+  const startedAt = Date.now();
   try {
-    const input = mode === "weekly"
-      ? createWeeklyRequest(image.value, subject)
-      : createSingleRequest(image.value);
-    result = await env.AI.run(WORKERS_AI_MODEL, input);
-  } catch (error) {
-    const message = safeErrorMessage(error);
-    if (/429|quota|limit|neuron|capacity/i.test(message)) {
+    const primaryResult = await runWithTimeout(
+      env.AI.run(
+        PRIMARY_MODEL,
+        mode === "weekly"
+          ? createWeeklyRequest(image.value, subject)
+          : createSingleRequest(image.value),
+      ),
+      PRIMARY_TIMEOUT_MS,
+      "PRIMARY_TIMEOUT",
+    );
+    if (mode === "weekly") {
+      const tasks = parseWeeklyTasksFromResult(primaryResult, subject);
+      return recognitionJson({
+        tasks,
+        subject,
+        weekStart,
+        model: PRIMARY_MODEL,
+        fallbackUsed: false,
+        latencyMs: Date.now() - startedAt,
+      }, cors);
+    }
+    const candidate = parseSingleCandidateFromResult(primaryResult);
+    return recognitionJson({
+      candidate,
+      model: PRIMARY_MODEL,
+      fallbackUsed: false,
+      latencyMs: Date.now() - startedAt,
+    }, cors);
+  } catch (primaryError) {
+    if (isLimitError(primaryError)) {
       return jsonError(429, "FREE_TIER_LIMIT", "Workers AIの無料枠または利用上限に達しました", cors);
     }
-    return jsonError(502, "AI_REQUEST_FAILED", message || "Workers AIへ接続できません", cors);
-  }
 
-  try {
-    if (mode === "weekly") {
-      const tasks = parseWeeklyTasksFromResult(result, subject);
-      return json({ tasks, subject, weekStart, model: WORKERS_AI_MODEL }, 200, cors);
+    try {
+      const fallbackResult = await runWithTimeout(
+        env.AI.run(
+          FALLBACK_MODEL,
+          mode === "weekly"
+            ? createGemmaWeeklyRequest(image.value, subject)
+            : createGemmaSingleRequest(image.value),
+        ),
+        FALLBACK_TIMEOUT_MS,
+        "FALLBACK_TIMEOUT",
+      );
+      if (mode === "weekly") {
+        const tasks = parseWeeklyTasksFromResult(fallbackResult, subject);
+        return recognitionJson({
+          tasks,
+          subject,
+          weekStart,
+          model: FALLBACK_MODEL,
+          fallbackUsed: true,
+          latencyMs: Date.now() - startedAt,
+        }, cors);
+      }
+      const candidate = normalizeSingleCandidate(parseAiJson(fallbackResult));
+      return recognitionJson({
+        candidate,
+        model: FALLBACK_MODEL,
+        fallbackUsed: true,
+        latencyMs: Date.now() - startedAt,
+      }, cors);
+    } catch (fallbackError) {
+      if (isLimitError(fallbackError)) {
+        return jsonError(429, "FREE_TIER_LIMIT", "Workers AIの無料枠または利用上限に達しました", cors);
+      }
+      const timedOut = isTimeoutError(primaryError) || isTimeoutError(fallbackError);
+      return jsonError(
+        timedOut ? 504 : 422,
+        timedOut ? "AI_TIMEOUT" : "INVALID_AI_RESULT",
+        timedOut
+          ? "画像認識が時間内に完了しませんでした。既存のカードは変更されていません"
+          : "画像からタスク候補を作れませんでした。既存のカードは変更されていません",
+        cors,
+        {
+          primary: safeDiagnostic(primaryError),
+          fallback: safeDiagnostic(fallbackError),
+        },
+      );
     }
-    const candidate = normalizeSingleCandidate(parseAiJson(result));
-    return json({ candidate, model: WORKERS_AI_MODEL }, 200, cors);
-  } catch (error) {
-    return jsonError(
-      422,
-      "INVALID_AI_RESULT",
-      safeErrorMessage(error) || "AIの読み取り結果が正しくありません",
-      cors,
-      { diagnostic: describeAiShape(result) },
-    );
   }
 }
 
 export function createWeeklyRequest(image, subject) {
+  return {
+    task: "query",
+    image: `data:${image.mimeType};base64,${image.data}`,
+    question: [
+      `この画像は高校生が手書きした${subject}の週間目標です。`,
+      "画像に実際に書かれている内容だけを読み取ってください。",
+      "1行または1項目を1件の勉強タスクにしてください。",
+      "参考書名、ページ番号、問題数、単元名、英数字を可能な限りそのまま残してください。",
+      "予定時間、優先順位、画像にない内容は推測しないでください。",
+      "返答はMarkdownを使わず、次のJSONだけにしてください。",
+      '{"tasks":[{"title":"読み取った内容","confidence":0.9,"warning":""}]}',
+      "読めない箇所がある場合だけwarningへ短く書いてください。",
+    ].join("\n"),
+    reasoning: false,
+    temperature: 0,
+    top_p: 0.8,
+    max_tokens: 1200,
+    stream: false,
+  };
+}
+
+export function createSingleRequest(image) {
+  return {
+    task: "query",
+    image: `data:${image.mimeType};base64,${image.data}`,
+    question: [
+      "画像内の勉強メモだけを読み、勉強タスク1件へ整理してください。",
+      "科目は数学、英語、物理、化学、国語、その他のいずれかです。",
+      "返答はMarkdownを使わず、次のJSONだけにしてください。",
+      '{"subject":"数学","title":"読み取った内容","minutes":30,"confidence":0.9,"warning":""}',
+    ].join("\n"),
+    reasoning: false,
+    temperature: 0,
+    top_p: 0.8,
+    max_tokens: 700,
+    stream: false,
+  };
+}
+
+export function createGemmaWeeklyRequest(image, subject) {
   const prompt = [
     `画像は高校生が手書きした${subject}の週間目標です。`,
     "画像内に実際に書かれている内容だけを、1行または1項目につき1件の勉強タスクとして抽出してください。",
     "参考書名、ページ番号、問題数、単元名を可能な限りそのまま残してください。",
     "予定時間や画像にない内容は推測しないでください。空白や罫線は無視してください。",
-    "読めない部分はwarningへ短く書き、titleへ勝手な補完をしすぎないでください。",
     "日本語で返してください。JSON Schemaが利用できない場合も、タスクだけを1行に1件ずつ返してください。",
   ].join("\n");
   return {
     messages: [
-      {
-        role: "system",
-        content: "画像内の文字を正確に読み取り、指定されたJSON Schemaに従って返してください。説明文やMarkdownは不要です。",
-      },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } },
-        ],
-      },
-    ],
-    image: image.data,
-    max_completion_tokens: 1800,
-    temperature: 0.1,
-    response_format: {
-      type: "json_schema",
-      json_schema: weeklyTaskSchema(),
-    },
-  };
-}
-
-export function createSingleRequest(image) {
-  const prompt = "画像は高校生の受験勉強メモです。画像内の手書きだけを読み、実行可能な勉強タスク1件へ整理してください。科目は数学、英語、物理、化学、国語、その他のいずれかです。予定時間が書かれていない場合は30分としてください。日本語で返してください。";
-  return {
-    messages: [
-      {
-        role: "system",
-        content: "画像内の文字を正確に読み取り、指定されたJSON Schemaに従って返してください。説明文やMarkdownは不要です。",
-      },
+      { role: "system", content: "画像内の文字を正確に読み取り、指定されたJSON Schemaに従って返してください。" },
       {
         role: "user",
         content: [
@@ -151,21 +224,26 @@ export function createSingleRequest(image) {
     image: image.data,
     max_completion_tokens: 900,
     temperature: 0.1,
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        type: "object",
-        properties: {
-          subject: { type: "string", enum: SINGLE_SUBJECTS },
-          title: { type: "string", maxLength: 120 },
-          minutes: { type: "integer", minimum: 5, maximum: 600 },
-          confidence: { type: "number", minimum: 0, maximum: 1 },
-          warning: { type: "string", maxLength: 160 },
-        },
-        required: ["subject", "title", "minutes", "confidence", "warning"],
-        additionalProperties: false,
+    response_format: { type: "json_schema", json_schema: weeklyTaskSchema() },
+  };
+}
+
+export function createGemmaSingleRequest(image) {
+  return {
+    messages: [
+      { role: "system", content: "画像内の文字を正確に読み取り、指定されたJSON Schemaに従って返してください。" },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "画像内の勉強メモだけを読み、タスク1件へ整理してください。" },
+          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } },
+        ],
       },
-    },
+    ],
+    image: image.data,
+    max_completion_tokens: 600,
+    temperature: 0.1,
+    response_format: { type: "json_schema", json_schema: singleTaskSchema() },
   };
 }
 
@@ -193,16 +271,42 @@ function weeklyTaskSchema() {
   };
 }
 
+function singleTaskSchema() {
+  return {
+    type: "object",
+    properties: {
+      subject: { type: "string", enum: SINGLE_SUBJECTS },
+      title: { type: "string", maxLength: 120 },
+      minutes: { type: "integer", minimum: 5, maximum: 600 },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      warning: { type: "string", maxLength: 160 },
+    },
+    required: ["subject", "title", "minutes", "confidence", "warning"],
+    additionalProperties: false,
+  };
+}
+
 export function parseWeeklyTasksFromResult(result, subject) {
   try {
     return normalizeWeeklyTasks(parseAiJson(result)?.tasks, subject);
   } catch (jsonError) {
-    const texts = collectFinalTexts(result);
-    for (const text of texts) {
+    for (const text of collectFinalTexts(result)) {
       const tasks = parseWeeklyText(text);
       if (tasks.length > 0) return tasks;
     }
     throw jsonError;
+  }
+}
+
+export function parseSingleCandidateFromResult(result) {
+  try {
+    return normalizeSingleCandidate(parseAiJson(result));
+  } catch (jsonError) {
+    const text = collectFinalTexts(result).find((value) => value.trim());
+    if (!text) throw jsonError;
+    const title = text.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!title) throw jsonError;
+    return { subject: "その他", title, minutes: 30, confidence: 0.5, warning: FALLBACK_WARNING };
   }
 }
 
@@ -218,13 +322,10 @@ function findStructuredJson(value, depth, visited) {
   if (typeof value !== "object") return null;
   if (visited.has(value)) return null;
   visited.add(value);
-
-  if (!Array.isArray(value) && (Array.isArray(value.tasks) || typeof value.title === "string")) {
-    return value;
-  }
+  if (!Array.isArray(value) && (Array.isArray(value.tasks) || typeof value.title === "string")) return value;
 
   const priorityKeys = [
-    "response", "description", "output_text", "output", "content", "text",
+    "answer", "response", "description", "output_text", "output", "content", "text",
     "message", "choices", "result", "data", "reasoning_content", "reasoning",
   ];
   if (!Array.isArray(value)) {
@@ -234,9 +335,7 @@ function findStructuredJson(value, depth, visited) {
       if (found) return found;
     }
   }
-
-  const entries = Array.isArray(value) ? value : Object.values(value);
-  for (const entry of entries) {
+  for (const entry of Array.isArray(value) ? value : Object.values(value)) {
     const found = findStructuredJson(entry, depth + 1, visited);
     if (found) return found;
   }
@@ -256,8 +355,7 @@ function parseJsonText(text) {
     : withoutThinking;
   try {
     const parsed = JSON.parse(candidate);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
-    return parsed;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -265,12 +363,14 @@ function parseJsonText(text) {
 
 function collectFinalTexts(result) {
   const values = [
+    result?.answer,
     result?.response,
     result?.description,
     result?.output_text,
     result?.output,
     result?.choices?.[0]?.message?.content,
     result?.choices?.[0]?.text,
+    result?.result?.answer,
     result?.result?.response,
     result?.result?.description,
     result?.result?.output_text,
@@ -300,7 +400,6 @@ export function parseWeeklyText(text) {
     .replace(/```/g, "")
     .trim();
   if (!cleaned) return [];
-
   const lines = cleaned
     .split(/\r?\n/)
     .map((line) => line
@@ -310,10 +409,9 @@ export function parseWeeklyText(text) {
     .filter((line) => line.length > 0)
     .filter((line) => !/^(?:以下|読み取り結果|結果|タスク一覧|tasks?|json|warning|confidence)\s*[:：]?$/i.test(line));
 
-  const candidates = lines.length > 0 ? lines : [cleaned];
   const seen = new Set();
   const tasks = [];
-  for (const candidate of candidates) {
+  for (const candidate of lines.length > 0 ? lines : [cleaned]) {
     const title = candidate.replace(/\s+/g, " ").slice(0, 120).trim();
     if (!title || seen.has(title) || /^[{}\[\],]+$/.test(title)) continue;
     seen.add(title);
@@ -365,16 +463,40 @@ export function describeAiShape(value, depth = 0) {
   if (typeof value !== "object") return { type: typeof value };
   if (depth >= 3) return { type: Array.isArray(value) ? "array" : "object" };
   if (Array.isArray(value)) {
-    return {
-      type: "array",
-      length: value.length,
-      first: value.length > 0 ? describeAiShape(value[0], depth + 1) : undefined,
-    };
+    return { type: "array", length: value.length, first: value.length > 0 ? describeAiShape(value[0], depth + 1) : undefined };
   }
   const keys = Object.keys(value).slice(0, 24);
   const fields = {};
   for (const key of keys) fields[key] = describeAiShape(value[key], depth + 1);
   return { type: "object", keys, fields };
+}
+
+function runWithTimeout(promise, timeoutMs, code) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        const error = new Error(code);
+        error.code = code;
+        reject(error);
+      }, timeoutMs);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+function isTimeoutError(error) {
+  return /TIMEOUT/i.test(error?.code || "") || /timeout|timed out/i.test(safeErrorMessage(error));
+}
+
+function isLimitError(error) {
+  return /429|quota|limit|neuron|capacity/i.test(safeErrorMessage(error));
+}
+
+function safeDiagnostic(error) {
+  if (isTimeoutError(error)) return "timeout";
+  if (isLimitError(error)) return "limit";
+  return "unusable-result";
 }
 
 function validateImage(image) {
@@ -427,6 +549,10 @@ function corsHeaders(origin, allowedOrigin) {
 
 function safeErrorMessage(error) {
   return typeof error?.message === "string" ? error.message.trim().slice(0, 180) : "";
+}
+
+function recognitionJson(value, cors) {
+  return json(value, 200, cors);
 }
 
 function json(value, status, headers) {

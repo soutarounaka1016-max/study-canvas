@@ -2,22 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSingleRequest, normalizeSingleCandidate, parseAiJson } from "../cloudflare-worker.js";
 
-test("AI service uses the Workers AI vision and JSON payload", () => {
+test("AI service uses the Moondream query payload", () => {
   const payload = createSingleRequest({ mimeType: "image/png", data: "QUJD" });
-  assert.equal(payload.image, "QUJD");
-  assert.doesNotMatch(payload.image, /^data:/);
-  assert.equal(payload.messages[0].role, "system");
-  assert.equal(payload.messages[1].role, "user");
-  const imagePart = payload.messages[1].content.find((part) => part.type === "image_url");
-  assert.equal(imagePart.image_url.url, "data:image/png;base64,QUJD");
-  assert.equal(payload.response_format.type, "json_schema");
-  assert.equal(payload.response_format.json_schema.additionalProperties, false);
-  assert.equal(payload.max_completion_tokens, 900);
-  assert.equal(payload.temperature, 0.1);
+  assert.equal(payload.task, "query");
+  assert.equal(payload.image, "data:image/png;base64,QUJD");
+  assert.match(payload.question, /勉強メモ/);
+  assert.equal(payload.reasoning, false);
+  assert.equal(payload.stream, false);
+  assert.equal(payload.max_tokens, 700);
+  assert.equal(payload.temperature, 0);
 });
 
 test("AI service validates the structured candidate", () => {
-  const candidate = normalizeSingleCandidate(parseAiJson({ response: JSON.stringify({
+  const candidate = normalizeSingleCandidate(parseAiJson({ answer: JSON.stringify({
     subject: "化学",
     title: "有機化学 例題",
     minutes: 34,
@@ -31,5 +28,5 @@ test("AI service validates the structured candidate", () => {
     confidence: 0.8,
     warning: "",
   });
-  assert.throws(() => parseAiJson({ response: "" }), /JSON/);
+  assert.throws(() => parseAiJson({ answer: "" }), /JSON/);
 });
