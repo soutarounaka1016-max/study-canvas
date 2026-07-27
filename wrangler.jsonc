@@ -1,9 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "study-canvas-ai",
+  "name": "study-canvas",
   "main": "cloudflare-worker.js",
   "compatibility_date": "2026-07-20",
   "vars": {
     "ALLOWED_ORIGIN": "https://soutarounaka1016-max.github.io"
+  },
+  "ai": {
+    "binding": "AI"
   }
 }
