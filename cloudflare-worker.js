@@ -1,7 +1,7 @@
 const PRIMARY_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 const FALLBACK_MODEL = "@cf/google/gemma-4-26b-a4b-it";
-const PRIMARY_TIMEOUT_MS = 10_000;
-const FALLBACK_TIMEOUT_MS = 18_000;
+const PRIMARY_TIMEOUT_MS = 8_000;
+const FALLBACK_TIMEOUT_MS = 10_000;
 const MAX_IMAGE_BYTES = 1_250_000;
 const MAX_REQUEST_BYTES = 1_800_000;
 const WEEKLY_SUBJECTS = ["数学", "英語", "物理", "化学", "その他"];
@@ -243,10 +243,7 @@ export function createGemmaSingleRequest(image) {
     image: image.data,
     max_completion_tokens: 600,
     temperature: 0.1,
-    response_format: {
-      type: "json_schema",
-      json_schema: singleTaskSchema(),
-    },
+    response_format: { type: "json_schema", json_schema: singleTaskSchema() },
   };
 }
 
@@ -325,7 +322,6 @@ function findStructuredJson(value, depth, visited) {
   if (typeof value !== "object") return null;
   if (visited.has(value)) return null;
   visited.add(value);
-
   if (!Array.isArray(value) && (Array.isArray(value.tasks) || typeof value.title === "string")) return value;
 
   const priorityKeys = [
@@ -339,7 +335,6 @@ function findStructuredJson(value, depth, visited) {
       if (found) return found;
     }
   }
-
   for (const entry of Array.isArray(value) ? value : Object.values(value)) {
     const found = findStructuredJson(entry, depth + 1, visited);
     if (found) return found;
@@ -405,7 +400,6 @@ export function parseWeeklyText(text) {
     .replace(/```/g, "")
     .trim();
   if (!cleaned) return [];
-
   const lines = cleaned
     .split(/\r?\n/)
     .map((line) => line
