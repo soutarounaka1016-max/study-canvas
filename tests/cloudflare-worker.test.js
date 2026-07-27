@@ -27,7 +27,7 @@ test("Workers AIから複数タスクを返す", async () => {
   const payload = await response.json();
   assert.equal(response.status, 200);
   assert.equal(payload.tasks.length, 2);
-  assert.match(model, /llama-3\.2-11b-vision/);
+  assert.match(model, /gemma-4-26b-a4b/);
   assert.match(input.prompt, /数学/);
   assert.equal(response.headers.get("Access-Control-Allow-Origin"), origin);
 });

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260724-backup-guidance-1";
+const EXPECTED_RELEASE = "20260728-weekly-ai-cache-1";
+const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260728-1";
 const TASK_STORAGE_KEY = "study-canvas:tasks:v1";
 
 function watchCriticalErrors(page) {
@@ -37,6 +38,14 @@ test("@published 最新版が起動し重大なJavaScriptエラーがない", as
 
   await expect(page.locator("#homeScreen")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Study Canvas" })).toBeVisible();
+  await expect(page.locator('script[src^="release-entry.js"]')).toHaveAttribute("src", EXPECTED_RELEASE_ENTRY);
+  await page.locator('[data-home-route="weekly"]').click();
+  await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
+  await page.locator("#weeklyRecognitionButton").click();
+  await expect(page.locator("#weeklyRunRecognition")).toBeVisible();
+  await expect(page.locator("#weeklyAddCandidate")).toBeVisible();
+  await expect(page.locator("#weeklySaveCandidates")).toBeAttached();
+  await expect(page.locator(".weekly-recognition-placeholder")).toHaveCount(0);
   await expect(page.locator("html")).not.toHaveAttribute("data-note-load-error", "true");
   await expectNoCriticalErrors(errors);
 });
