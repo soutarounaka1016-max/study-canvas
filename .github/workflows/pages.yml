@@ -118,7 +118,7 @@ jobs:
                 const value = JSON.parse(process.argv[1]);
                 const valid = value.ok === true
                   && value.noPaidFallback === true
-                  && value.model === "@cf/meta/llama-3.2-11b-vision-instruct";
+                  && value.model === "@cf/google/gemma-4-26b-a4b-it";
                 process.exit(valid ? 0 : 1);
               } catch {
                 process.exit(1);
@@ -134,6 +134,53 @@ jobs:
           exit 1
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Verify published release chain
+        env:
+          BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
+          EXPECTED_RELEASE: 20260728-weekly-ai-cache-1
+          EXPECTED_ENTRY: release-entry.js?v=20260728-1
+        shell: bash
+        run: |
+          set -euo pipefail
+          html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}?release-chain=${GITHUB_SHA}")"
+          grep -F "meta name=\"study-canvas-release\" content=\"${EXPECTED_RELEASE}\"" <<<"${html}"
+          grep -F "src=\"${EXPECTED_ENTRY}\"" <<<"${html}"
+          entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_ENTRY}")"
+          grep -F 'weekly-recognition-entry.js?v=20260727-1' <<<"${entry}"
+          weekly="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-recognition-entry.js?v=20260727-1")"
+          grep -F 'weeklyRunRecognition' <<<"${weekly}"
+          grep -F 'weeklySaveCandidates' <<<"${weekly}"
+      - name: Verify live Workers AI recognition
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { chromium } from "@playwright/test";
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({ viewport: { width: 900, height: 360 } });
+          const page = await context.newPage();
+          await page.setContent(`<!doctype html><style>body{margin:0;background:white;font-family:Arial,sans-serif}.sheet{padding:36px;color:#111}.subject{font-size:48px;font-weight:700}.task{margin-top:34px;font-size:64px;font-weight:700}</style><div class="sheet"><div class="subject">MATH WEEKLY PLAN</div><div class="task">INTEGRAL 3 QUESTIONS</div></div>`);
+          await page.screenshot({ path: "/tmp/weekly-ai-smoke.png" });
+          await browser.close();
+          NODE
+          image_data="$(base64 -w0 /tmp/weekly-ai-smoke.png)"
+          payload="$(IMAGE_DATA="${image_data}" node -e 'process.stdout.write(JSON.stringify({mode:"weekly",subject:"数学",weekStart:"2026-07-27",image:{mimeType:"image/png",data:process.env.IMAGE_DATA}}))')"
+          response="$(curl --silent --show-error --fail-with-body --max-time 120 \
+            -X POST \
+            -H 'Origin: https://soutarounaka1016-max.github.io' \
+            -H 'Content-Type: application/json' \
+            --data-binary "${payload}" \
+            'https://study-canvas.soutarou-naka-1016.workers.dev/recognize')"
+          node -e '
+            const value = JSON.parse(process.argv[1]);
+            const valid = value.subject === "数学"
+              && value.weekStart === "2026-07-27"
+              && Array.isArray(value.tasks)
+              && value.tasks.length > 0
+              && value.tasks.every((task) => typeof task.title === "string" && task.title.trim());
+            if (!valid) { console.error(value); process.exit(1); }
+            console.log("Workers AI live recognition succeeded with " + value.tasks.length + " task(s).");
+          ' "${response}"
       - name: Verify the published app
         env:
           PLAYWRIGHT_BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
