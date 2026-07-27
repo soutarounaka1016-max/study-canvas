@@ -7,15 +7,15 @@ async function openWeekly(page) {
   await page.goto(`./?weekly-ai=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#homeScreen")).toBeVisible();
   await page.locator('[data-home-route="weekly"]').click();
-  await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
+  await expect(page.locator("#weeklyDialog")).toHaveAttribute("open", "");
 }
 
 async function ensureWeeklyOpen(page) {
-  const dialog = page.locator("#weeklyDialog[open]");
-  if (await dialog.isVisible()) return;
+  const dialog = page.locator("#weeklyDialog");
+  if ((await dialog.getAttribute("open")) !== null) return;
   await expect(page.locator("#homeScreen")).toBeVisible();
   await page.locator('[data-home-route="weekly"]').click();
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute("open", "");
 }
 
 test("AI候補を修正・選択してカード化し、再読み込み後も保持する", async ({ page }) => {
@@ -37,7 +37,7 @@ test("AI候補を修正・選択してカード化し、再読み込み後も保
   await ensureWeeklyOpen(page);
 
   await page.locator("#weeklyRecognitionButton").click();
-  await expect(page.locator("#weeklyRecognitionDialog[open]")).toBeVisible();
+  await expect(page.locator("#weeklyRecognitionDialog")).toHaveAttribute("open", "");
   await page.locator("#weeklyRunRecognition").click();
   await expect(page.locator(".weekly-candidate-row")).toHaveCount(2);
 
