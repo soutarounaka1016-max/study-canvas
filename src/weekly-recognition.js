@@ -2,8 +2,6 @@ export const WEEKLY_RECOGNITION_ENDPOINT = "https://study-canvas.soutarou-naka-1
 export const MAX_WEEKLY_RECOGNITION_IMAGE_BYTES = 1_250_000;
 export const MAX_WEEKLY_RECOGNITION_TASKS = 16;
 export const WEEKLY_RECOGNITION_SUBJECTS = ["数学", "英語", "物理", "化学", "その他"];
-const MAX_RECOGNITION_ATTEMPTS = 2;
-const RETRY_DELAY_MS = 450;
 
 export async function recognizeWeeklyCanvas({
   fetchImpl = globalThis.fetch,
@@ -18,43 +16,22 @@ export async function recognizeWeeklyCanvas({
   const safeSubject = validateSubject(subject);
   const safeWeekStart = validateWeekStart(weekStart);
   const image = parseImageDataUrl(imageDataUrl);
-  const body = JSON.stringify({
-    mode: "weekly",
-    subject: safeSubject,
-    weekStart: safeWeekStart,
-    image: { mimeType: image.mimeType, data: image.data },
+
+  const response = await fetchImpl(`${safeEndpoint}/recognize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mode: "weekly",
+      subject: safeSubject,
+      weekStart: safeWeekStart,
+      image: { mimeType: image.mimeType, data: image.data },
+    }),
+    signal,
   });
 
-  let lastError;
-  for (let attempt = 1; attempt <= MAX_RECOGNITION_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetchImpl(`${safeEndpoint}/recognize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-        signal,
-      });
-      const payload = await readJsonResponse(response);
-      if (response.ok) return normalizeWeeklyRecognitionTasks(payload?.tasks, safeSubject);
-
-      const error = createRecognitionError(response.status, payload);
-      if (attempt < MAX_RECOGNITION_ATTEMPTS && isRetryableResponse(response.status, payload)) {
-        lastError = error;
-        await waitBeforeRetry(signal);
-        continue;
-      }
-      throw error;
-    } catch (error) {
-      if (signal?.aborted || error?.name === "AbortError") throw error;
-      if (attempt < MAX_RECOGNITION_ATTEMPTS && isRetryableNetworkError(error)) {
-        lastError = error;
-        await waitBeforeRetry(signal);
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw lastError || new Error("AIで読み取れませんでした。既存のカードは変更されていません");
+  const payload = await readJsonResponse(response);
+  if (!response.ok) throw createRecognitionError(response.status, payload);
+  return normalizeWeeklyRecognitionTasks(payload?.tasks, safeSubject);
 }
 
 export function normalizeWeeklyRecognitionTasks(value, subject) {
@@ -119,37 +96,11 @@ async function readJsonResponse(response) {
   }
 }
 
-function isRetryableResponse(status, payload) {
-  const code = payload?.error?.code;
-  return status === 502 || status === 503 || status === 504 || code === "AI_TIMEOUT" || code === "AI_REQUEST_FAILED";
-}
-
-function isRetryableNetworkError(error) {
-  if (!error) return false;
-  if (error?.name === "TypeError") return true;
-  return /network|fetch|connection|temporar/i.test(String(error?.message || ""));
-}
-
-function waitBeforeRetry(signal) {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
-      return;
-    }
-    const timer = setTimeout(resolve, RETRY_DELAY_MS);
-    signal?.addEventListener("abort", () => {
-      clearTimeout(timer);
-      reject(new DOMException("Aborted", "AbortError"));
-    }, { once: true });
-  });
-}
-
 function createRecognitionError(status, payload) {
   const code = payload?.error?.code;
   if (status === 413) return new Error("画像が大きすぎます。書き込みを減らして再度試してください");
   if (status === 429 || code === "FREE_TIER_LIMIT") return new Error("AIの無料枠または利用回数の上限に達しました。時間を置いて再度試してください");
   if (status === 403) return new Error("公開元が許可されていません。Study Canvasの公開版から実行してください");
-  if (status === 504 || code === "AI_TIMEOUT") return new Error("AIの読み取りが時間内に終わりませんでした。既存のカードは変更されていません");
   if (status >= 500) return new Error("AI側で一時的な問題が起きています。既存のカードは変更されていません");
   const message = typeof payload?.error?.message === "string" ? payload.error.message.trim() : "";
   return new Error(message || "AIで読み取れませんでした。既存のカードは変更されていません");
