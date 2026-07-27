@@ -1,26 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGeminiPayload, parseGeminiCandidate } from "../cloudflare-worker.js";
+import { createSingleRequest, normalizeSingleCandidate, parseAiJson } from "../cloudflare-worker.js";
 
-test("AI service uses the fixed free-tier model payload", () => {
-  const payload = createGeminiPayload({ mimeType: "image/png", data: "QUJD" });
-  assert.equal(payload.contents.length, 1);
-  assert.equal(payload.contents[0].parts.length, 2);
-  assert.equal(payload.contents[0].parts[1].inlineData.data, "QUJD");
-  assert.equal(payload.generationConfig.responseMimeType, "application/json");
-  assert.equal(payload.generationConfig.responseJsonSchema.additionalProperties, false);
+test("AI service uses the Workers AI vision and JSON payload", () => {
+  const payload = createSingleRequest({ mimeType: "image/png", data: "QUJD" });
+  assert.match(payload.image, /^data:image\/png;base64,QUJD$/);
+  assert.equal(payload.response_format.type, "json_schema");
+  assert.equal(payload.response_format.json_schema.additionalProperties, false);
+  assert.equal(payload.temperature, 0.1);
 });
 
 test("AI service validates the structured candidate", () => {
-  const candidate = parseGeminiCandidate({
-    candidates: [{ content: { parts: [{ text: JSON.stringify({
-      subject: "化学",
-      title: "有機化学 例題",
-      minutes: 34,
-      confidence: 0.8,
-      warning: "",
-    }) }] } }],
-  });
+  const candidate = normalizeSingleCandidate(parseAiJson({ response: JSON.stringify({
+    subject: "化学",
+    title: "有機化学 例題",
+    minutes: 34,
+    confidence: 0.8,
+    warning: "",
+  }) }));
   assert.deepEqual(candidate, {
     subject: "化学",
     title: "有機化学 例題",
@@ -28,5 +25,5 @@ test("AI service validates the structured candidate", () => {
     confidence: 0.8,
     warning: "",
   });
-  assert.throws(() => parseGeminiCandidate({ candidates: [] }), /候補/);
+  assert.throws(() => parseAiJson({ response: "" }), /JSON/);
 });
