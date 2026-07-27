@@ -8,8 +8,11 @@ test("AI service uses the Workers AI vision and JSON payload", () => {
   assert.doesNotMatch(payload.image, /^data:/);
   assert.equal(payload.messages[0].role, "system");
   assert.equal(payload.messages[1].role, "user");
+  const imagePart = payload.messages[1].content.find((part) => part.type === "image_url");
+  assert.equal(imagePart.image_url.url, "data:image/png;base64,QUJD");
   assert.equal(payload.response_format.type, "json_schema");
   assert.equal(payload.response_format.json_schema.additionalProperties, false);
+  assert.equal(payload.max_completion_tokens, 900);
   assert.equal(payload.temperature, 0.1);
 });
 
