@@ -187,9 +187,13 @@ jobs:
             local expected_regex="$2"
             local image_file="weekly-ai-live-${name}.png"
             local response_file="weekly-ai-live-${name}-response.json"
-            local image_data payload http_code
+            local error_file="weekly-ai-live-${name}-curl-error.txt"
+            local image_data payload http_code curl_exit
             image_data="$(base64 -w0 "${image_file}")"
             payload="$(IMAGE_DATA="${image_data}" node -e 'process.stdout.write(JSON.stringify({mode:"weekly",subject:"数学",weekStart:"2026-07-27",image:{mimeType:"image/png",data:process.env.IMAGE_DATA}}))')"
+            : > "${response_file}"
+            : > "${error_file}"
+            set +e
             http_code="$(curl --silent --show-error --max-time 40 \
               --output "${response_file}" \
               --write-out '%{http_code}' \
@@ -197,33 +201,38 @@ jobs:
               -H 'Origin: https://soutarounaka1016-max.github.io' \
               -H 'Content-Type: application/json' \
               --data-binary "${payload}" \
-              'https://study-canvas.soutarou-naka-1016.workers.dev/recognize' || true)"
-            echo "${name} Workers AI HTTP status: ${http_code}"
+              'https://study-canvas.soutarou-naka-1016.workers.dev/recognize' \
+              2>"${error_file}")"
+            curl_exit=$?
+            set -e
+            echo "${name} curl exit: ${curl_exit}; HTTP status: ${http_code}"
+            cat "${error_file}" || true
             cat "${response_file}" || true
-            if [ "${http_code}" != "200" ]; then
+            if [ "${curl_exit}" -ne 0 ] || [ "${http_code}" != "200" ]; then
               return 1
             fi
-            RESPONSE_FILE="${response_file}" EXPECTED_REGEX="${expected_regex}" node --input-type=module <<'NODE'
-            import { readFileSync } from "node:fs";
-            const value = JSON.parse(readFileSync(process.env.RESPONSE_FILE, "utf8"));
-            const titles = Array.isArray(value.tasks) ? value.tasks.map((task) => task?.title || "").join("\n") : "";
-            const valid = value.subject === "数学"
-              && value.weekStart === "2026-07-27"
-              && value.model === "@cf/moondream/moondream3.1-9B-A2B"
-              && value.fallbackUsed === false
-              && Number.isFinite(value.latencyMs)
-              && value.latencyMs >= 0
-              && value.latencyMs < 10000
-              && Array.isArray(value.tasks)
-              && value.tasks.length > 0
-              && value.tasks.every((task) => typeof task.title === "string" && task.title.trim())
-              && new RegExp(process.env.EXPECTED_REGEX, "i").test(titles);
-            if (!valid) {
-              console.error({ value, titles, expected: process.env.EXPECTED_REGEX });
-              process.exit(1);
-            }
-            console.log(`Workers AI recognized ${value.tasks.length} task(s) in ${value.latencyMs}ms using the primary model.`);
-            NODE
+            node -e '
+              const fs = require("fs");
+              const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+              const expectedRegex = process.argv[2];
+              const titles = Array.isArray(value.tasks) ? value.tasks.map((task) => task?.title || "").join("\n") : "";
+              const valid = value.subject === "数学"
+                && value.weekStart === "2026-07-27"
+                && value.model === "@cf/moondream/moondream3.1-9B-A2B"
+                && value.fallbackUsed === false
+                && Number.isFinite(value.latencyMs)
+                && value.latencyMs >= 0
+                && value.latencyMs < 10000
+                && Array.isArray(value.tasks)
+                && value.tasks.length > 0
+                && value.tasks.every((task) => typeof task.title === "string" && task.title.trim())
+                && new RegExp(expectedRegex, "i").test(titles);
+              if (!valid) {
+                console.error({ value, titles, expectedRegex });
+                process.exit(1);
+              }
+              console.log(`Workers AI recognized ${value.tasks.length} task(s) in ${value.latencyMs}ms using the primary model.`);
+            ' "${response_file}" "${expected_regex}"
           }
 
           recognize_case en 'integral|積分'
@@ -268,7 +277,9 @@ jobs:
             playwright-report/
             weekly-ai-live-en.png
             weekly-ai-live-en-response.json
+            weekly-ai-live-en-curl-error.txt
             weekly-ai-live-ja.png
             weekly-ai-live-ja-response.json
+            weekly-ai-live-ja-curl-error.txt
           if-no-files-found: ignore
           retention-days: 14
