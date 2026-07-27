@@ -4,12 +4,12 @@ const requiredFiles = [
   "index.html", "styles.css", "note.css", "enhancements.css", "carryover.css", "selection.css", "taskize.css",
   "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
   "release-entry.js", "taskize-entry.js", "taskize-ui.js", "dashboard-entry.js", "dashboard-ui.js", "dashboard-style.js",
-  "home-entry.js", "home-ui.js", "home-style.js",
+  "home-entry.js", "home-ui.js", "home-style.js", "weekly-recognition-entry.js", "weekly-recognition.css",
   "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-action-ui.js",
   "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
   "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
-  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", ".github/workflows/ci.yml", ".github/workflows/pages.yml",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/weekly-card-store.js", "src/weekly-recognition.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
+  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", "tests/e2e/weekly-recognition.spec.js", ".github/workflows/ci.yml", ".github/workflows/pages.yml",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -98,8 +98,24 @@ if (!noteEntry.includes("note-selection-ui.js?v=20260721-2") || !noteEntry.inclu
 }
 
 const releaseEntry = await readFile("release-entry.js", "utf8");
-if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2")) {
-  console.error("release-entry.jsから日別拡張、タスク化、ホーム画面の入口が読み込まれていません");
+if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2") || !releaseEntry.includes("weekly-recognition-entry.js?v=20260727-1")) {
+  console.error("release-entry.jsから日別拡張、タスク化、ホーム、週間AI読み取りの入口が読み込まれていません");
+  failed = true;
+}
+
+const weeklyRecognitionEntry = await readFile("weekly-recognition-entry.js", "utf8");
+const weeklyRecognitionModel = await readFile("src/weekly-recognition.js", "utf8");
+const weeklyCardStore = await readFile("src/weekly-card-store.js", "utf8");
+if (!weeklyRecognitionEntry.includes("weeklyRunRecognition") || !weeklyRecognitionEntry.includes("weeklySaveCandidates") || !weeklyRecognitionEntry.includes("replaceStoredWeeklyCardStore")) {
+  console.error("週間AI読み取りの実行、修正、カード保存画面を確認できません");
+  failed = true;
+}
+if (!weeklyRecognitionModel.includes("study-canvas.soutarou-naka-1016.workers.dev") || !weeklyRecognitionModel.includes('mode: "weekly"')) {
+  console.error("週間キャンバスからCloudflare Workerへ送る処理を確認できません");
+  failed = true;
+}
+if (!weeklyCardStore.includes("WEEKLY_CARD_STORAGE_KEY") || !weeklyCardStore.includes("replaceStoredWeeklyCardStore")) {
+  console.error("週間カードの永続保存とロールバック処理を確認できません");
   failed = true;
 }
 
@@ -164,7 +180,7 @@ try {
 
 const packageJson = await readFile("package.json", "utf8");
 const playwrightConfig = await readFile("playwright.config.js", "utf8");
-const browserTests = await readFile("tests/e2e/app.spec.js", "utf8");
+const browserTests = `${await readFile("tests/e2e/app.spec.js", "utf8")}\n${await readFile("tests/e2e/weekly-recognition.spec.js", "utf8")}`;
 const workflow = await readFile(".github/workflows/ci.yml", "utf8");
 const pagesWorkflow = await readFile(".github/workflows/pages.yml", "utf8");
 if (!packageJson.includes('"@playwright/test": "1.61.1"') || !packageJson.includes('"test:browser"')) {
@@ -177,7 +193,7 @@ for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"])
     failed = true;
   }
 }
-for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "test.setTimeout"]) {
+for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "weeklyRunRecognition", "weeklySaveCandidates", "既存のカードは変更されていません"]) {
   if (!browserTests.includes(requirement)) {
     console.error(`ブラウザテストに${requirement}の確認がありません`);
     failed = true;
@@ -208,10 +224,15 @@ for (const requirement of [
 }
 
 const worker = await readFile("cloudflare-worker.js", "utf8");
-if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) {
-  console.error("保留中の無料枠AI中継設定を確認できません");
+const wrangler = await readFile("wrangler.jsonc", "utf8");
+if (!worker.includes("@cf/meta/llama-3.2-11b-vision-instruct") || !worker.includes("env.AI.run") || !worker.includes("noPaidFallback") || worker.includes("GEMINI_API_KEY")) {
+  console.error("Workers AIによる画像認識中継を確認できません");
+  failed = true;
+}
+if (!wrangler.includes('"name": "study-canvas"') || !wrangler.includes('"binding": "AI"')) {
+  console.error("Cloudflare Worker名またはWorkers AIバインディングが正しくありません");
   failed = true;
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリ、バックアップ案内、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリ、週間AI画像認識、週間カード永続化、失敗時ロールバック、自由ノート、ホーム、学習時間集計、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");

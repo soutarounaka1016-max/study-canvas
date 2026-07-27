@@ -1,61 +1,97 @@
-# Gemini連携（保留中）の旧セットアップ
+# Cloudflare Workers AI 画像認識
 
-> 現在の通常導線は、手書き範囲のプレビューを見ながら科目と予定時間をボタンで選び、勉強内容を入力する方式です。Tesseract.jsによる端末内OCRはiPad実機で全く読み取れず、不採用として削除しました。
+Study Canvasは、科目別の週間目標キャンバスをPNG画像にし、Cloudflare Worker経由でWorkers AIへ送信します。
 
-Google AI Studioの年齢確認・アカウント条件を正規に満たせないため、このGemini連携は設定せず保留します。年齢や本人確認を回避して利用しないでください。
+画像は自動送信されません。週間目標の「読み取り確認」を開き、利用者が「AIで読み取る」を押した時だけ送信します。AIの候補は未確定のまま表示され、内容を修正し、選択した候補だけを週間カードとして保存します。
 
-この文書は、将来利用条件を正規に満たせるようになった場合に再検討するため、旧構成の記録として残しています。
+## 現在の構成
 
-Study Canvasの旧Gemini構成は、利用者が囲んだ手書き画像だけをGemini 2.5 Flashへ送り、科目・勉強内容・予定時間の候補を返します。候補はフォームへ入るだけで、確認して「タスクを追加」を押すまで保存しません。
+```text
+Study Canvas（GitHub Pages）
+  ↓ PNG・科目・対象週
+study-canvas Worker
+  ↓ AI binding
+Cloudflare Workers AI
+  ↓ 複数タスクのJSON
+確認・修正画面
+  ↓ 利用者が確定
+週間カード保存
+```
 
-## 再開前に確認すること
+- Worker URL: `https://study-canvas.soutarou-naka-1016.workers.dev`
+- Worker名: `study-canvas`
+- Workers AI binding名: `AI`
+- 利用モデル: `@cf/meta/llama-3.2-11b-vision-instruct`
+- 許可する公開元: `https://soutarounaka1016-max.github.io`
 
-- 利用者本人がサービスの年齢・アカウント条件を正規に満たしている。
-- 保護者承認など必要な条件を省略しない。
-- Gemini APIの利用規約と無料枠を再確認する。
-- 外部へ画像を送る必要性が、現在の手動入力より十分に高いと判断できる。
-- APIキー、アクセストークン、費用、送信データへの明示的な承認がある。
-- 日本語自由手書きで、現在の入力補助より実用的な精度と速度を確認できる。
+## Cloudflare側の設定
 
-## 費用を発生させない旧条件
+WorkerのSettings → Bindingsで、Workers AI bindingを追加します。
 
-- Gemini APIでは請求先を登録しない。
-- CloudflareはFreeプランのまま利用する。
-- `cloudflare-worker.js`のモデル名`gemini-2.5-flash`を変更しない。
-- 上限超過時はエラーで停止し、有料モデルへの切替や自動再試行を行わない。
-- 無料枠と利用条件は変更される可能性があるため、再開時に各管理画面の料金表示を確認する。
+| 名前 | 種類 |
+| --- | --- |
+| `AI` | Workers AI |
 
-## 1. Gemini APIキー
+`wrangler.jsonc`にも同じ設定を記録しています。
 
-1. Google AI Studioで、利用条件を正規に満たすアカウントからAPIキーを作成する。
-2. 請求先を登録しない。
-3. APIキーはStudy CanvasやGitHubへ貼らず、Cloudflare Secretだけに保存する。
+```json
+{
+  "name": "study-canvas",
+  "main": "cloudflare-worker.js",
+  "ai": {
+    "binding": "AI"
+  },
+  "vars": {
+    "ALLOWED_ORIGIN": "https://soutarounaka1016-max.github.io"
+  }
+}
+```
 
-## 2. Cloudflare Worker
+Google AI StudioのAPIキー、Gemini APIキー、Cloudflareの`ACCESS_TOKEN`は週間目標の読み取りには使用しません。秘密情報をGitHub Pagesへ埋め込まない構成です。
 
-1. Cloudflare DashboardのWorkers & Pagesを開く。
-2. FreeプランでWorkerを作成する。
-3. Workerのコードを、このリポジトリの`cloudflare-worker.js`へ置き換えて公開する。
-4. WorkerのSettingsで次を登録する。
+## GitHubからのデプロイ
 
-| 名前 | 種類 | 値 |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | Secret | Google AI Studioで作ったAPIキー |
-| `ACCESS_TOKEN` | Secret | Study CanvasのAI設定で生成した値 |
-| `ALLOWED_ORIGIN` | Text | `https://soutarounaka1016-max.github.io` |
+Cloudflare WorkerをこのGitHubリポジトリへ接続し、mainブランチの更新時にデプロイします。
 
-5. 公開後のWorker URLをStudy Canvasへ設定する。
+デプロイ対象は次のファイルです。
 
-## 送信範囲とデータ
+- `cloudflare-worker.js`
+- `wrangler.jsonc`
 
-- ボタンを押した時だけ送信する。
-- 送信するのは囲んだPNG画像だけ。
-- ページ全体、他の日の計画、タスク一覧、週間目標全体、自由ノート全体は送らない。
-- 送信内容が提供元のサービス改善に使われる可能性を、再開時に確認する。
-- Workerは画像を保存せず、応答へ`Cache-Control: no-store`を付ける。
+Workerのルートディレクトリはリポジトリのルートです。ビルドコマンドは不要で、デプロイコマンドはCloudflareのGit連携設定に従います。
 
-## 問題が起きた場合
+## 送信する内容
 
-- 年齢・本人確認・保護者承認で利用できない場合は、回避せず現在の手動入力を使う。
-- 無料枠の上限に達した場合は停止し、課金や有料モデルへ自動切替しない。
-- APIキーが漏れた疑いがある場合はキーを無効化する。
+週間読み取りで送るのは次だけです。
+
+- 現在開いている1科目分の週間目標PNG
+- 科目名
+- 対象週の開始日
+
+他の科目、日別キャンバス、自由ノート、保存済みカード、バックアップ内容は送信しません。Workerは画像を保存せず、応答には`Cache-Control: no-store`を付けます。
+
+## 保存と失敗時の動作
+
+- AIの読み取りだけではlocalStorageを変更しません。
+- 候補は画面上で修正・選択できます。
+- 「選択した候補をカード化」を押した時だけ保存します。
+- 通信失敗、タイムアウト、AIの形式不正では既存カードを変更しません。
+- localStorageへの保存確認に失敗した場合は以前の値へ戻します。
+- 週間カードは統合バックアップへ含めます。
+
+## 無料枠とエラー
+
+Workerは固定したWorkers AIモデルだけを利用し、有料モデルへ自動切替しません。利用上限や一時的な容量不足の場合はエラーを返し、時間を置いて再実行します。
+
+料金や無料枠は変更される可能性があるため、Cloudflare Dashboardで現在の利用状況を確認します。課金設定が必要になる変更は、実施前に利用者の確認を取ります。
+
+## 確認項目
+
+1. `/health`が`ok: true`を返す
+2. 数学などの週間キャンバスから画像を送れる
+3. 複数候補が表示される
+4. 候補を修正・選択できる
+5. 選択候補だけ週間カードになる
+6. 再読み込み後もカードが残る
+7. AI失敗後も保存済みカードが変わらない
+8. 統合バックアップで週間カードを保存・復元できる

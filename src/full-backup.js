@@ -1,24 +1,28 @@
 import { loadPageStore, serializePageStore } from "./page-store.js";
 import { loadTaskStore, serializeTaskStore } from "./task-store.js";
 import { listWeeklyDrawings, loadWeeklyStore, serializeWeeklyStore } from "./weekly-store.js";
+import { countWeeklyCards, loadWeeklyCardStore, serializeWeeklyCardStore } from "./weekly-card-store.js";
 import { loadNoteStore, serializeNoteStore } from "./note-store.js";
 import { parseBackupForRestore } from "./restore.js";
 
 export const FULL_BACKUP_FORMAT = "study-canvas-full-backup";
-export const FULL_BACKUP_VERSION = 1;
+export const FULL_BACKUP_VERSION = 2;
 export const FULL_BACKUP_KEYS = {
   pages: "study-canvas:pages:v2",
   tasks: "study-canvas:tasks:v1",
   weekly: "study-canvas:weekly:v1",
+  weeklyCards: "study-canvas:weekly-cards:v1",
   notes: "study-canvas:free-note:v1",
 };
 const MAX_FULL_BACKUP_BYTES = 24 * 1024 * 1024;
+const BASE_SECTIONS = ["pages", "tasks", "weekly", "notes"];
 
 export function readCurrentFullState(storage, currentDate) {
   return {
     pages: loadPageStore(storage.getItem(FULL_BACKUP_KEYS.pages), null, currentDate).store,
     tasks: loadTaskStore(storage.getItem(FULL_BACKUP_KEYS.tasks)).store,
     weekly: loadWeeklyStore(storage.getItem(FULL_BACKUP_KEYS.weekly), currentDate).store,
+    weeklyCards: loadWeeklyCardStore(storage.getItem(FULL_BACKUP_KEYS.weeklyCards)).store,
     notes: loadNoteStore(storage.getItem(FULL_BACKUP_KEYS.notes)).store,
   };
 }
@@ -65,7 +69,7 @@ export function parseFullBackup(rawBackup, currentDate) {
     };
   }
 
-  if (value.version !== FULL_BACKUP_VERSION || !value.data || typeof value.data !== "object" || Array.isArray(value.data)) {
+  if (![1, FULL_BACKUP_VERSION].includes(value.version) || !value.data || typeof value.data !== "object" || Array.isArray(value.data)) {
     throw new TypeError("Study Canvasの対応統合バックアップではありません");
   }
   const exportedAt = new Date(value.exportedAt);
@@ -74,10 +78,12 @@ export function parseFullBackup(rawBackup, currentDate) {
   }
 
   const data = canonicalizeState(value.data, currentDate);
+  const availableSections = [...BASE_SECTIONS];
+  if (Object.hasOwn(value.data, "weeklyCards")) availableSections.splice(3, 0, "weeklyCards");
   return {
     format: FULL_BACKUP_FORMAT,
     exportedAt: exportedAt.toISOString(),
-    availableSections: ["pages", "tasks", "weekly", "notes"],
+    availableSections,
     data,
     summary: summarizeFullState(data),
   };
@@ -131,6 +137,7 @@ export function summarizeFullState(state) {
     weeklyPageCount: writtenWeeks.size,
     weeklySubjectPageCount: weeklyDrawings.length,
     weeklyStrokeCount: weeklyDrawings.reduce((sum, item) => sum + item.drawing.strokes.length, 0),
+    weeklyCardCount: countWeeklyCards(state?.weeklyCards),
     notePageCount: notes.length,
     noteStrokeCount: notes.reduce((sum, page) => sum + (page?.drawing?.strokes?.length || 0), 0),
   };
@@ -152,6 +159,9 @@ function canonicalizeState(state, currentDate) {
   const weeklyLoaded = loadWeeklyStore(JSON.stringify(state?.weekly), currentDate);
   if (weeklyLoaded.recovered) throw new TypeError("週間目標データが正しくありません");
 
+  const weeklyCardsLoaded = loadWeeklyCardStore(JSON.stringify(state?.weeklyCards));
+  if (weeklyCardsLoaded.recovered) throw new TypeError("週間カードデータが正しくありません");
+
   const noteLoaded = loadNoteStore(JSON.stringify(state?.notes));
   if (noteLoaded.recovered || noteLoaded.migrated) throw new TypeError("自由ノートデータが正しくありません");
 
@@ -159,6 +169,7 @@ function canonicalizeState(state, currentDate) {
     pages: JSON.parse(serializePageStore(pagesLoaded.store)),
     tasks: JSON.parse(serializeTaskStore(taskLoaded.store)),
     weekly: JSON.parse(serializeWeeklyStore(weeklyLoaded.store)),
+    weeklyCards: JSON.parse(serializeWeeklyCardStore(weeklyCardsLoaded.store)),
     notes: JSON.parse(serializeNoteStore(noteLoaded.store)),
   };
 }
@@ -168,6 +179,7 @@ function canonicalRawBySection(data) {
   if (data.pages) raw.pages = serializePageStore(data.pages);
   if (data.tasks) raw.tasks = serializeTaskStore(data.tasks);
   if (data.weekly) raw.weekly = serializeWeeklyStore(data.weekly);
+  if (data.weeklyCards) raw.weeklyCards = serializeWeeklyCardStore(data.weeklyCards);
   if (data.notes) raw.notes = serializeNoteStore(data.notes);
   return raw;
 }

@@ -5,6 +5,7 @@ import { emptyPageStore, setPageDrawing } from "../src/page-store.js";
 import { addTask, emptyTaskStore } from "../src/task-store.js";
 import { emptyNoteStore, setNoteDrawing } from "../src/note-store.js";
 import { setWeeklyDrawing } from "../src/weekly-store.js";
+import { addWeeklyCards, emptyWeeklyCardStore } from "../src/weekly-card-store.js";
 import {
   FULL_BACKUP_FORMAT,
   FULL_BACKUP_KEYS,
@@ -27,9 +28,12 @@ function sampleState() {
     subject: "数学", title: "微積", plannedMinutes: 30,
   }, "task-1");
   const weekly = setWeeklyDrawing({}, "2026-07-20", "数学", drawing("2026-07-20", "week-1"));
+  const weeklyCards = addWeeklyCards(emptyWeeklyCardStore(), "2026-07-20", "数学", [{
+    id: "weekly-card-1", title: "微積を5問", confidence: 0.9, warning: "", createdAt: "2026-07-20T00:00:00.000Z", source: "ai",
+  }]);
   const noteBase = emptyNoteStore();
   const notes = setNoteDrawing(noteBase, drawing(noteBase.activePageId, "note-stroke"));
-  return { pages, tasks, weekly, notes };
+  return { pages, tasks, weekly, weeklyCards, notes };
 }
 
 class MemoryStorage {
@@ -55,7 +59,7 @@ test("full backup round trips every store", () => {
   const parsed = parseFullBackup(raw, "2026-07-20");
   assert.equal(parsed.format, FULL_BACKUP_FORMAT);
   assert.deepEqual(parsed.data, createFullBackup(state, "2026-07-20T00:00:00.000Z").data);
-  assert.deepEqual(parsed.availableSections, ["pages", "tasks", "weekly", "notes"]);
+  assert.deepEqual(parsed.availableSections, ["pages", "tasks", "weekly", "weeklyCards", "notes"]);
 });
 
 test("summary counts all saved content", () => {
@@ -66,6 +70,7 @@ test("summary counts all saved content", () => {
     weeklyPageCount: 1,
     weeklySubjectPageCount: 1,
     weeklyStrokeCount: 1,
+    weeklyCardCount: 1,
     notePageCount: 1,
     noteStrokeCount: 1,
   });
@@ -78,13 +83,23 @@ test("partial restore only replaces selected stores", () => {
     [FULL_BACKUP_KEYS.pages]: "old-pages",
     [FULL_BACKUP_KEYS.tasks]: "old-tasks",
     [FULL_BACKUP_KEYS.weekly]: "old-weekly",
+    [FULL_BACKUP_KEYS.weeklyCards]: "old-weekly-cards",
     [FULL_BACKUP_KEYS.notes]: "old-notes",
   });
-  assert.deepEqual(applyFullRestore(storage, parsed, ["tasks", "notes"]), ["tasks", "notes"]);
+  assert.deepEqual(applyFullRestore(storage, parsed, ["weeklyCards", "notes"]), ["weeklyCards", "notes"]);
   assert.equal(storage.getItem(FULL_BACKUP_KEYS.pages), "old-pages");
-  assert.notEqual(storage.getItem(FULL_BACKUP_KEYS.tasks), "old-tasks");
+  assert.equal(storage.getItem(FULL_BACKUP_KEYS.tasks), "old-tasks");
   assert.equal(storage.getItem(FULL_BACKUP_KEYS.weekly), "old-weekly");
+  assert.notEqual(storage.getItem(FULL_BACKUP_KEYS.weeklyCards), "old-weekly-cards");
   assert.notEqual(storage.getItem(FULL_BACKUP_KEYS.notes), "old-notes");
+});
+
+test("version 1 backup does not overwrite weekly cards", () => {
+  const backup = createFullBackup(sampleState(), "2026-07-20T00:00:00.000Z");
+  backup.version = 1;
+  delete backup.data.weeklyCards;
+  const parsed = parseFullBackup(JSON.stringify(backup), "2026-07-20");
+  assert.deepEqual(parsed.availableSections, ["pages", "tasks", "weekly", "notes"]);
 });
 
 test("failed multi-store restore rolls every selected store back", () => {
