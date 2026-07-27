@@ -74,3 +74,15 @@ test("AI候補を修正・選択してカード化し、再読み込み後も保
   const savedAfterFailure = await page.evaluate((key) => localStorage.getItem(key), CARD_STORAGE_KEY);
   expect(savedAfterFailure).toBe(savedBeforeReload);
 });
+
+test("@published 公開版に週間AI読み取り画面が反映されている", async ({ page }) => {
+  test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 180_000 : 30_000);
+  await gotoHome(page);
+  await openWeeklyFromHome(page);
+  await expect(page.locator("#weeklyRecognitionButton")).toBeVisible();
+  await expect(page.locator("#weeklyCardShelf")).toBeVisible();
+  await page.locator("#weeklyRecognitionButton").click();
+  await expect(page.locator("#weeklyRecognitionDialog")).toHaveAttribute("open", "");
+  await expect(page.locator("#weeklyRunRecognition")).toBeVisible();
+  await expect(page.locator("#weeklySaveCandidates")).toBeVisible();
+});
