@@ -2,13 +2,13 @@ import { readFile, stat } from "node:fs/promises";
 
 const requiredFiles = [
   "index.html", "styles.css", "note.css", "enhancements.css", "carryover.css", "selection.css", "taskize.css",
-  "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
+  "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "weekly-recognition-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
   "release-entry.js", "taskize-entry.js", "taskize-ui.js", "dashboard-entry.js", "dashboard-ui.js", "dashboard-style.js",
   "home-entry.js", "home-ui.js", "home-style.js",
   "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-action-ui.js",
   "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
   "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
+  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/weekly-task-store.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
   "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", ".github/workflows/ci.yml", ".github/workflows/pages.yml",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
@@ -98,8 +98,21 @@ if (!noteEntry.includes("note-selection-ui.js?v=20260721-2") || !noteEntry.inclu
 }
 
 const releaseEntry = await readFile("release-entry.js", "utf8");
-if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2")) {
-  console.error("release-entry.jsから日別拡張、タスク化、ホーム画面の入口が読み込まれていません");
+if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2") || !releaseEntry.includes("weekly-recognition-ui.js?v=20260727-1")) {
+  console.error("release-entry.jsから日別拡張、タスク化、ホーム、週間AI読み取りの入口が読み込まれていません");
+  failed = true;
+}
+
+const weeklyRecognition = await readFile("weekly-recognition-ui.js", "utf8");
+const weeklyTaskStore = await readFile("src/weekly-task-store.js", "utf8");
+for (const requirement of ["study-canvas.soutarou-naka-1016.workers.dev", "AIで読み取る", "選択した候補をカード化", "既存データは変更されていません"]) {
+  if (!weeklyRecognition.includes(requirement)) {
+    console.error(`週間AI読み取りに${requirement}がありません`);
+    failed = true;
+  }
+}
+if (!weeklyTaskStore.includes("replaceStoredWeeklyTaskStore") || !weeklyTaskStore.includes("WEEKLY_TASK_STORAGE_KEY")) {
+  console.error("週間AIカードの保存・ロールバック処理を確認できません");
   failed = true;
 }
 
@@ -188,18 +201,7 @@ if (!workflow.includes("playwright install --with-deps") || !workflow.includes("
   failed = true;
 }
 for (const requirement of [
-  "pages: write",
-  "id-token: write",
-  "actions/configure-pages@v5",
-  "actions/upload-pages-artifact@v4",
-  "actions/deploy-pages@v4",
-  "path: _site",
-  "touch _site/.nojekyll",
-  "Verify published Study Canvas",
-  "playwright install --with-deps chromium",
-  "https://soutarounaka1016-max.github.io/study-canvas/",
-  "study-canvas/pages-startup",
-  "actions/upload-artifact@v4",
+  "pages: write", "id-token: write", "actions/configure-pages@v5", "actions/upload-pages-artifact@v4", "actions/deploy-pages@v4", "path: _site", "touch _site/.nojekyll", "Verify published Study Canvas", "playwright install --with-deps chromium", "https://soutarounaka1016-max.github.io/study-canvas/", "study-canvas/pages-startup", "actions/upload-artifact@v4",
 ]) {
   if (!pagesWorkflow.includes(requirement)) {
     console.error(`GitHub Pagesの公開・起動確認に${requirement}がありません`);
@@ -208,10 +210,15 @@ for (const requirement of [
 }
 
 const worker = await readFile("cloudflare-worker.js", "utf8");
-if (!worker.includes("gemini-2.5-flash") || !worker.includes("noPaidFallback")) {
-  console.error("保留中の無料枠AI中継設定を確認できません");
+const wrangler = await readFile("wrangler.jsonc", "utf8");
+if (!worker.includes("@cf/google/gemma-4-26b-a4b-it") || !worker.includes("env.AI.run") || !worker.includes("noPaidFallback")) {
+  console.error("Cloudflare Workers AIの画像認識設定を確認できません");
+  failed = true;
+}
+if (!wrangler.includes('"name": "study-canvas"') || !wrangler.includes('"binding": "AI"')) {
+  console.error("WranglerのWorker名またはAIバインディングが正しくありません");
   failed = true;
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリ、バックアップ案内、自由ノート、ホーム、学習時間集計、入力補助、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");
+console.log("静的アプリ、バックアップ案内、自由ノート、ホーム、学習時間集計、入力補助、週間Workers AI読み取り、カード保存、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");
