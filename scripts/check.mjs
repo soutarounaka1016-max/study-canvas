@@ -50,12 +50,16 @@ for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js",
     failed = true;
   }
 }
-if (!html.includes('meta name="study-canvas-release" content="20260728-weekly-ai-cache-1"')) {
+if (!html.includes('meta name="study-canvas-release" content="20260728-weekly-ai-safari-2"')) {
   console.error("公開確認用のリリース識別子がありません");
   failed = true;
 }
-if (!html.includes("release-entry.js?v=20260728-1")) {
+if (!html.includes("release-entry.js?v=20260728-2")) {
   console.error("ブラウザ確認版の公開入口へ更新されていません");
+  failed = true;
+}
+if (!html.includes("weekly-ui.js?v=20260728-2") || !html.includes("weekly-recognition-entry.js?v=20260728-2")) {
+  console.error("週間AI画面がSafariキャッシュ対策済みの独立した公開入口から読み込まれていません");
   failed = true;
 }
 const releaseMetaMatch = html.match(/meta name="study-canvas-release" content="([^"]+)"/);
@@ -107,8 +111,12 @@ if (!noteEntry.includes("note-selection-ui.js?v=20260721-2") || !noteEntry.inclu
 }
 
 const releaseEntry = await readFile("release-entry.js", "utf8");
-if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2") || !releaseEntry.includes("weekly-recognition-entry.js?v=20260727-1")) {
-  console.error("release-entry.jsから日別拡張、タスク化、ホーム、週間AI読み取りの入口が読み込まれていません");
+if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2")) {
+  console.error("release-entry.jsから日別拡張、タスク化、ホームの入口が読み込まれていません");
+  failed = true;
+}
+if (releaseEntry.includes("weekly-recognition-entry.js")) {
+  console.error("週間AI画面が無関係な機能の直列読み込みへ再び依存しています");
   failed = true;
 }
 
@@ -120,11 +128,18 @@ if (!Number.isFinite(publicEntryDate) || importedEntryDates.some((date) => date 
 }
 
 const weeklyRecognitionEntry = await readFile("weekly-recognition-entry.js", "utf8");
+const weeklyUi = await readFile("weekly-ui.js", "utf8");
 const weeklyRecognitionModel = await readFile("src/weekly-recognition.js", "utf8");
 const weeklyCardStore = await readFile("src/weekly-card-store.js", "utf8");
-if (!weeklyRecognitionEntry.includes("weeklyRunRecognition") || !weeklyRecognitionEntry.includes("weeklySaveCandidates") || !weeklyRecognitionEntry.includes("replaceStoredWeeklyCardStore")) {
+if (!weeklyRecognitionEntry.includes("weeklyRunRecognition") || !weeklyRecognitionEntry.includes("weeklySaveCandidates") || !weeklyRecognitionEntry.includes("replaceStoredWeeklyCardStore") || !weeklyRecognitionEntry.includes("weeklyRecognitionInstalled")) {
   console.error("週間AI読み取りの実行、修正、カード保存画面を確認できません");
   failed = true;
+}
+for (const obsoleteText of ["準備中", "次の段階で", "画像は外部へ送信しません", "土台まで実装"]) {
+  if (weeklyUi.includes(obsoleteText)) {
+    console.error(`週間目標の初期UIに旧文言が残っています: ${obsoleteText}`);
+    failed = true;
+  }
 }
 if (!weeklyRecognitionModel.includes("study-canvas.soutarou-naka-1016.workers.dev") || !weeklyRecognitionModel.includes('mode: "weekly"')) {
   console.error("週間キャンバスからCloudflare Workerへ送る処理を確認できません");
@@ -209,7 +224,7 @@ for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"])
     failed = true;
   }
 }
-for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "weeklyRunRecognition", "weeklySaveCandidates", "既存のカードは変更されていません"]) {
+for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "weeklyRunRecognition", "weeklySaveCandidates", "既存のカードは変更されていません", "waitForRequest", "公開版AI通信確認"]) {
   if (!browserTests.includes(requirement)) {
     console.error(`ブラウザテストに${requirement}の確認がありません`);
     failed = true;

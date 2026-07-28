@@ -142,19 +142,31 @@ jobs:
       - name: Verify published release chain
         env:
           BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-          EXPECTED_RELEASE: 20260728-weekly-ai-cache-1
-          EXPECTED_ENTRY: release-entry.js?v=20260728-1
+          EXPECTED_RELEASE: 20260728-weekly-ai-safari-2
+          EXPECTED_ENTRY: release-entry.js?v=20260728-2
+          EXPECTED_WEEKLY_ENTRY: weekly-recognition-entry.js?v=20260728-2
         shell: bash
         run: |
           set -euo pipefail
           html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}?release-chain=${GITHUB_SHA}")"
           grep -F "meta name=\"study-canvas-release\" content=\"${EXPECTED_RELEASE}\"" <<<"${html}"
           grep -F "src=\"${EXPECTED_ENTRY}\"" <<<"${html}"
+          grep -F "src=\"${EXPECTED_WEEKLY_ENTRY}\"" <<<"${html}"
           entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_ENTRY}")"
-          grep -F 'weekly-recognition-entry.js?v=20260727-1' <<<"${entry}"
-          weekly="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-recognition-entry.js?v=20260727-1")"
+          if grep -F 'weekly-recognition-entry.js' <<<"${entry}"; then
+            echo "Weekly recognition must not depend on the serial release entry."
+            exit 1
+          fi
+          weekly="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_WEEKLY_ENTRY}")"
           grep -F 'weeklyRunRecognition' <<<"${weekly}"
           grep -F 'weeklySaveCandidates' <<<"${weekly}"
+          weekly_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-ui.js?v=20260728-2")"
+          for obsolete in '準備中' '次の段階で' '画像は外部へ送信しません' '土台まで実装'; do
+            if grep -F "${obsolete}" <<<"${weekly_ui}"; then
+              echo "Obsolete weekly AI text remains: ${obsolete}"
+              exit 1
+            fi
+          done
       - name: Verify live Workers AI recognition consecutively
         shell: bash
         run: |

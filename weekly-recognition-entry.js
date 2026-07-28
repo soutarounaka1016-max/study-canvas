@@ -9,6 +9,7 @@ import {
 } from "./src/weekly-card-store.js?v=20260727-1";
 import { recognizeWeeklyCanvas } from "./src/weekly-recognition.js?v=20260727-1";
 
+function installWeeklyRecognition() {
 installStyle();
 
 const weeklyButton = document.querySelector("#weeklyButton");
@@ -22,7 +23,10 @@ const previousWeekButton = document.querySelector("#previousWeekButton");
 const nextWeekButton = document.querySelector("#nextWeekButton");
 const currentWeekButton = document.querySelector("#currentWeekButton");
 
-if (weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && recognitionPreview && subjectTabs) {
+if (!(weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && recognitionPreview && subjectTabs)) {
+  return false;
+}
+
   const today = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
@@ -32,7 +36,7 @@ if (weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && re
   let cardStore = loadWeeklyCardStore(localStorage.getItem(WEEKLY_CARD_STORAGE_KEY)).store;
   const shelf = createCardShelf();
   weeklyDialog.querySelector(".weekly-export-actions")?.insertAdjacentElement("afterend", shelf);
-  upgradeRecognitionDialog();
+  upgradeRecognitionDialog(recognitionDialog);
   renderShelf();
 
   weeklyButton.addEventListener("click", () => {
@@ -211,10 +215,22 @@ if (weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && re
     target.classList.toggle("is-error", isError);
     target.hidden = !text;
   }
+  return true;
 }
 
-function upgradeRecognitionDialog() {
-  const placeholder = recognitionDialog.querySelector(".weekly-recognition-placeholder");
+function bootWeeklyRecognition() {
+  if (document.documentElement.dataset.weeklyRecognitionInstalled === "true") return true;
+  if (!installWeeklyRecognition()) return false;
+  document.documentElement.dataset.weeklyRecognitionInstalled = "true";
+  return true;
+}
+
+if (!bootWeeklyRecognition()) {
+  document.addEventListener("study-canvas:weekly-ui-ready", bootWeeklyRecognition, { once: true });
+}
+
+function upgradeRecognitionDialog(dialog) {
+  const placeholder = dialog.querySelector(".weekly-recognition-placeholder");
   if (!placeholder) return;
   placeholder.className = "weekly-recognition-workspace";
   placeholder.innerHTML = `
@@ -237,7 +253,7 @@ function installStyle() {
   if (document.querySelector('link[data-weekly-recognition-style]')) return;
   const link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = "weekly-recognition.css?v=20260727-1";
+  link.href = "weekly-recognition.css?v=20260728-2";
   link.dataset.weeklyRecognitionStyle = "true";
   document.head.append(link);
 }
