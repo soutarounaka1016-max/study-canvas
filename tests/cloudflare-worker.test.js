@@ -162,8 +162,31 @@ test("healthは主系、補助、最大待ち時間を返す", async () => {
   assert.equal(payload.model, primaryModel);
   assert.equal(payload.primaryModel, primaryModel);
   assert.equal(payload.fallbackModel, fallbackModel);
-  assert.equal(payload.maxRecognitionMs, 18_000);
+  assert.equal(payload.maxRecognitionMs, 32_000);
   assert.equal(payload.noPaidFallback, true);
+});
+
+test("日本語補正が時間切れでもMoondream候補を確認用に返す", async () => {
+  const env = {
+    ALLOWED_ORIGIN: origin,
+    AI: {
+      async run(model) {
+        if (model === primaryModel) return { answer: "数学 週間目標\n微積分 3問\nチョイス A" };
+        const error = new Error("FALLBACK_TIMEOUT");
+        error.code = "FALLBACK_TIMEOUT";
+        throw error;
+      },
+    },
+  };
+  const response = await handleRequest(request("/recognize", weeklyBody()), env);
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.model, primaryModel);
+  assert.equal(payload.fallbackUsed, false);
+  assert.equal(payload.refinementIncomplete, true);
+  assert.deepEqual(payload.tasks.map((task) => task.title), ["微積分 3問", "チョイス A"]);
+  assert.ok(payload.tasks.every((task) => task.confidence <= 0.5));
+  assert.ok(payload.tasks.every((task) => /内容を確認/.test(task.warning)));
 });
 
 test("許可されていない公開元を拒否する", async () => {
