@@ -117,8 +117,8 @@ jobs:
               try {
                 const value = JSON.parse(process.argv[1]);
                 const primary = "@cf/moondream/moondream3.1-9B-A2B";
-                const fallback = "@cf/google/gemma-4-26b-a4b-it";
-                const revision = "20260728-gemma-message-image-2";
+                const fallback = "@cf/mistralai/mistral-small-3.1-24b-instruct";
+                const revision = "20260728-mistral-vision-1";
                 const valid = value.ok === true
                   && value.noPaidFallback === true
                   && value.model === primary
@@ -271,7 +271,7 @@ jobs:
           }
 
           recognize_with_retry en 'integral|積分' '@cf/moondream/moondream3.1-9B-A2B' false 10000
-          recognize_with_retry ja '微積|積分|チョイス|choice|choi' '@cf/google/gemma-4-26b-a4b-it|@cf/moondream/moondream3.1-9B-A2B' either 33000
+          recognize_with_retry ja '微積|積分|チョイス|choice|choi' '@cf/mistralai/mistral-small-3.1-24b-instruct|@cf/moondream/moondream3.1-9B-A2B' either 33000
       - name: Verify the published app
         env:
           PLAYWRIGHT_BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/

@@ -269,7 +269,11 @@ for (const publishedRequirement of [
 
 const worker = await readFile("cloudflare-worker.js", "utf8");
 const wrangler = await readFile("wrangler.jsonc", "utf8");
-if (!worker.includes("@cf/google/gemma-4-26b-a4b-it") || !worker.includes("env.AI.run") || !worker.includes("noPaidFallback") || worker.includes("GEMINI_API_KEY")) {
+if (!worker.includes("@cf/mistralai/mistral-small-3.1-24b-instruct")
+  || !worker.includes('type: "image_url"')
+  || !worker.includes("env.AI.run")
+  || !worker.includes("noPaidFallback")
+  || worker.includes("GEMINI_API_KEY")) {
   console.error("Workers AIによる画像認識中継を確認できません");
   failed = true;
 }
