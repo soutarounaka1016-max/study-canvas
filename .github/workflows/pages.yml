@@ -15,6 +15,9 @@ concurrency:
   group: github-pages
   cancel-in-progress: true
 
+env:
+  OCR_ARCHIVE_SHA: 70d17413f9bd9832ee2a6e94cb4aaaa2e79d8945
+
 jobs:
   deploy:
     environment:
@@ -35,8 +38,12 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${COMMIT_SHA}" \
             -d "{\"state\":\"pending\",\"target_url\":\"${RUN_URL}\",\"description\":\"Deploying Study Canvas to GitHub Pages\",\"context\":\"study-canvas/pages-deploy\"}"
       - uses: actions/checkout@v4
-      - name: Prepare static site
+        with:
+          fetch-depth: 0
+      - name: Prepare official site and OCR archive
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir _site
           rsync -a \
             --exclude '.git' \
@@ -46,7 +53,41 @@ jobs:
             --exclude 'test-results' \
             --exclude 'playwright-report' \
             --exclude '_site' \
+            --exclude 'ai-*' \
+            --exclude 'AI_*' \
+            --exclude 'cloudflare-worker.js' \
+            --exclude 'wrangler.jsonc' \
+            --exclude 'weekly-recognition*' \
+            --exclude 'weekly-ui.js' \
+            --exclude 'taskize*' \
+            --exclude 'dashboard*' \
+            --exclude 'carryover*' \
+            --exclude 'archive-banner.*' \
+            --exclude 'src/ai-recognition.js' \
+            --exclude 'src/weekly-recognition.js' \
+            --exclude 'src/study-stats.js' \
             ./ _site/
+
+          mkdir -p _site/ocr-experiment
+          git archive "${OCR_ARCHIVE_SHA}" | tar -x -C _site/ocr-experiment
+          rm -rf \
+            _site/ocr-experiment/.github \
+            _site/ocr-experiment/node_modules \
+            _site/ocr-experiment/tests \
+            _site/ocr-experiment/test-results \
+            _site/ocr-experiment/playwright-report
+          find _site/ocr-experiment -type f \( -name '*.js' -o -name '*.html' \) -print0 \
+            | xargs -0 sed -i 's/study-canvas:/study-canvas-ocr-archive:/g'
+          cp archive-banner.js archive-banner.css _site/ocr-experiment/
+          ARCHIVE_HTML="_site/ocr-experiment/index.html" node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          const path = process.env.ARCHIVE_HTML;
+          let html = await readFile(path, "utf8");
+          html = html
+            .replace("</head>", '    <link rel="stylesheet" href="archive-banner.css?v=20260729-1" />\n  </head>')
+            .replace("</body>", '    <script src="archive-banner.js?v=20260729-1"></script>\n  </body>');
+          await writeFile(path, html);
+          NODE
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
@@ -99,181 +140,47 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${COMMIT_SHA}" \
-            -d "{\"state\":\"pending\",\"target_url\":\"${RUN_URL}\",\"description\":\"Checking published Study Canvas and Workers AI\",\"context\":\"study-canvas/pages-startup\"}"
+            -d "{\"state\":\"pending\",\"target_url\":\"${RUN_URL}\",\"description\":\"Checking official and OCR archive sites\",\"context\":\"study-canvas/pages-startup\"}"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: Verify Workers AI health
-        shell: bash
-        run: |
-          set -euo pipefail
-          health_url="https://study-canvas.soutarou-naka-1016.workers.dev/health"
-          for attempt in $(seq 1 60); do
-            body="$(curl --silent --show-error --fail --max-time 20 "${health_url}" || true)"
-            if node -e '
-              try {
-                const value = JSON.parse(process.argv[1]);
-                const primary = "@cf/moondream/moondream3.1-9B-A2B";
-                const fallback = "@cf/mistralai/mistral-small-3.1-24b-instruct";
-                const revision = "20260728-ocr-grounding-1";
-                const valid = value.ok === true
-                  && value.noPaidFallback === true
-                  && value.model === primary
-                  && value.primaryModel === primary
-                  && value.fallbackModel === fallback
-                  && value.workerRevision === revision
-                  && value.maxRecognitionMs === 32000;
-                process.exit(valid ? 0 : 1);
-              } catch {
-                process.exit(1);
-              }
-            ' "${body}"; then
-              echo "Workers AI health check succeeded: ${body}"
-              exit 0
-            fi
-            echo "Workers AI is not ready yet (${attempt}/60)."
-            sleep 5
-          done
-          echo "Workers AI health check failed after 5 minutes."
-          exit 1
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify published release chain
+      - name: Verify published release chains
         env:
           BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-          EXPECTED_RELEASE: 20260728-ocr-grounding-1
-          EXPECTED_ENTRY: release-entry.js?v=20260728-2
-          EXPECTED_WEEKLY_ENTRY: weekly-recognition-entry.js?v=20260728-2
+          EXPECTED_RELEASE: 20260729-text-card-drag-1
+          EXPECTED_ENTRY: release-entry.js?v=20260729-1
         shell: bash
         run: |
           set -euo pipefail
           html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}?release-chain=${GITHUB_SHA}")"
           grep -F "meta name=\"study-canvas-release\" content=\"${EXPECTED_RELEASE}\"" <<<"${html}"
           grep -F "src=\"${EXPECTED_ENTRY}\"" <<<"${html}"
-          grep -F "src=\"${EXPECTED_WEEKLY_ENTRY}\"" <<<"${html}"
-          entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_ENTRY}")"
-          if grep -F 'weekly-recognition-entry.js' <<<"${entry}"; then
-            echo "Weekly recognition must not depend on the serial release entry."
+          grep -F 'weekly-text-ui.js?v=20260729-1' <<<"${html}"
+          if grep -E 'weekly-recognition|AIで読み取る|予定時間|学習時間の集計' <<<"${html}"; then
+            echo "The official HTML still contains removed OCR or time UI."
             exit 1
           fi
-          weekly="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_WEEKLY_ENTRY}")"
-          grep -F 'weeklyRunRecognition' <<<"${weekly}"
-          grep -F 'weeklySaveCandidates' <<<"${weekly}"
-          weekly_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-ui.js?v=20260728-3")"
-          grep -F 'y += 220' <<<"${weekly_ui}"
-          for obsolete in '準備中' '次の段階で' '画像は外部へ送信しません' '土台まで実装'; do
-            if grep -F "${obsolete}" <<<"${weekly_ui}"; then
-              echo "Obsolete weekly AI text remains: ${obsolete}"
-              exit 1
-            fi
-          done
-      - name: Verify live Workers AI recognition consecutively
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import { chromium } from "@playwright/test";
-          const browser = await chromium.launch({ headless: true });
-          const cases = [
-            {
-              path: "weekly-ai-live-en.png",
-              html: `<!doctype html><style>body{margin:0;background:white;font-family:Arial,sans-serif}.sheet{padding:36px;color:#111}.subject{font-size:48px;font-weight:700}.task{margin-top:34px;font-size:64px;font-weight:700}</style><div class="sheet"><div class="subject">MATH WEEKLY PLAN</div><div class="task">INTEGRAL 3 QUESTIONS</div></div>`,
-            },
-            {
-              path: "weekly-ai-live-ja.png",
-              html: `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:white;font-family:"Noto Sans CJK JP","Noto Sans JP",sans-serif}.sheet{padding:36px;color:#111}.subject{font-size:48px;font-weight:700}.task{margin-top:26px;font-size:58px;font-weight:700}</style><div class="sheet"><div class="subject">数学 週間目標</div><div class="task">微積分 3問</div><div class="task">チョイス A</div></div>`,
-            },
-          ];
-          for (const item of cases) {
-            const context = await browser.newContext({ viewport: { width: 900, height: 420 } });
-            const page = await context.newPage();
-            await page.setContent(item.html);
-            await page.screenshot({ path: item.path });
-            await context.close();
-          }
-          await browser.close();
-          NODE
+          entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_ENTRY}")"
+          grep -F 'full-backup-entry.js?v=20260729-1' <<<"${entry}"
+          if grep -E 'ai-recognition|taskize|dashboard' <<<"${entry}"; then
+            echo "The official entry still loads removed AI or time modules."
+            exit 1
+          fi
+          task_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-ui.js?v=20260729-1")"
+          grep -F 'dailyWeeklyShelf' <<<"${task_ui}"
+          grep -F 'sourceWeeklyCardId' <<<"${task_ui}"
 
-          recognize_case() {
-            local name="$1"
-            local expected_regex="$2"
-            local expected_model="$3"
-            local expected_fallback="$4"
-            local max_latency="$5"
-            local image_file="weekly-ai-live-${name}.png"
-            local response_file="weekly-ai-live-${name}-response.json"
-            local error_file="weekly-ai-live-${name}-curl-error.txt"
-            local image_data payload http_code curl_exit
-            image_data="$(base64 -w0 "${image_file}")"
-            payload="$(IMAGE_DATA="${image_data}" node -e 'process.stdout.write(JSON.stringify({mode:"weekly",subject:"数学",weekStart:"2026-07-27",image:{mimeType:"image/png",data:process.env.IMAGE_DATA}}))')"
-            : > "${response_file}"
-            : > "${error_file}"
-            set +e
-            http_code="$(curl --silent --show-error --max-time 40 \
-              --output "${response_file}" \
-              --write-out '%{http_code}' \
-              -X POST \
-              -H 'Origin: https://soutarounaka1016-max.github.io' \
-              -H 'Content-Type: application/json' \
-              --data-binary "${payload}" \
-              'https://study-canvas.soutarou-naka-1016.workers.dev/recognize' \
-              2>"${error_file}")"
-            curl_exit=$?
-            set -e
-            echo "${name} curl exit: ${curl_exit}; HTTP status: ${http_code}"
-            cat "${error_file}" || true
-            cat "${response_file}" || true
-            if [ "${curl_exit}" -ne 0 ] || [ "${http_code}" != "200" ]; then
-              return 1
-            fi
-            node -e '
-              const fs = require("fs");
-              const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-              const expectedRegex = process.argv[2];
-              const expectedModel = process.argv[3];
-              const expectedFallback = process.argv[4];
-              const maxLatency = Number(process.argv[5]);
-              const titles = Array.isArray(value.tasks) ? value.tasks.map((task) => task?.title || "").join("\n") : "";
-              const fallbackValid = expectedFallback === "either"
-                || value.fallbackUsed === (expectedFallback === "true");
-              const valid = value.subject === "数学"
-                && value.weekStart === "2026-07-27"
-                && new RegExp(expectedModel).test(value.model)
-                && fallbackValid
-                && Number.isFinite(value.latencyMs)
-                && value.latencyMs >= 0
-                && value.latencyMs < maxLatency
-                && Array.isArray(value.tasks)
-                && value.tasks.length > 0
-                && value.tasks.every((task) => typeof task.title === "string" && task.title.trim())
-                && new RegExp(expectedRegex, "i").test(titles);
-              if (!valid) {
-                console.error({ value, titles, expectedRegex, expectedModel, expectedFallback, maxLatency });
-                process.exit(1);
-              }
-              console.log(`Workers AI recognized ${value.tasks.length} task(s) in ${value.latencyMs}ms using ${value.model}.`);
-            ' "${response_file}" "${expected_regex}" "${expected_model}" "${expected_fallback}" "${max_latency}"
-          }
-
-          recognize_with_retry() {
-            local name="$1"
-            shift
-            for attempt in 1 2 3; do
-              if recognize_case "${name}" "$@"; then
-                return 0
-              fi
-              echo "${name} recognition is not ready (${attempt}/3)."
-              sleep 10
-            done
-            return 1
-          }
-
-          recognize_with_retry en 'integral|積分' '@cf/moondream/moondream3.1-9B-A2B' false 10000
-          recognize_with_retry ja '微積|積分|チョイス|choice|choi' '@cf/mistralai/mistral-small-3.1-24b-instruct|@cf/moondream/moondream3.1-9B-A2B' either 33000
-      - name: Verify the published app
+          archive_html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}ocr-experiment/?archive=${GITHUB_SHA}")"
+          grep -F 'meta name="study-canvas-release" content="20260728-ocr-grounding-1"' <<<"${archive_html}"
+          grep -F 'archive-banner.js?v=20260729-1' <<<"${archive_html}"
+          archive_store="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}ocr-experiment/src/task-store.js?v=20260720-7")"
+          grep -F 'study-canvas-ocr-archive:tasks:v1' <<<"${archive_store}"
+      - name: Verify the published app and OCR archive
         env:
           PLAYWRIGHT_BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
         run: npm run test:browser -- --project=chromium --grep @published
@@ -285,10 +192,6 @@ jobs:
           path: |
             test-results/
             playwright-report/
-            weekly-ai-live-en.png
-            weekly-ai-live-en-response.json
-            weekly-ai-live-ja.png
-            weekly-ai-live-ja-response.json
           if-no-files-found: warn
           retention-days: 30
       - name: Record published-page success
@@ -303,7 +206,7 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${COMMIT_SHA}" \
-            -d "{\"state\":\"success\",\"target_url\":\"${RUN_URL}\",\"description\":\"Published Study Canvas and Workers AI verified\",\"context\":\"study-canvas/pages-startup\"}"
+            -d "{\"state\":\"success\",\"target_url\":\"${RUN_URL}\",\"description\":\"Official Study Canvas and OCR archive verified\",\"context\":\"study-canvas/pages-startup\"}"
       - name: Record published-page failure
         if: failure()
         env:
@@ -316,20 +219,4 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${COMMIT_SHA}" \
-            -d "{\"state\":\"failure\",\"target_url\":\"${RUN_URL}\",\"description\":\"Published Study Canvas or Workers AI verification failed\",\"context\":\"study-canvas/pages-startup\"}"
-      - name: Upload published-page failure evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-pages-${{ github.run_attempt }}
-          path: |
-            test-results/
-            playwright-report/
-            weekly-ai-live-en.png
-            weekly-ai-live-en-response.json
-            weekly-ai-live-en-curl-error.txt
-            weekly-ai-live-ja.png
-            weekly-ai-live-ja-response.json
-            weekly-ai-live-ja-curl-error.txt
-          if-no-files-found: ignore
-          retention-days: 14
+            -d "{\"state\":\"failure\",\"target_url\":\"${RUN_URL}\",\"description\":\"Published verification failed\",\"context\":\"study-canvas/pages-startup\"}"

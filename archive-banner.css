@@ -1,0 +1,40 @@
+.ocr-archive-banner {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e0b55a;
+  background: #fff5cf;
+  color: #5f4300;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ocr-archive-banner strong {
+  white-space: nowrap;
+}
+
+.ocr-archive-banner a {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #b88b28;
+  border-radius: 9px;
+  background: white;
+  color: #6f4d00;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .ocr-archive-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+}

@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260728-ocr-grounding-1";
-const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260728-2";
-const TASK_STORAGE_KEY = "study-canvas:tasks:v1";
+const EXPECTED_RELEASE = "20260729-text-card-drag-1";
+const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260729-1";
 
 function watchCriticalErrors(page) {
   const errors = [];
@@ -18,39 +17,28 @@ async function gotoHome(page) {
   await page.goto(`./?e2e=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#homeScreen")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Study Canvas" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-weekly-text-ready", "true");
 }
 
-async function expectNoCriticalErrors(errors) {
-  expect(errors, errors.join("\n")).toEqual([]);
-}
-
-test("@published 最新版が起動し重大なJavaScriptエラーがない", async ({ page }) => {
+test("@published 最新版が起動しAI・時間UIがない", async ({ page }) => {
   test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 660_000 : 30_000);
   const errors = watchCriticalErrors(page);
   await expect.poll(async () => {
     await page.goto(`./?release-check=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
     return page.locator('meta[name="study-canvas-release"]').getAttribute("content");
   }, {
-    message: "GitHub Pagesへ今回のリリースが反映されるのを待機",
     timeout: process.env.PLAYWRIGHT_BASE_URL ? 600_000 : 10_000,
     intervals: [1_000, 3_000, 5_000, 10_000, 15_000],
   }).toBe(EXPECTED_RELEASE);
 
   await expect(page.locator("#homeScreen")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Study Canvas" })).toBeVisible();
   await expect(page.locator('script[src^="release-entry.js"]')).toHaveAttribute("src", EXPECTED_RELEASE_ENTRY);
-  await page.locator('[data-home-route="weekly"]').click();
-  await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
-  await page.locator("#weeklyRecognitionButton").click();
-  await expect(page.locator("#weeklyRunRecognition")).toBeVisible();
-  await expect(page.locator("#weeklyAddCandidate")).toBeVisible();
-  await expect(page.locator("#weeklySaveCandidates")).toBeAttached();
-  await expect(page.locator(".weekly-recognition-placeholder")).toHaveCount(0);
-  for (const obsoleteText of ["準備中", "次の段階で", "画像は外部へ送信しません", "土台まで実装"]) {
-    await expect(page.locator("body")).not.toContainText(obsoleteText);
-  }
-  await expect(page.locator("html")).not.toHaveAttribute("data-note-load-error", "true");
-  await expectNoCriticalErrors(errors);
+  await expect(page.locator("body")).not.toContainText("予定時間");
+  await expect(page.locator("body")).not.toContainText("学習時間の集計");
+  await expect(page.locator("body")).not.toContainText("AIで読み取る");
+  await expect(page.locator("#taskMinutes")).toHaveCount(0);
+  await expect(page.locator('script[src*="weekly-recognition"]')).toHaveCount(0);
+  expect(errors, errors.join("\n")).toEqual([]);
 });
 
 test("主要画面へ移動し自由ノートを開ける", async ({ page }) => {
@@ -59,23 +47,20 @@ test("主要画面へ移動し自由ノートを開ける", async ({ page }) => 
 
   await page.locator('[data-home-route="daily"]').click();
   await expect(page.locator("#drawingCanvas")).toBeVisible();
+  await expect(page.locator("#dailyWeeklyShelf")).toBeVisible();
   await page.locator("#homeButton").click();
 
   await page.locator('[data-home-route="weekly"]').click();
   await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
+  await expect(page.locator("#weeklySubjectGrid .weekly-subject-editor")).toHaveCount(5);
   await page.locator("#closeWeeklyDialogButton").click();
   await expect(page.locator("#homeScreen")).toBeVisible();
 
   await page.locator('[data-home-route="notes"]').click();
   await expect(page.locator("#noteDialog[open]")).toBeVisible();
-  await expect(page.locator("#noteGalleryView")).toBeVisible();
   await expect(page.locator("#noteGallery")).toContainText("ノート 1");
   await page.locator("#closeNoteDialogButton").click();
   await expect(page.locator("#homeScreen")).toBeVisible();
-
-  await page.locator('[data-home-route="stats"]').click();
-  await expect(page.locator(".study-dashboard")).toBeVisible();
-  await page.locator("#homeButton").click();
 
   await page.locator('[data-home-route="pages"]').click();
   await expect(page.locator("#pageListDialog[open]")).toBeVisible();
@@ -84,55 +69,54 @@ test("主要画面へ移動し自由ノートを開ける", async ({ page }) => 
   await page.locator('[data-home-route="backup"]').click();
   await expect(page.locator("details.menu")).toHaveAttribute("open", "");
   await expect(page.locator("#backupButton")).toBeVisible();
-  await expectNoCriticalErrors(errors);
+  expect(errors, errors.join("\n")).toEqual([]);
 });
 
-test("主要操作で追加したタスクが再読み込み後も残る", async ({ page }) => {
+test("日次上部は時間集計や追加ボタンではなく週間カード棚を使う", async ({ page }) => {
   const errors = watchCriticalErrors(page);
   await gotoHome(page);
-  await page.evaluate((key) => localStorage.removeItem(key), TASK_STORAGE_KEY);
-  await page.reload({ waitUntil: "domcontentloaded" });
-
   await page.locator('[data-home-route="daily"]').click();
-  await page.locator("#taskButton").click();
-  await expect(page.locator("#taskDialog[open]")).toBeVisible();
-  await page.locator("#taskSubject").selectOption({ label: "数学" });
-  await page.locator("#taskTitle").fill("Playwright確認タスク");
-  await page.locator("#taskMinutes").fill("35");
-  await page.locator("#taskForm").getByRole("button", { name: "タスクを追加" }).click();
-  await expect(page.locator("#taskList")).toContainText("Playwright確認タスク");
-  await expect(page.locator("#taskDialog")).not.toHaveAttribute("open", "");
-
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await page.locator("#taskButton").click();
-  await expect(page.locator("#taskList")).toContainText("Playwright確認タスク");
-  await expectNoCriticalErrors(errors);
+  await expect(page.locator("#dailyWeeklyShelf")).toBeVisible();
+  await expect(page.locator("#taskButton")).toBeHidden();
+  await expect(page.locator("#taskMinutes")).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("今日の集計");
+  await expect(page.locator("body")).not.toContainText("今週の集計");
+  expect(errors, errors.join("\n")).toEqual([]);
 });
 
 test("主要部分が画面幅から大きくはみ出さない", async ({ page }) => {
   const errors = watchCriticalErrors(page);
   await gotoHome(page);
+  await page.locator('[data-home-route="daily"]').click();
 
-  const layout = await page.evaluate(() => {
-    const selectors = ["#homeScreen", ".home-shell", ".home-today-card", ".home-menu-grid"];
-    const boxes = selectors.map((selector) => {
-      const element = document.querySelector(selector);
-      const rect = element?.getBoundingClientRect();
-      return rect ? { selector, left: rect.left, right: rect.right, width: rect.width } : { selector, missing: true };
-    });
-    return {
-      viewportWidth: window.innerWidth,
-      documentWidth: document.documentElement.scrollWidth,
-      boxes,
-    };
-  });
-
+  const layout = await page.evaluate(() => ({
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    boxes: ["#dailyWeeklyShelf", ".workspace", ".page"].map((selector) => {
+      const rect = document.querySelector(selector)?.getBoundingClientRect();
+      return rect ? { selector, left: rect.left, right: rect.right } : { selector, missing: true };
+    }),
+  }));
   expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 4);
   for (const box of layout.boxes) {
     expect(box.missing, `${box.selector}が見つかりません`).not.toBe(true);
-    expect(box.left, `${box.selector}が左へはみ出しています`).toBeGreaterThanOrEqual(-4);
-    expect(box.right, `${box.selector}が右へはみ出しています`).toBeLessThanOrEqual(layout.viewportWidth + 4);
+    expect(box.left).toBeGreaterThanOrEqual(-4);
+    expect(box.right).toBeLessThanOrEqual(layout.viewportWidth + 4);
   }
-  await expect(page.locator('[data-home-route="daily"]')).toBeVisible();
-  await expectNoCriticalErrors(errors);
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("@published OCR実験版を別保存領域で開ける", async ({ page }) => {
+  test.skip(!process.env.PLAYWRIGHT_BASE_URL, "公開後だけ確認する観賞版");
+  const errors = watchCriticalErrors(page);
+  await page.goto(`./ocr-experiment/?archive=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".ocr-archive-banner")).toContainText("OCR実験版");
+  await expect(page.locator('meta[name="study-canvas-release"]')).toHaveAttribute("content", "20260728-ocr-grounding-1");
+  const keys = await page.evaluate(() => {
+    localStorage.setItem("study-canvas-ocr-archive:test", "ok");
+    return Object.keys(localStorage);
+  });
+  expect(keys).toContain("study-canvas-ocr-archive:test");
+  expect(keys.some((key) => key.startsWith("study-canvas:"))).toBe(false);
+  expect(errors, errors.join("\n")).toEqual([]);
 });

@@ -6,9 +6,11 @@ import {
   deleteWeeklyCard,
   emptyWeeklyCardStore,
   getWeeklyCards,
+  getWeeklyCardsForWeek,
   loadWeeklyCardStore,
   replaceStoredWeeklyCardStore,
   serializeWeeklyCardStore,
+  updateWeeklyCard,
 } from "../src/weekly-card-store.js";
 
 const monday = "2026-07-27";
@@ -32,6 +34,25 @@ test("削除対象以外のカードを保持する", () => {
   let store = addWeeklyCards(emptyWeeklyCardStore(), monday, "数学", [card, { ...card, id: "c2", title: "ベクトル復習" }]);
   store = deleteWeeklyCard(store, monday, "数学", "c1");
   assert.deepEqual(getWeeklyCards(store, monday, "数学").map((item) => item.id), ["c2"]);
+});
+
+test("手入力カードを編集し、週全体の棚用一覧へ科目付きで返す", () => {
+  let store = addWeeklyCards(emptyWeeklyCardStore(), monday, "数学", [
+    { ...card, source: "manual" },
+  ]);
+  store = addWeeklyCards(store, monday, "英語", [
+    { ...card, id: "e1", title: "長文1題", source: "manual" },
+  ]);
+  store = updateWeeklyCard(store, monday, "数学", "c1", "微積分 4問");
+
+  assert.equal(getWeeklyCards(store, monday, "数学")[0].title, "微積分 4問");
+  assert.deepEqual(
+    getWeeklyCardsForWeek(store, monday).map(({ subject, title, source }) => ({ subject, title, source })),
+    [
+      { subject: "数学", title: "微積分 4問", source: "manual" },
+      { subject: "英語", title: "長文1題", source: "manual" },
+    ],
+  );
 });
 
 test("保存失敗時は以前の値へ戻す", () => {

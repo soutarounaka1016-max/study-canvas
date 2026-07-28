@@ -1,289 +1,204 @@
 import { readFile, stat } from "node:fs/promises";
 
 const requiredFiles = [
-  "index.html", "styles.css", "note.css", "enhancements.css", "carryover.css", "selection.css", "taskize.css",
-  "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "note-selection-ui.js", "daily-enhancements.js",
-  "release-entry.js", "taskize-entry.js", "taskize-ui.js", "dashboard-entry.js", "dashboard-ui.js", "dashboard-style.js",
-  "home-entry.js", "home-ui.js", "home-style.js", "weekly-recognition-entry.js", "weekly-recognition.css",
-  "ai-recognition-entry.js", "ai-recognition-ui.js", "ai-recognition-style.js", "ai-action-ui.js",
-  "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
-  "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
-  "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/weekly-card-store.js", "src/weekly-recognition.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
-  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", "tests/e2e/weekly-recognition.spec.js", "tests/e2e/release-gate.spec.js", ".github/workflows/ci.yml", ".github/workflows/pages.yml",
-  "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
+  "index.html",
+  "styles.css",
+  "enhancements.css",
+  "weekly-text.css",
+  "weekly-text-ui.js",
+  "task-ui.js",
+  "release-entry.js",
+  "home-entry.js",
+  "home-ui.js",
+  "home-style.js",
+  "full-backup-entry.js",
+  "full-backup-ui.js",
+  "archive-banner.js",
+  "archive-banner.css",
+  "src/task-store.js",
+  "src/weekly-store.js",
+  "src/weekly-card-store.js",
+  "src/full-backup.js",
+  "src/home-route.js",
+  "tests/e2e/app.spec.js",
+  "tests/e2e/release-gate.spec.js",
+  "playwright.config.js",
+  ".github/workflows/ci.yml",
+  ".github/workflows/pages.yml",
+  "AGENTS.md",
+  "PROJECT_STATUS.md",
+  "TODO.md",
+  "DECISIONS.md",
 ];
-const textFiles = [...requiredFiles, "README.md", "package.json"];
-const conflictPattern = /^(<<<<<<<|=======|>>>>>>>)/m;
-const secretPattern = /(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{20,}|AIza[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH) PRIVATE KEY)/;
-let failed = false;
 
+const contents = {};
+let failed = false;
 for (const file of requiredFiles) {
   try {
     const info = await stat(file);
     if (!info.isFile() || info.size === 0) throw new Error("空のファイルです");
+    contents[file] = await readFile(file, "utf8");
   } catch (error) {
     console.error(`必須ファイルを確認できません: ${file} (${error.message})`);
     failed = true;
   }
 }
 
-for (const file of textFiles) {
-  try {
-    const content = await readFile(file, "utf8");
-    if (conflictPattern.test(content)) {
-      console.error(`コンフリクト記号が残っています: ${file}`);
-      failed = true;
-    }
-    if (secretPattern.test(content)) {
-      console.error(`秘密情報らしい文字列があります: ${file}`);
-      failed = true;
-    }
-  } catch {
-    // Missing required files are reported above.
-  }
-}
-
-const html = await readFile("index.html", "utf8");
-for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js", "task-ui.js", "carryover-ui.js", "weekly-ui.js", "note-ui.js", "release-entry.js"]) {
-  if (!html.includes(reference)) {
-    console.error(`index.htmlから${reference}が読み込まれていません`);
+const conflictPattern = /^(<<<<<<<|=======|>>>>>>>)/m;
+const secretPattern = /(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{20,}|AIza[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH) PRIVATE KEY)/;
+for (const [file, content] of Object.entries(contents)) {
+  if (conflictPattern.test(content)) {
+    console.error(`コンフリクト記号が残っています: ${file}`);
     failed = true;
   }
-}
-if (!html.includes('meta name="study-canvas-release" content="20260728-ocr-grounding-1"')) {
-  console.error("公開確認用のリリース識別子がありません");
-  failed = true;
-}
-if (!html.includes("release-entry.js?v=20260728-2")) {
-  console.error("ブラウザ確認版の公開入口へ更新されていません");
-  failed = true;
-}
-if (!html.includes("weekly-ui.js?v=20260728-3") || !html.includes("weekly-recognition-entry.js?v=20260728-2")) {
-  console.error("週間AI画面がSafariキャッシュ対策済みの独立した公開入口から読み込まれていません");
-  failed = true;
-}
-const releaseMetaMatch = html.match(/meta name="study-canvas-release" content="([^"]+)"/);
-const releaseEntryMatch = html.match(/release-entry\.js\?v=([^"']+)/);
-const releaseMetaDate = releaseMetaMatch?.[1].match(/^(\d{8})-/)?.[1];
-const releaseEntryDate = releaseEntryMatch?.[1].match(/^(\d{8})-/)?.[1];
-if (!releaseMetaDate || !releaseEntryDate || releaseMetaDate !== releaseEntryDate) {
-  console.error("公開識別子とrelease-entry.jsのキャッシュ日付が一致していません");
-  failed = true;
-}
-
-if (!html.includes("note-ui.js?v=20260721-2")) {
-  console.error("自由ノート修正版の公開キャッシュへ更新されていません");
-  failed = true;
-}
-for (const id of ["noteSelectionHint", "noteSelectionActions", "noteDeleteSelectionButton"]) {
-  if (!html.includes(`id="${id}"`)) {
-    console.error(`自由ノートの初期化に必要な${id}がありません`);
-    failed = true;
-  }
-}
-for (const guidance of [
-  "全データをバックアップ",
-  "バックアップから復元",
-  "タスクカードと配置は全データバックアップに含まれます。",
-  "週間目標は全データバックアップに含まれます。",
-  "自由ノートは全データバックアップに含まれます。",
-]) {
-  if (!html.includes(guidance)) {
-    console.error(`統合バックアップの正しい案内がありません: ${guidance}`);
-    failed = true;
-  }
-}
-for (const obsoleteGuidance of [
-  "タスクカードは現在の手書きJSONバックアップには含まれません。",
-  "週間目標は現在の手書きJSONバックアップには含まれません。",
-  "自由ノートは現在の手書きJSONバックアップには含まれません。",
-]) {
-  if (html.includes(obsoleteGuidance)) {
-    console.error(`古いバックアップ案内が残っています: ${obsoleteGuidance}`);
+  if (secretPattern.test(content)) {
+    console.error(`秘密情報らしい文字列があります: ${file}`);
     failed = true;
   }
 }
 
-const noteEntry = await readFile("note-ui.js", "utf8");
-if (!noteEntry.includes("note-selection-ui.js?v=20260721-2") || !noteEntry.includes("NOTE_ROUTE") || !noteEntry.includes("hashchange")) {
-  console.error("自由ノートの初期化完了後に#notesを開く処理を確認できません");
-  failed = true;
-}
-
-const releaseEntry = await readFile("release-entry.js", "utf8");
-if (!releaseEntry.includes("daily-enhancements.js") || !releaseEntry.includes("taskize-entry.js") || !releaseEntry.includes("home-entry.js?v=20260721-2")) {
-  console.error("release-entry.jsから日別拡張、タスク化、ホームの入口が読み込まれていません");
-  failed = true;
-}
-if (releaseEntry.includes("weekly-recognition-entry.js")) {
-  console.error("週間AI画面が無関係な機能の直列読み込みへ再び依存しています");
-  failed = true;
-}
-
-const publicEntryDate = Number(releaseEntryMatch?.[1].match(/^(\d{8})-/)?.[1]);
-const importedEntryDates = [...releaseEntry.matchAll(/\?v=(\d{8})-\d+/g)].map((match) => Number(match[1]));
-if (!Number.isFinite(publicEntryDate) || importedEntryDates.some((date) => date > publicEntryDate)) {
-  console.error("release-entry.jsより新しい子モジュールがあるのに公開キャッシュ番号が更新されていません");
-  failed = true;
-}
-
-const weeklyRecognitionEntry = await readFile("weekly-recognition-entry.js", "utf8");
-const weeklyUi = await readFile("weekly-ui.js", "utf8");
-const weeklyRecognitionModel = await readFile("src/weekly-recognition.js", "utf8");
-const weeklyCardStore = await readFile("src/weekly-card-store.js", "utf8");
-if (!weeklyRecognitionEntry.includes("weeklyRunRecognition") || !weeklyRecognitionEntry.includes("weeklySaveCandidates") || !weeklyRecognitionEntry.includes("replaceStoredWeeklyCardStore") || !weeklyRecognitionEntry.includes("weeklyRecognitionInstalled")) {
-  console.error("週間AI読み取りの実行、修正、カード保存画面を確認できません");
-  failed = true;
-}
-for (const obsoleteText of ["準備中", "次の段階で", "画像は外部へ送信しません", "土台まで実装"]) {
-  if (weeklyUi.includes(obsoleteText)) {
-    console.error(`週間目標の初期UIに旧文言が残っています: ${obsoleteText}`);
-    failed = true;
-  }
-}
-if (!weeklyRecognitionModel.includes("study-canvas.soutarou-naka-1016.workers.dev") || !weeklyRecognitionModel.includes('mode: "weekly"')) {
-  console.error("週間キャンバスからCloudflare Workerへ送る処理を確認できません");
-  failed = true;
-}
-if (!weeklyCardStore.includes("WEEKLY_CARD_STORAGE_KEY") || !weeklyCardStore.includes("replaceStoredWeeklyCardStore")) {
-  console.error("週間カードの永続保存とロールバック処理を確認できません");
-  failed = true;
-}
-
-const homeEntry = await readFile("home-entry.js", "utf8");
-const homeUi = await readFile("home-ui.js", "utf8");
-const homeRoute = await readFile("src/home-route.js", "utf8");
-if (!homeEntry.includes("home-style.js?v=20260721-2") || !homeEntry.includes("home-ui.js?v=20260721-2")) {
-  console.error("ホーム画面の表示とスタイルが公開入口へ接続されていません");
-  failed = true;
-}
-if (!homeUi.includes("data-home-route") || !homeUi.includes("homeButton") || !homeUi.includes("hashchange") || !homeUi.includes("TASK_STORAGE_KEY")) {
-  console.error("ホーム画面のメニュー、戻る操作、集計表示を確認できません");
-  failed = true;
-}
-if (!homeRoute.includes("HOME_ROUTES") || !homeRoute.includes("normalizeHomeRoute") || !homeRoute.includes("homeRouteHash")) {
-  console.error("ホーム画面のURLルート定義を確認できません");
-  failed = true;
-}
-
-const dashboardEntry = await readFile("dashboard-entry.js", "utf8");
-if (!dashboardEntry.includes("dashboard-ui.js?v=20260721-2") || !dashboardEntry.includes("dashboard-style.js?v=20260721-2")) {
-  console.error("学習時間集計ダッシュボードの公開版が更新されていません");
-  failed = true;
-}
-if (!dashboardEntry.includes("ai-recognition-entry.js")) {
-  console.error("タスク入力補助の公開入口が接続されていません");
-  failed = true;
-}
-
-const dashboard = await readFile("dashboard-ui.js", "utf8");
-const stats = await readFile("src/study-stats.js", "utf8");
-if (!dashboard.includes("summarizeTasksForDate") || !dashboard.includes("summarizeTasksForRange") || !dashboard.includes("dashboardSubjectList")) {
-  console.error("日別・週別・科目別の集計表示を確認できません");
-  failed = true;
-}
-if (!stats.includes("getWeekRange") || !stats.includes("completedMinutes") || !stats.includes("subjectBreakdown")) {
-  console.error("学習時間集計ロジックを確認できません");
-  failed = true;
-}
-if (!dashboard.includes("実際に計測した勉強時間ではありません")) {
-  console.error("完了換算時間と実測時間の区別が表示されていません");
-  failed = true;
-}
-
-const taskAssist = await readFile("ai-action-ui.js", "utf8");
-if (!taskAssist.includes("QUICK_SUBJECTS") || !taskAssist.includes("QUICK_MINUTES") || !taskAssist.includes("installTaskAssist")) {
-  console.error("科目・予定時間のクイック入力を確認できません");
-  failed = true;
-}
-if (/tesseract|recognizeTaskWithLocalOcr/i.test(taskAssist)) {
-  console.error("停止した端末内OCRへの参照が入力補助へ残っています");
-  failed = true;
-}
-
-try {
-  await stat("src/local-ocr.js");
-  console.error("不採用の端末内OCR本体が残っています");
-  failed = true;
-} catch {
-  // The rejected OCR implementation must remain absent.
-}
-
-const packageJson = await readFile("package.json", "utf8");
-const playwrightConfig = await readFile("playwright.config.js", "utf8");
-const browserTests = `${await readFile("tests/e2e/app.spec.js", "utf8")}\n${await readFile("tests/e2e/weekly-recognition.spec.js", "utf8")}\n${await readFile("tests/e2e/release-gate.spec.js", "utf8")}`;
-const workflow = await readFile(".github/workflows/ci.yml", "utf8");
-const pagesWorkflow = await readFile(".github/workflows/pages.yml", "utf8");
-if (!packageJson.includes('"@playwright/test": "1.61.1"') || !packageJson.includes('"test:browser"')) {
-  console.error("Playwrightの固定版と実行コマンドを確認できません");
-  failed = true;
-}
-for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"]) {
-  if (!playwrightConfig.includes(`name: "${project}"`) || !workflow.includes(`project: ${project}`)) {
-    console.error(`${project}のブラウザ確認構成がありません`);
-    failed = true;
-  }
-}
-for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "weeklyRunRecognition", "weeklySaveCandidates", "既存のカードは変更されていません", "waitForRequest", "公開版AI通信確認", "Version 0.2 Release Gate", "confirmFullRestoreButton", "Release Gate 自由ノート"]) {
-  if (!browserTests.includes(requirement)) {
-    console.error(`ブラウザテストに${requirement}の確認がありません`);
-    failed = true;
-  }
-}
-if (!workflow.includes("playwright install --with-deps") || !workflow.includes("actions/upload-artifact@v4")) {
-  console.error("通常ブラウザ確認と失敗成果物のCI設定が不足しています");
-  failed = true;
-}
+const html = contents["index.html"] || "";
 for (const requirement of [
-  "pages: write",
-  "id-token: write",
-  "actions/configure-pages@v5",
+  'meta name="study-canvas-release" content="20260729-text-card-drag-1"',
+  "weekly-text.css?v=20260729-1",
+  "weekly-text-ui.js?v=20260729-1",
+  "task-ui.js?v=20260729-1",
+  "release-entry.js?v=20260729-1",
+  'id="weeklySubjectGrid"',
+  "教科別に1行ずつ入力",
+]) {
+  requireText(html, requirement, `正式HTMLに${requirement}がありません`);
+}
+for (const removed of [
+  "weeklyRecognitionButton",
+  "weekly-recognition-entry.js",
+  "AIで読み取る",
+  'id="taskMinutes"',
+  "予定時間",
+  "学習時間の集計",
+  'id="weeklyCanvas"',
+]) {
+  rejectText(html, removed, `正式HTMLに廃止した表示または機能が残っています: ${removed}`);
+}
+
+const releaseEntry = contents["release-entry.js"] || "";
+for (const requirement of [
+  "daily-enhancements.js?v=20260729-1",
+  "full-backup-entry.js?v=20260729-1",
+  "home-entry.js?v=20260729-1",
+]) {
+  requireText(releaseEntry, requirement, `公開入口に${requirement}がありません`);
+}
+for (const removed of ["taskize", "dashboard", "ai-recognition", "weekly-recognition"]) {
+  rejectText(releaseEntry, removed, `公開入口に廃止モジュールが残っています: ${removed}`);
+}
+
+const weeklyUi = contents["weekly-text-ui.js"] || "";
+for (const requirement of [
+  "WEEKLY_CARD_SUBJECTS",
+  "split(/\\r?\\n/)",
+  "addWeeklyCards",
+  "updateWeeklyCard",
+  "deleteWeeklyCard",
+  "replaceStoredWeeklyCardStore",
+  "study-canvas:weekly-cards-changed",
+]) {
+  requireText(weeklyUi, requirement, `週間テキスト入力に${requirement}がありません`);
+}
+for (const removed of ["recognizeWeeklyCanvas", "fetch(", "weeklyCanvas"]) {
+  rejectText(weeklyUi, removed, `週間テキスト入力がAI・手書きへ依存しています: ${removed}`);
+}
+
+const taskUi = contents["task-ui.js"] || "";
+for (const requirement of [
+  "dailyWeeklyShelf",
+  "daily-weekly-drag-handle",
+  "is-weekly-drop-target",
+  "sourceWeeklyCardId",
+  "updateTaskPosition",
+  "study-canvas:weekly-cards-changed",
+  "getLinkedTasksForWeek",
+]) {
+  requireText(taskUi, requirement, `週間カードのドラッグ配置に${requirement}がありません`);
+}
+rejectText(taskUi, "taskMinutes", "日次タスク画面に予定時間入力が残っています");
+
+const taskStore = contents["src/task-store.js"] || "";
+requireText(taskStore, "sourceWeeklyCardId", "日次タスクへ週間カードIDを保持できません");
+requireText(taskStore, 'TASK_STORAGE_KEY = "study-canvas:tasks:v1"', "既存の日次タスク保存キーが変わっています");
+
+const weeklyStore = contents["src/weekly-card-store.js"] || "";
+for (const requirement of ["updateWeeklyCard", "getWeeklyCardsForWeek", "WEEKLY_CARD_STORAGE_KEY"]) {
+  requireText(weeklyStore, requirement, `週間カード保存に${requirement}がありません`);
+}
+
+const homeUi = contents["home-ui.js"] || "";
+for (const removed of ["summarizeTasksForDate", "plannedMinutes", 'data-home-route="stats"', "学習時間"]) {
+  rejectText(homeUi, removed, `ホームに時間集計が残っています: ${removed}`);
+}
+requireText(contents["home-style.js"] || "", "daily-weekly-shelf", "ホーム表示時に週間カード棚を隠す設定がありません");
+
+const fullBackup = contents["src/full-backup.js"] || "";
+for (const key of [
+  '"study-canvas:pages:v2"',
+  '"study-canvas:tasks:v1"',
+  '"study-canvas:weekly:v1"',
+  '"study-canvas:weekly-cards:v1"',
+  '"study-canvas:free-note:v1"',
+]) {
+  requireText(fullBackup, key, `統合バックアップから${key}が失われています`);
+}
+
+const workflow = contents[".github/workflows/pages.yml"] || "";
+for (const requirement of [
+  "OCR_ARCHIVE_SHA: 70d17413f9bd9832ee2a6e94cb4aaaa2e79d8945",
+  "fetch-depth: 0",
+  "git archive",
+  "_site/ocr-experiment",
+  "study-canvas-ocr-archive:",
+  "archive-banner.js",
   "actions/upload-pages-artifact@v4",
   "actions/deploy-pages@v4",
-  "path: _site",
-  "touch _site/.nojekyll",
-  "Verify published Study Canvas",
-  "playwright install --with-deps chromium",
-  "https://soutarounaka1016-max.github.io/study-canvas/",
-  "study-canvas/pages-startup",
-  "actions/upload-artifact@v4",
+  "Verify published release chains",
   "release-gate-evidence",
 ]) {
-  if (!pagesWorkflow.includes(requirement)) {
-    console.error(`GitHub Pagesの公開・起動確認に${requirement}がありません`);
-    failed = true;
-  }
+  requireText(workflow, requirement, `Pages公開に${requirement}がありません`);
+}
+for (const removed of ["Verify Workers AI health", "Verify live Workers AI recognition"]) {
+  rejectText(workflow, removed, `正式版の公開検査に廃止したAI試験が残っています: ${removed}`);
 }
 
-for (const publishedRequirement of [
-  "Verify published release chain",
-  "Verify live Workers AI recognition",
-  "weeklyRunRecognition",
-  "weeklySaveCandidates",
-  "Cache-Control: no-cache",
+const playwrightConfig = contents["playwright.config.js"] || "";
+const ci = contents[".github/workflows/ci.yml"] || "";
+for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"]) {
+  requireText(playwrightConfig, `name: "${project}"`, `Playwrightに${project}がありません`);
+  requireText(ci, `project: ${project}`, `CIに${project}がありません`);
+}
+
+const browserTests = `${contents["tests/e2e/app.spec.js"] || ""}\n${contents["tests/e2e/release-gate.spec.js"] || ""}`;
+for (const requirement of [
+  "@published",
+  "dailyWeeklyShelf",
+  "weeklySubjectGrid",
+  "sourceWeeklyCardId",
+  "ocr-experiment",
+  "Release Gate 自由ノート",
+  "confirmFullRestoreButton",
 ]) {
-  if (!pagesWorkflow.includes(publishedRequirement)) {
-    console.error(`公開版のキャッシュ・AI実動確認に${publishedRequirement}がありません`);
-    failed = true;
-  }
-}
-
-const worker = await readFile("cloudflare-worker.js", "utf8");
-const wrangler = await readFile("wrangler.jsonc", "utf8");
-if (!worker.includes("@cf/mistralai/mistral-small-3.1-24b-instruct")
-  || !worker.includes('type: "image_url"')
-  || !worker.includes("env.AI.run")
-  || !worker.includes("filterGroundedWeeklyTasks")
-  || !worker.includes("AI_RESULTS_DISAGREE")
-  || !worker.includes("noPaidFallback")
-  || worker.includes("GEMINI_API_KEY")) {
-  console.error("Workers AIによる画像認識中継を確認できません");
-  failed = true;
-}
-if (!wrangler.includes('"name": "study-canvas"') || !wrangler.includes('"binding": "AI"')) {
-  console.error("Cloudflare Worker名またはWorkers AIバインディングが正しくありません");
-  failed = true;
+  requireText(browserTests, requirement, `ブラウザ検査に${requirement}がありません`);
 }
 
 if (failed) process.exit(1);
-console.log("静的アプリ、週間AI画像認識、週間カード永続化、失敗時ロールバック、自由ノート、ホーム、学習時間集計、Playwrightブラウザ確認、GitHub Pages公開直後の起動確認、コンフリクト記号、秘密情報を確認しました。");
+console.log("正式版のテキスト週間目標、ドラッグ配置、時間・AI非表示、既存保存互換、OCR観賞版、ブラウザ検査、公開構成を確認しました。");
+
+function requireText(content, text, message) {
+  if (content.includes(text)) return;
+  console.error(message);
+  failed = true;
+}
+
+function rejectText(content, text, message) {
+  if (!content.includes(text)) return;
+  console.error(message);
+  failed = true;
+}

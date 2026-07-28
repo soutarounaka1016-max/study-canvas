@@ -133,24 +133,6 @@
   pointer-events: none;
 }
 
-.canvas-task-add-button {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  min-width: 112px;
-  min-height: 46px;
-  padding: 10px 16px;
-  border: 1px solid #8aa4f7;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 94%);
-  color: #2149c6;
-  font-size: 15px;
-  font-weight: 800;
-  box-shadow: 0 7px 20px rgb(15 23 42 / 16%);
-  pointer-events: auto;
-  touch-action: manipulation;
-}
-
 .canvas-task-card {
   position: absolute;
   display: grid;
@@ -246,8 +228,197 @@
   color: #157f57;
 }
 
+.daily-weekly-shelf {
+  width: min(1320px, calc(100% - 32px));
+  margin: 16px auto 0;
+  padding: 14px;
+  border: 1px solid #d7deea;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 5px 18px rgb(15 23 42 / 8%);
+}
+
+.daily-weekly-shelf-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.daily-weekly-shelf-heading h2,
+.daily-weekly-shelf-heading p {
+  margin: 0;
+}
+
+.daily-weekly-shelf-heading h2 {
+  font-size: 17px;
+}
+
+.daily-weekly-shelf-heading p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.daily-weekly-shelf-heading button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #b8c6e0;
+  border-radius: 10px;
+  background: #f7f9ff;
+  color: #2149c6;
+  font-weight: 700;
+}
+
+.daily-weekly-shelf-status {
+  margin: 8px 0 0;
+  color: #157f57;
+  font-size: 13px;
+}
+
+.daily-weekly-shelf-status.is-error {
+  color: #b42318;
+}
+
+.daily-weekly-card-list {
+  display: flex;
+  min-height: 84px;
+  gap: 10px;
+  overflow-x: auto;
+  padding-top: 11px;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline proximity;
+}
+
+.daily-weekly-card-empty {
+  align-self: center;
+  margin: 0;
+  color: var(--muted);
+}
+
+.daily-weekly-card {
+  display: grid;
+  width: min(280px, 74vw);
+  min-width: min(280px, 74vw);
+  min-height: 72px;
+  grid-template-columns: 46px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #cbd6e8;
+  border-radius: 13px;
+  background: #fff;
+  scroll-snap-align: start;
+}
+
+.daily-weekly-card > div {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 4px;
+  padding: 9px 11px;
+}
+
+.daily-weekly-card strong {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-weekly-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.daily-weekly-drag-handle {
+  min-width: 46px;
+  min-height: 70px;
+  border: 0;
+  border-right: 1px solid #dfe5ef;
+  background: #eef3ff;
+  color: #3659b6;
+  font-size: 24px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.daily-weekly-card.is-placed {
+  opacity: .6;
+  background: #f5f6f8;
+}
+
+.daily-weekly-card.is-placed .daily-weekly-drag-handle {
+  cursor: default;
+}
+
+.daily-weekly-card.is-completed {
+  border-color: #9ed7bd;
+  background: #f1fbf6;
+}
+
+.daily-weekly-card.is-completed strong {
+  text-decoration: line-through;
+}
+
+.daily-weekly-subject {
+  justify-self: start;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eaf0ff;
+  color: #1949b8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.daily-weekly-subject[data-subject="英語"] { background: #fff0f3; color: #be123c; }
+.daily-weekly-subject[data-subject="物理"] { background: #f4f0ff; color: #6d28d9; }
+.daily-weekly-subject[data-subject="化学"] { background: #eafaf3; color: #047857; }
+.daily-weekly-subject[data-subject="その他"] { background: #f1f3f5; color: #475569; }
+
+.daily-weekly-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  width: min(260px, 70vw);
+  padding: 12px;
+  border: 2px solid #2558e6;
+  border-radius: 13px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 16px 38px rgb(15 23 42 / 28%);
+  pointer-events: none;
+}
+
+.daily-weekly-drag-ghost .daily-weekly-drag-handle {
+  display: none;
+}
+
+.daily-weekly-drag-ghost > div {
+  display: grid;
+  gap: 5px;
+}
+
+#dailyCanvasStage.is-weekly-drop-target::after {
+  content: "ここに離して今日のカードを配置";
+  position: absolute;
+  z-index: 30;
+  inset: 14px;
+  display: grid;
+  place-items: center;
+  border: 3px dashed #2558e6;
+  border-radius: 16px;
+  background: rgb(238 243 255 / 78%);
+  color: #2149c6;
+  font-size: clamp(16px, 2vw, 24px);
+  font-weight: 800;
+  pointer-events: none;
+}
+
 body.is-dragging-task-card,
 body.is-dragging-task-card * {
+  cursor: grabbing !important;
+}
+
+body.is-dragging-weekly-card,
+body.is-dragging-weekly-card * {
   cursor: grabbing !important;
 }
 
@@ -261,8 +432,6 @@ body.is-dragging-task-card * {
     width: clamp(170px, 31%, 225px);
     min-height: 98px;
   }
-  .canvas-task-add-button {
-    right: 12px;
-    bottom: 12px;
-  }
+  .daily-weekly-shelf { width: calc(100% - 16px); margin-top: 8px; padding: 11px; }
+  .daily-weekly-shelf-heading { align-items: flex-start; }
 }
