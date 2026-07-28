@@ -152,6 +152,8 @@ test("週間目標は月曜日単位で別の保存キーへ保存する", () =>
   assert.match(weeklyUi, /replaceStoredWeeklyStore/);
   assert.doesNotMatch(weeklyUi, /study-canvas:pages:v2/);
   assert.doesNotMatch(weeklyUi, /study-canvas:tasks:v1/);
+  assert.match(weeklyUi, /y \+= 220/);
+  assert.doesNotMatch(weeklyUi, /y \+= 110/);
 });
 
 test("週間目標から今日のタスクを自動作成しない", () => {
