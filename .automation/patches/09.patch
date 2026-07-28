@@ -1,0 +1,12 @@
+--- a/.github/workflows/pages.yml
++++ b/.github/workflows/pages.yml
+@@ -1,6 +1,9 @@
+           recognize_case() {
+             local name="$1"
+             local expected_regex="$2"
++            local expected_model="$3"
++            local expected_fallback="$4"
++            local max_latency="$5"
+             local image_file="weekly-ai-live-${name}.png"
+             local response_file="weekly-ai-live-${name}-response.json"
+             local error_file="weekly-ai-live-${name}-curl-error.txt"
