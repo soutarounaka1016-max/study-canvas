@@ -1,0 +1,81 @@
+name: Fix Safari cache chain
+
+on:
+  push:
+    branches: [agent/fix-safari-weekly-ai-cache]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bump every weekly AI cache boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "index.html": [
+                  ('20260728-weekly-ai-cache-1', '20260728-safari-weekly-ai-cache-2'),
+                  ('release-entry.js?v=20260728-1', 'release-entry.js?v=20260728-2'),
+              ],
+              "release-entry.js": [
+                  ('weekly-recognition-entry.js?v=20260727-1', 'weekly-recognition-entry.js?v=20260728-2'),
+              ],
+              "weekly-recognition-entry.js": [
+                  ('src/weekly-card-store.js?v=20260727-1', 'src/weekly-card-store.js?v=20260728-2'),
+                  ('src/weekly-recognition.js?v=20260727-1', 'src/weekly-recognition.js?v=20260728-2'),
+              ],
+              "scripts/check.mjs": [
+                  ('20260728-weekly-ai-cache-1', '20260728-safari-weekly-ai-cache-2'),
+                  ('release-entry.js?v=20260728-1', 'release-entry.js?v=20260728-2'),
+                  ('weekly-recognition-entry.js?v=20260727-1', 'weekly-recognition-entry.js?v=20260728-2'),
+              ],
+              ".github/workflows/pages.yml": [
+                  ('EXPECTED_RELEASE: 20260728-weekly-ai-cache-1', 'EXPECTED_RELEASE: 20260728-safari-weekly-ai-cache-2'),
+                  ('EXPECTED_ENTRY: release-entry.js?v=20260728-1', 'EXPECTED_ENTRY: release-entry.js?v=20260728-2'),
+                  ("weekly-recognition-entry.js?v=20260727-1", "weekly-recognition-entry.js?v=20260728-2"),
+              ],
+          }
+
+          for file_name, pairs in replacements.items():
+              path = Path(file_name)
+              text = path.read_text()
+              for old, new in pairs:
+                  if old not in text:
+                      raise SystemExit(f"missing replacement target in {file_name}: {old}")
+                  text = text.replace(old, new)
+              path.write_text(text)
+
+          check = Path("scripts/check.mjs")
+          text = check.read_text()
+          anchor = 'const weeklyRecognitionEntry = await readFile("weekly-recognition-entry.js", "utf8");'
+          guard = '''if (!releaseEntry.includes("weekly-recognition-entry.js?v=20260728-2")) {\n  console.error("Safari向け週間AI入口のキャッシュ番号が更新されていません");\n  failed = true;\n}\n'''
+          if guard not in text:
+              text = text.replace(anchor, guard + "\n" + anchor)
+          nested_guard = '''if (!weeklyRecognitionEntry.includes("src/weekly-recognition.js?v=20260728-2") || !weeklyRecognitionEntry.includes("src/weekly-card-store.js?v=20260728-2")) {\n  console.error("週間AIの子モジュールまでキャッシュ番号が更新されていません");\n  failed = true;\n}\n'''
+          marker = 'const weeklyRecognitionModel = await readFile("src/weekly-recognition.js", "utf8");'
+          if nested_guard not in text:
+              text = text.replace(marker, nested_guard + "\n" + marker)
+          check.write_text(text)
+
+          test_path = Path("tests/cache-chain.test.js")
+          test_path.write_text('''import test from "node:test";\nimport assert from "node:assert/strict";\nimport { readFile } from "node:fs/promises";\n\ntest("Safari向け週間AIキャッシュ連鎖が全階層で更新されている", async () => {\n  const html = await readFile("index.html", "utf8");\n  const release = await readFile("release-entry.js", "utf8");\n  const weekly = await readFile("weekly-recognition-entry.js", "utf8");\n  assert.match(html, /release-entry\\.js\\?v=20260728-2/);\n  assert.match(release, /weekly-recognition-entry\\.js\\?v=20260728-2/);\n  assert.match(weekly, /src\\/weekly-recognition\\.js\\?v=20260728-2/);\n  assert.match(weekly, /src\\/weekly-card-store\\.js\\?v=20260728-2/);\n});\n''')
+          PY
+          rm -f .github/workflows/fix-safari-cache.yml
+          npm ci --ignore-scripts
+          npm test
+          npm run build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Safariの週間AI旧画面キャッシュを全階層で更新"
+          git push origin HEAD:agent/fix-safari-weekly-ai-cache
