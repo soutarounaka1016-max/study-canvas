@@ -68,6 +68,37 @@ test("Moondreamの日本語OCRから見出しを除いて候補化する", () =>
   ]);
 });
 
+test("日本語を含むMoondream OCRは画像とOCRヒントをGemmaで再確認する", async () => {
+  const calls = [];
+  const env = {
+    ALLOWED_ORIGIN: origin,
+    AI: {
+      async run(model, input) {
+        calls.push({ model, input });
+        if (model === primaryModel) {
+          return { answer: "数学通間月滑\n減林分3間\nCHOIS A" };
+        }
+        return { response: { tasks: [
+          { title: "微積分 3問", confidence: 0.95, warning: "" },
+          { title: "チョイス A", confidence: 0.92, warning: "" },
+        ] } };
+      },
+    },
+  };
+
+  const response = await handleRequest(request("/recognize", weeklyBody()), env);
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.model, fallbackModel);
+  assert.equal(payload.fallbackUsed, true);
+  assert.deepEqual(payload.tasks.map((task) => task.title), ["微積分 3問", "チョイス A"]);
+  assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
+  const refinementPrompt = calls[1].input.messages[1].content[0].text;
+  assert.match(refinementPrompt, /高速OCR結果/);
+  assert.match(refinementPrompt, /減林分3間/);
+  assert.match(refinementPrompt, /画像を唯一の正/);
+});
+
 test("Moondreamが指示文を復唱した場合は候補として採用しない", async () => {
   const calls = [];
   const env = {
@@ -113,9 +144,10 @@ test("Moondream結果が空の場合だけGemma補助へ切り替える", async 
   assert.equal(calls[1].input.response_format.type, "json_schema");
 });
 
-test("Gemma補助は画像とJSON Schemaを含む", () => {
-  const input = createGemmaWeeklyRequest(image, "数学");
+test("Gemma補助は画像、OCRヒント、JSON Schemaを含む", () => {
+  const input = createGemmaWeeklyRequest(image, "数学", "減林分3間");
   assert.equal(input.image, image.data);
+  assert.match(input.messages[1].content[0].text, /減林分3間/);
   assert.equal(input.messages[1].content[1].type, "image_url");
   assert.equal(input.response_format.type, "json_schema");
 });
