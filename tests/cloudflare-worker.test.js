@@ -93,7 +93,7 @@ test("日本語を含むMoondream OCRは画像とOCRヒントをGemmaで再確�
   assert.equal(payload.fallbackUsed, true);
   assert.deepEqual(payload.tasks.map((task) => task.title), ["微積分 3問", "チョイス A"]);
   assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
-  const refinementPrompt = calls[1].input.messages[1].content[0].text;
+  const refinementPrompt = calls[1].input.messages[1].content;
   assert.match(refinementPrompt, /高速OCR結果/);
   assert.match(refinementPrompt, /減林分3間/);
   assert.match(refinementPrompt, /画像を唯一の正/);
@@ -144,11 +144,12 @@ test("Moondream結果が空の場合だけGemma補助へ切り替える", async 
   assert.equal(calls[1].input.response_format.type, "json_schema");
 });
 
-test("Gemma補助は画像、OCRヒント、JSON Schemaを含む", () => {
+test("Gemma補助は公式形式のbase64画像、OCRヒント、JSON Schemaを含む", () => {
   const input = createGemmaWeeklyRequest(image, "数学", "減林分3間");
   assert.equal(input.image, image.data);
-  assert.match(input.messages[1].content[0].text, /減林分3間/);
-  assert.equal(input.messages[1].content[1].type, "image_url");
+  assert.match(input.messages[1].content, /減林分3間/);
+  assert.equal(typeof input.messages[1].content, "string");
+  assert.doesNotMatch(input.image, /^data:/);
   assert.equal(input.response_format.type, "json_schema");
 });
 

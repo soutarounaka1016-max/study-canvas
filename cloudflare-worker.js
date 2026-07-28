@@ -329,13 +329,7 @@ export function createGemmaWeeklyRequest(image, subject, ocrHint = "") {
   return {
     messages: [
       { role: "system", content: "画像内の文字を正確に読み取り、指定されたJSON Schemaに従って返してください。" },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } },
-        ],
-      },
+      { role: "user", content: prompt },
     ],
     image: image.data,
     max_completion_tokens: 900,
@@ -355,13 +349,7 @@ export function createGemmaSingleRequest(image, ocrHint = "") {
   return {
     messages: [
       { role: "system", content: "画像内の文字を正確に読み取り、指定されたJSON Schemaに従って返してください。" },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } },
-        ],
-      },
+      { role: "user", content: prompt },
     ],
     image: image.data,
     max_completion_tokens: 600,
