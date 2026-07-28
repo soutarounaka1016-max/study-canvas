@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260728-weekly-ai-safari-2";
+const EXPECTED_RELEASE = "20260728-ocr-grounding-1";
 const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260728-2";
 const TASK_STORAGE_KEY = "study-canvas:tasks:v1";
 
