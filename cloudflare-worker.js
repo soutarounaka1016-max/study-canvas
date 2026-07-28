@@ -7,6 +7,24 @@ const MAX_REQUEST_BYTES = 1_800_000;
 const WEEKLY_SUBJECTS = ["数学", "英語", "物理", "化学", "その他"];
 const SINGLE_SUBJECTS = [...WEEKLY_SUBJECTS, "国語"];
 const FALLBACK_WARNING = "AIの返却形式を補正したため、内容を確認してください";
+const OCR_QUESTION = "OCR: Copy every visible line of text exactly, preserving the original language, characters, and line breaks. Return only the copied text. Do not repeat this instruction, explain, summarize, translate, add labels, or invent missing text.";
+
+const PROMPT_ECHO_PATTERNS = [
+  /この画像は高校生が手書きした/i,
+  /画像に実際に書かれている内容だけ/i,
+  /1行または1項目を1件の勉強タスク/i,
+  /参考書名、ページ番号、問題数、単元名/i,
+  /予定時間、優先順位、画像にない内容/i,
+  /返答はMarkdownを使わず/i,
+  /次のJSONだけにしてください/i,
+  /読めない箇所がある場合だけwarning/i,
+  /^読み取った内容$/i,
+  /copy every visible line of text exactly/i,
+  /preserving the original language/i,
+  /return only the copied text/i,
+  /do not repeat this instruction/i,
+  /do not .*explain.*summarize.*translate/i,
+];
 
 export default {
   async fetch(request, env) {
@@ -82,13 +100,12 @@ export async function handleRequest(request, env) {
     const primaryResult = await runWithTimeout(
       env.AI.run(
         PRIMARY_MODEL,
-        mode === "weekly"
-          ? createWeeklyRequest(image.value, subject)
-          : createSingleRequest(image.value),
+        mode === "weekly" ? createWeeklyRequest(image.value, subject) : createSingleRequest(image.value),
       ),
       PRIMARY_TIMEOUT_MS,
       "PRIMARY_TIMEOUT",
     );
+
     if (mode === "weekly") {
       const tasks = parseWeeklyTasksFromResult(primaryResult, subject);
       return recognitionJson({
@@ -100,6 +117,7 @@ export async function handleRequest(request, env) {
         latencyMs: Date.now() - startedAt,
       }, cors);
     }
+
     const candidate = parseSingleCandidateFromResult(primaryResult);
     return recognitionJson({
       candidate,
@@ -123,6 +141,7 @@ export async function handleRequest(request, env) {
         FALLBACK_TIMEOUT_MS,
         "FALLBACK_TIMEOUT",
       );
+
       if (mode === "weekly") {
         const tasks = parseWeeklyTasksFromResult(fallbackResult, subject);
         return recognitionJson({
@@ -134,6 +153,7 @@ export async function handleRequest(request, env) {
           latencyMs: Date.now() - startedAt,
         }, cors);
       }
+
       const candidate = normalizeSingleCandidate(parseAiJson(fallbackResult));
       return recognitionJson({
         candidate,
@@ -163,23 +183,15 @@ export async function handleRequest(request, env) {
 }
 
 export function createWeeklyRequest(image, subject) {
+  validateWeeklySubject(subject);
   return {
     task: "query",
     image: `data:${image.mimeType};base64,${image.data}`,
-    question: [
-      `この画像は高校生が手書きした${subject}の週間目標です。`,
-      "画像に実際に書かれている内容だけを読み取ってください。",
-      "1行または1項目を1件の勉強タスクにしてください。",
-      "参考書名、ページ番号、問題数、単元名、英数字を可能な限りそのまま残してください。",
-      "予定時間、優先順位、画像にない内容は推測しないでください。",
-      "返答はMarkdownを使わず、次のJSONだけにしてください。",
-      '{"tasks":[{"title":"読み取った内容","confidence":0.9,"warning":""}]}',
-      "読めない箇所がある場合だけwarningへ短く書いてください。",
-    ].join("\n"),
+    question: OCR_QUESTION,
     reasoning: false,
     temperature: 0,
     top_p: 0.8,
-    max_tokens: 1200,
+    max_tokens: 700,
     stream: false,
   };
 }
@@ -188,16 +200,11 @@ export function createSingleRequest(image) {
   return {
     task: "query",
     image: `data:${image.mimeType};base64,${image.data}`,
-    question: [
-      "画像内の勉強メモだけを読み、勉強タスク1件へ整理してください。",
-      "科目は数学、英語、物理、化学、国語、その他のいずれかです。",
-      "返答はMarkdownを使わず、次のJSONだけにしてください。",
-      '{"subject":"数学","title":"読み取った内容","minutes":30,"confidence":0.9,"warning":""}',
-    ].join("\n"),
+    question: OCR_QUESTION,
     reasoning: false,
     temperature: 0,
     top_p: 0.8,
-    max_tokens: 700,
+    max_tokens: 400,
     stream: false,
   };
 }
@@ -287,26 +294,38 @@ function singleTaskSchema() {
 }
 
 export function parseWeeklyTasksFromResult(result, subject) {
+  let structuredError;
   try {
     return normalizeWeeklyTasks(parseAiJson(result)?.tasks, subject);
-  } catch (jsonError) {
-    for (const text of collectFinalTexts(result)) {
-      const tasks = parseWeeklyText(text);
-      if (tasks.length > 0) return tasks;
-    }
-    throw jsonError;
+  } catch (error) {
+    structuredError = error;
   }
+
+  for (const text of collectFinalTexts(result)) {
+    const tasks = parseWeeklyText(text);
+    if (tasks.length > 0) return tasks;
+  }
+  throw structuredError || new Error("手書きからタスクを読み取れませんでした");
 }
 
 export function parseSingleCandidateFromResult(result) {
   try {
     return normalizeSingleCandidate(parseAiJson(result));
   } catch (jsonError) {
-    const text = collectFinalTexts(result).find((value) => value.trim());
-    if (!text) throw jsonError;
-    const title = text.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/\s+/g, " ").trim().slice(0, 120);
-    if (!title) throw jsonError;
-    return { subject: "その他", title, minutes: 30, confidence: 0.5, warning: FALLBACK_WARNING };
+    for (const text of collectFinalTexts(result)) {
+      const tasks = parseWeeklyText(text);
+      if (tasks.length === 0) continue;
+      const title = tasks.map((task) => task.title).join(" / ").slice(0, 120).trim();
+      if (!title) continue;
+      return {
+        subject: inferSubject(title),
+        title,
+        minutes: 30,
+        confidence: 0.5,
+        warning: FALLBACK_WARNING,
+      };
+    }
+    throw jsonError;
   }
 }
 
@@ -400,20 +419,14 @@ export function parseWeeklyText(text) {
     .replace(/```/g, "")
     .trim();
   if (!cleaned) return [];
-  const lines = cleaned
-    .split(/\r?\n/)
-    .map((line) => line
-      .replace(/^\s*(?:[-*•・]|\d+[.)]|TASK\s*[:：]|title\s*[:：])\s*/i, "")
-      .replace(/^\s*["'「『]|["'」』]\s*$/g, "")
-      .trim())
-    .filter((line) => line.length > 0)
-    .filter((line) => !/^(?:以下|読み取り結果|結果|タスク一覧|tasks?|json|warning|confidence)\s*[:：]?$/i.test(line));
 
+  const rawLines = cleaned.split(/\r?\n/);
   const seen = new Set();
   const tasks = [];
-  for (const candidate of lines.length > 0 ? lines : [cleaned]) {
-    const title = candidate.replace(/\s+/g, " ").slice(0, 120).trim();
-    if (!title || seen.has(title) || /^[{}\[\],]+$/.test(title)) continue;
+
+  for (const rawLine of rawLines) {
+    const title = sanitizeTaskTitle(rawLine);
+    if (!title || seen.has(title)) continue;
     seen.add(title);
     tasks.push({ title, confidence: 0.5, warning: FALLBACK_WARNING });
     if (tasks.length >= 16) break;
@@ -421,14 +434,33 @@ export function parseWeeklyText(text) {
   return tasks;
 }
 
+function sanitizeTaskTitle(value) {
+  let title = String(value)
+    .replace(/^\s*(?:[-*•・]|\d+[.)]|TASK\s*[:：]|title\s*[:：])\s*/i, "")
+    .replace(/^\s*["'「『]|["'」』,]\s*$/g, "")
+    .replace(/^\s*"?title"?\s*:\s*"?/i, "")
+    .replace(/"?\s*,?\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+
+  if (!title || /^[{}\[\],:]+$/.test(title)) return "";
+  if (/^(?:以下|読み取り結果|結果|タスク一覧|tasks?|json|warning|confidence|answer|response)\s*[:：]?$/i.test(title)) return "";
+  if (/^(?:math|english|physics|chemistry|数学|英語|物理|化学)\s*(?:weekly\s*(?:plan|goals?)|週間目標)\s*$/i.test(title)) return "";
+  if (PROMPT_ECHO_PATTERNS.some((pattern) => pattern.test(title))) return "";
+  return title;
+}
+
 export function normalizeWeeklyTasks(value, subject) {
   validateWeeklySubject(subject);
   if (!Array.isArray(value)) throw new Error("AIのタスク一覧が正しくありません");
   const tasks = [];
+  const seen = new Set();
   for (const item of value.slice(0, 16)) {
     if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const title = typeof item.title === "string" ? item.title.trim().replace(/\s+/g, " ").slice(0, 120) : "";
-    if (!title) continue;
+    const title = sanitizeTaskTitle(typeof item.title === "string" ? item.title : "");
+    if (!title || seen.has(title)) continue;
+    seen.add(title);
     const confidence = Number(item.confidence);
     tasks.push({
       title,
@@ -443,7 +475,7 @@ export function normalizeWeeklyTasks(value, subject) {
 export function normalizeSingleCandidate(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("AIの候補形式が正しくありません");
   const subject = SINGLE_SUBJECTS.includes(value.subject) ? value.subject : "その他";
-  const title = typeof value.title === "string" ? value.title.trim().replace(/\s+/g, " ").slice(0, 120) : "";
+  const title = sanitizeTaskTitle(typeof value.title === "string" ? value.title : "");
   if (!title) throw new Error("勉強内容を読み取れませんでした");
   const minutes = Number(value.minutes);
   const confidence = Number(value.confidence);
@@ -454,6 +486,15 @@ export function normalizeSingleCandidate(value) {
     confidence: Number.isFinite(confidence) ? Math.min(1, Math.max(0, confidence)) : 0,
     warning: typeof value.warning === "string" ? value.warning.trim().replace(/\s+/g, " ").slice(0, 160) : "",
   };
+}
+
+function inferSubject(text) {
+  if (/(?:数学|math|integral|calculus|微積|積分|ベクトル|数[ⅠⅡⅢABC])/i.test(text)) return "数学";
+  if (/(?:英語|english|長文|英文|単語|文法)/i.test(text)) return "英語";
+  if (/(?:物理|physics|力学|電磁気|波動|熱力学)/i.test(text)) return "物理";
+  if (/(?:化学|chemistry|有機|無機|高分子|酸塩基)/i.test(text)) return "化学";
+  if (/(?:国語|現代文|古文|漢文)/i.test(text)) return "国語";
+  return "その他";
 }
 
 export function describeAiShape(value, depth = 0) {
