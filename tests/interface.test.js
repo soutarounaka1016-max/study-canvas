@@ -54,6 +54,14 @@ test("前日・今日・翌日のページへ移動できる操作を表示す�
   assert.match(html, /id="nextDateButton"/);
 });
 
+test("iPad幅では日付操作と描画ツールを重ならない2段ヘッダーにする", () => {
+  assert.match(css, /@media \(max-width: 1180px\)[\s\S]*grid-template-areas:[\s\S]*"document history"[\s\S]*"tools tools"/);
+  assert.match(css, /\.document-bar \{ grid-area: document; min-width: 0; \}/);
+  assert.match(css, /\.tool-bar \{[\s\S]*grid-area: tools;[\s\S]*justify-content: center;/);
+  assert.doesNotMatch(css, /\.app-header \{[^}]*min-width:\s*(?:820|830)px/);
+  assert.doesNotMatch(css, /\.app-header \{[^}]*overflow-x:\s*auto/);
+});
+
 test("ダブルタップ拡大を防ぎ、閲覧モードのタッチ操作を維持する", () => {
   assert.match(css, /\.page\.is-viewing #drawingCanvas[^}]*touch-action:\s*manipulation/);
   assert.match(script, /addEventListener\("dblclick"[^;]*preventDefault/);
