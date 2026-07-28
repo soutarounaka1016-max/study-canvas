@@ -44,6 +44,12 @@ async function gotoCleanHome(page) {
   await expect(page.locator("#homeScreen")).toBeVisible();
 }
 
+async function settleRoute(page) {
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
+}
+
 async function expectStored(page, key, text) {
   const raw = await page.evaluate((storageKey) => localStorage.getItem(storageKey), key);
   expect(raw).toBeTruthy();
@@ -70,6 +76,7 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
 
   await page.locator('[data-home-route="daily"]').click();
   await expect(page.locator("#drawingCanvas")).toBeVisible();
+  await settleRoute(page);
   const firstDate = await page.locator("#pageDate").getAttribute("datetime");
   await drawStroke(page, "#drawingCanvas");
   await expectDailyStrokeCount(page, firstDate, 1);
@@ -78,6 +85,7 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator("#drawingCanvas")).toBeVisible();
+  await settleRoute(page);
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEYS.pages)).toBe(firstPages);
 
   await page.locator("#nextDateButton").click();
@@ -148,6 +156,7 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
     for (const key of Object.values(keys)) localStorage.removeItem(key);
   }, STORAGE_KEYS);
   await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator(".full-restore-dialog")).toBeAttached();
   await page.locator("#restoreFile").setInputFiles({
     name: "release-gate-backup.json",
     mimeType: "application/json",
