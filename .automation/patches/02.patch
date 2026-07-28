@@ -1,0 +1,20 @@
+--- a/cloudflare-worker.js
++++ b/cloudflare-worker.js
+@@ -119,6 +132,17 @@
+     }
+ 
+     const candidate = parseSingleCandidateFromResult(primaryResult);
++    if (needsJapaneseRefinement(candidate.title)) {
++      return runFallbackRecognition({
++        env,
++        mode,
++        image: image.value,
++        startedAt,
++        cors,
++        primaryError: refinementRequiredError(),
++        ocrHint: candidate.title,
++      });
++    }
+     return recognitionJson({
+       candidate,
+       model: PRIMARY_MODEL,
