@@ -86,7 +86,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .color-options { display: flex; gap: 12px; }
 .color-options[hidden], .width-control[hidden] { display: none; }
 .color-button {
-  width: 34px; height: 34px; border: 3px solid white; border-radius: 50%;
+  width: 44px; height: 44px; border: 3px solid white; border-radius: 50%;
   background: var(--button-color); box-shadow: 0 0 0 1px #b8bec8;
 }
 .color-button[data-color="#2558e6"] { --button-color: #2558e6; }
@@ -220,7 +220,7 @@ dialog h2 { margin-top: 0; font-size: 21px; }
 .weekly-tool-group, .weekly-color-options, .weekly-history-actions { display: flex; align-items: center; gap: 7px; }
 .weekly-tool-button.is-active { border-color: var(--accent); background: #eef3ff; color: var(--accent); font-weight: 700; }
 .weekly-color-button {
-  width: 38px; min-height: 38px !important; padding: 0 !important; border: 3px solid white !important;
+  width: 44px; min-height: 44px !important; padding: 0 !important; border: 3px solid white !important;
   border-radius: 50% !important; background: var(--weekly-color) !important; box-shadow: 0 0 0 1px #b8bec8;
 }
 .weekly-color-button[data-weekly-color="#2558e6"] { --weekly-color: #2558e6; }
