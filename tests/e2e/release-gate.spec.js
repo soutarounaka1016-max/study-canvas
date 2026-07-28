@@ -37,11 +37,19 @@ async function drawStroke(page, selector, from = [0.28, 0.3], to = [0.58, 0.48])
 
 async function gotoCleanHome(page) {
   await page.goto(`./?release-gate=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
+  await waitForAppModules(page);
   await page.evaluate((keys) => {
     for (const key of Object.values(keys)) localStorage.removeItem(key);
   }, STORAGE_KEYS);
   await page.reload({ waitUntil: "domcontentloaded" });
+  await waitForAppModules(page);
   await expect(page.locator("#homeScreen")).toBeVisible();
+}
+
+async function waitForAppModules(page) {
+  await expect(page.locator(".note-gallery-card")).toBeAttached();
+  await expect(page.locator(".full-restore-dialog")).toBeAttached();
+  await expect(page.locator("html")).not.toHaveAttribute("data-note-load-error", "true");
 }
 
 async function settleRoute(page) {
@@ -84,6 +92,7 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
   const firstPages = await expectStored(page, STORAGE_KEYS.pages);
 
   await page.reload({ waitUntil: "domcontentloaded" });
+  await waitForAppModules(page);
   await expect(page.locator("#drawingCanvas")).toBeVisible();
   await settleRoute(page);
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEYS.pages)).toBe(firstPages);
@@ -156,7 +165,7 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
     for (const key of Object.values(keys)) localStorage.removeItem(key);
   }, STORAGE_KEYS);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.locator(".full-restore-dialog")).toBeAttached();
+  await waitForAppModules(page);
   await page.locator("#restoreFile").setInputFiles({
     name: "release-gate-backup.json",
     mimeType: "application/json",
