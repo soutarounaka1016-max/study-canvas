@@ -10,7 +10,7 @@ Study Canvasは、日別の手書き計画、タスクカード、科目別週�
 
 Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テスト、ビルド、主要画面移動、保存、Chromium、WebKit、iPad縦横、GitHub Pagesへのデプロイ、公開URLでの起動確認まで自動化しています。公開URL確認ではリポジトリ配下の`/study-canvas/`を保持し、古いPages実行は新しいmainで置き換えます。
 
-端末内OCRは日本語の自由手書きを実用精度で読めず不採用としました。現在の正式な画像認識は、Cloudflare WorkerとWorkers AIの`@cf/google/gemma-4-26b-a4b-it`を使用します。
+端末内OCRは日本語の自由手書きを実用精度で読めず不採用としました。現在の正式な画像認識はCloudflare WorkerとWorkers AIを使用し、英数字は`@cf/moondream/moondream3.1-9B-A2B`で高速転記し、日本語を含む結果は画像と一次OCRを`@cf/google/gemma-4-26b-a4b-it`で照合して補正します。
 
 ## 実装済み・利用者確認済み
 
@@ -36,6 +36,11 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 表示中の1科目分だけをPNGへ変換
 - 「AIで読み取る」を押した時だけ画像を外部送信
 - Cloudflare WorkerからWorkers AI bindingを呼び出す
+- 英数字だけのOCRはMoondream主系を採用
+- 日本語文字を含む一次OCRは、画像とOCRヒントをGemmaへ渡して再確認
+- 一次OCRは参考情報に限定し、画像を唯一の正として誤字を訂正
+- 科目名や「週間目標」などの見出し、指示文復唱、空の結果を候補から除外
+- 主系8秒、補助10秒、合計最大18秒で終了
 - 科目は表示中のタブで固定し、AIに推測させない
 - 複数のタスク候補を取得
 - 候補の内容修正、選択解除、削除、手動追加
@@ -55,9 +60,12 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 再読み込み後のカード保持
 - AI失敗時の既存データ不変
 - 本番Workerの`/health`
+- 主系Moondream、補助Gemma、無料構成、最大18秒の設定
 - 公開HTMLから公開入口・週間AI JavaScriptまでのno-cache取得連鎖
-- 本番Workerへ合成PNGを送信し、1件以上のタスク候補を取得
+- 本番Workerへ英字合成PNGを送信し、Moondream主系で期待内容を取得
+- 続けて日本語合成PNGを送信し、Gemma補正経路で「微積分」または「チョイス」に一致する候補を取得
 - 公開版の完成したAI読み取り画面をChromiumで確認
+- mainコミット`b7a95f34c74d8318f68e0ba8a6afab885d59501f`のGitHub Pages実行`30325144478`が全工程成功
 
 ### 実機未確認
 
@@ -65,6 +73,7 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 参考書名、漢字、ページ番号、問題数の誤読率
 - 実際の回線での応答時間
 - 無料枠を日常利用した場合の上限到達頻度
+- Apple Pencilで書いてから修正・カード化するまでの体感操作性
 
 ## 公開キャッシュ再発防止
 
@@ -73,7 +82,9 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 公開後にHTML、入口JavaScript、対象機能JavaScriptをno-cacheで取得する
 - 公開版の実DOMでAI操作ボタンを確認する
 - AI変更時は`/health`だけでなく、本番WorkerへPNGを送る実動試験を必須とする
-- この運用ルールを`AGENTS.md`と`DECISIONS.md`へ記録
+- 英字と日本語を連続送信し、それぞれの使用モデル、補助利用有無、内容一致まで検査する
+- 一時的なWorker反映待ちでは最大3回まで同じ本番試験を再試行する
+- この運用ルールを`AGENTS.md`、`DECISIONS.md`、`DECISIONS_AI.md`へ記録
 
 ## メインメニュー
 
@@ -179,4 +190,10 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 公開URL: `https://soutarounaka1016-max.github.io/study-canvas/`
 - GitHub Pagesデプロイ: 自動確認成功
 - 公開URL起動確認: Chromiumで自動確認成功
-- Workers AI本番PNG実動確認: 成功
+- Workers AI本番英字・日本語連続PNG実動確認: 成功
+
+## 完成判定
+
+週間目標AI読み取り機能の第一版は、実装、通常テスト、ビルド、Chromium、WebKit、iPad縦横相当、本番Worker、英字主系、日本語補正、公開URL、保存、再読み込み、バックアップ、失敗時データ保護まで自動確認が成功したため完成とする。
+
+学校支給iPad Safariで本人の手書きを使った精度と体感速度は実機未確認として残し、完成後の利用評価・改善工程として区別する。
