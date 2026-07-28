@@ -3,7 +3,6 @@ export const HOME_ROUTES = Object.freeze([
   "daily",
   "weekly",
   "notes",
-  "stats",
   "pages",
   "backup",
 ]);

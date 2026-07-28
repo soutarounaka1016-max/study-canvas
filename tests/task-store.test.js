@@ -36,6 +36,19 @@ test("日付ごとにタスクを追加して読み出せる", () => {
   assert.deepEqual(getTasksForDate(store, "2026-07-21"), []);
 });
 
+test("週間カード由来のIDを保存・編集・再読み込みしても維持する", () => {
+  const linkedInput = { ...input, sourceWeeklyCardId: "weekly-card-1" };
+  let store = addTask(emptyTaskStore(), date, linkedInput, "task-linked");
+  store = updateTask(store, date, "task-linked", {
+    subject: "数学",
+    title: "微積を4題",
+    plannedMinutes: 30,
+    sourceWeeklyCardId: "weekly-card-1",
+  });
+  const reloaded = loadTaskStore(serializeTaskStore(store)).store;
+  assert.equal(getTasksForDate(reloaded, date)[0].sourceWeeklyCardId, "weekly-card-1");
+});
+
 test("タスク入力を検証する", () => {
   assert.deepEqual(validateTaskInput({ subject: "英語", title: " 長文1題 ", plannedMinutes: "30" }), {
     subject: "英語", title: "長文1題", plannedMinutes: 30,

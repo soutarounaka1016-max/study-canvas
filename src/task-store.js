@@ -77,7 +77,11 @@ export function validateTaskInput(input) {
     throw new Error(`予定時間は${MIN_PLANNED_MINUTES}〜${MAX_PLANNED_MINUTES}分で入力してください`);
   }
 
-  return { subject, title, plannedMinutes };
+  const safe = { subject, title, plannedMinutes };
+  if (input?.sourceWeeklyCardId !== undefined && input?.sourceWeeklyCardId !== null && input?.sourceWeeklyCardId !== "") {
+    safe.sourceWeeklyCardId = validateId(input.sourceWeeklyCardId);
+  }
+  return safe;
 }
 
 export function addTask(store, date, input, id) {
@@ -165,12 +169,16 @@ function setTasksForDate(store, date, tasks) {
 function normalizeStoredTask(task, index) {
   if (!isPlainObject(task) || typeof task.completed !== "boolean") return null;
   try {
-    return {
+    const normalized = {
       id: validateId(task.id),
       ...validateTaskInput(task),
       completed: task.completed,
       ...normalizePosition(task, index),
     };
+    if (task.sourceWeeklyCardId !== undefined) {
+      normalized.sourceWeeklyCardId = validateId(task.sourceWeeklyCardId);
+    }
+    return normalized;
   } catch {
     return null;
   }

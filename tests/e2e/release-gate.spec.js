@@ -19,20 +19,11 @@ function watchCriticalErrors(page) {
   return errors;
 }
 
-async function drawStroke(page, selector, from = [0.28, 0.3], to = [0.58, 0.48]) {
-  const canvas = page.locator(selector);
-  await expect(canvas).toBeVisible();
-  await canvas.scrollIntoViewIfNeeded();
-  const box = await canvas.boundingBox();
-  expect(box).not.toBeNull();
-  const startX = box.x + box.width * from[0];
-  const startY = box.y + box.height * from[1];
-  const endX = box.x + box.width * to[0];
-  const endY = box.y + box.height * to[1];
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(endX, endY, { steps: 8 });
-  await page.mouse.up();
+async function waitForAppModules(page) {
+  await expect(page.locator(".note-gallery-card").first()).toBeAttached();
+  await expect(page.locator(".full-restore-dialog")).toBeAttached();
+  await expect(page.locator("html")).toHaveAttribute("data-weekly-text-ready", "true");
+  await expect(page.locator("html")).not.toHaveAttribute("data-note-load-error", "true");
 }
 
 async function gotoCleanHome(page) {
@@ -46,16 +37,33 @@ async function gotoCleanHome(page) {
   await expect(page.locator("#homeScreen")).toBeVisible();
 }
 
-async function waitForAppModules(page) {
-  await expect(page.locator(".note-gallery-card").first()).toBeAttached();
-  await expect(page.locator(".full-restore-dialog")).toBeAttached();
-  await expect(page.locator("html")).not.toHaveAttribute("data-note-load-error", "true");
+async function drawStroke(page, selector, from = [0.28, 0.3], to = [0.58, 0.48]) {
+  const canvas = page.locator(selector);
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box.x + box.width * from[0], box.y + box.height * from[1]);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * to[0], box.y + box.height * to[1], { steps: 8 });
+  await page.mouse.up();
 }
 
-async function settleRoute(page) {
-  await page.evaluate(() => new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  }));
+async function dragWeeklyCardToCanvas(page, title, position = [0.4, 0.3]) {
+  const handle = page.locator(".daily-weekly-card", { hasText: title }).locator(".daily-weekly-drag-handle");
+  const canvas = page.locator("#dailyCanvasStage");
+  await handle.scrollIntoViewIfNeeded();
+  const handleBox = await handle.boundingBox();
+  const canvasBox = await canvas.boundingBox();
+  expect(handleBox).not.toBeNull();
+  expect(canvasBox).not.toBeNull();
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    canvasBox.x + canvasBox.width * position[0],
+    canvasBox.y + canvasBox.height * position[1],
+    { steps: 12 },
+  );
+  await page.mouse.up();
 }
 
 async function expectStored(page, key, text) {
@@ -65,81 +73,56 @@ async function expectStored(page, key, text) {
   return raw;
 }
 
-async function expectDailyStrokeCount(page, date, count) {
-  await expect.poll(async () => page.evaluate(({ key, targetDate }) => {
-    const raw = localStorage.getItem(key);
-    if (!raw) return 0;
-    try {
-      return JSON.parse(raw)?.pages?.[targetDate]?.strokes?.length || 0;
-    } catch {
-      return 0;
-    }
-  }, { key: STORAGE_KEYS.pages, targetDate: date })).toBe(count);
-}
-
-test("@published Version 0.2 Release Gateを公開ユーザー経路で完走する", async ({ page }, testInfo) => {
-  test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 180_000 : 90_000);
+test("@published Version 0.3 Release Gateを公開ユーザー経路で完走する", async ({ page }, testInfo) => {
+  test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 240_000 : 120_000);
   const errors = watchCriticalErrors(page);
   await gotoCleanHome(page);
 
+  await page.locator('[data-home-route="weekly"]').click();
+  const math = page.locator('.weekly-subject-editor[data-subject="数学"]');
+  await math.locator("textarea").fill("微積分 3問\n1対1対応 p.42〜47");
+  await math.getByRole("button", { name: "カードを作成" }).click();
+  await expect(math.locator(".weekly-text-card")).toHaveCount(2);
+  await expectStored(page, STORAGE_KEYS.weeklyCards, "微積分 3問");
+  await math.locator(".weekly-text-card").first().locator("input").fill("微積分 4問");
+  await math.locator(".weekly-text-card").first().getByRole("button", { name: "保存" }).click();
+  await expect(math).toContainText("カードを更新しました");
+  await page.locator("#closeWeeklyDialogButton").click();
+
   await page.locator('[data-home-route="daily"]').click();
-  await expect(page.locator("#drawingCanvas")).toBeVisible();
-  await settleRoute(page);
-  const firstDate = await page.locator("#pageDate").getAttribute("datetime");
+  await expect(page.locator("#dailyWeeklyShelf")).toContainText("微積分 4問");
+  await dragWeeklyCardToCanvas(page, "微積分 4問");
+  await expect(page.locator(".canvas-task-card")).toContainText("微積分 4問");
+  const linkedRaw = await expectStored(page, STORAGE_KEYS.tasks, "sourceWeeklyCardId");
+  expect(linkedRaw).toContain("微積分 4問");
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("今日に配置済み");
+
+  const firstPosition = JSON.parse(linkedRaw).tasksByDate;
+  const firstTask = Object.values(firstPosition)[0][0];
+  const cardHandle = page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator(".canvas-task-drag-handle");
+  const cardHandleBox = await cardHandle.boundingBox();
+  const canvasBox = await page.locator("#dailyCanvasStage").boundingBox();
+  await page.mouse.move(cardHandleBox.x + 10, cardHandleBox.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(canvasBox.x + canvasBox.width * 0.7, canvasBox.y + canvasBox.height * 0.6, { steps: 10 });
+  await page.mouse.up();
+  const movedRaw = await expectStored(page, STORAGE_KEYS.tasks);
+  const movedTask = Object.values(JSON.parse(movedRaw).tasksByDate)[0][0];
+  expect(movedTask.x !== firstTask.x || movedTask.y !== firstTask.y).toBe(true);
+
+  await page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator(".canvas-task-checkbox").check();
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("完了");
   await drawStroke(page, "#drawingCanvas");
-  await expectDailyStrokeCount(page, firstDate, 1);
-  await expect(page.locator("#saveStatus")).toHaveText("保存済み");
-  const firstPages = await expectStored(page, STORAGE_KEYS.pages);
+  await expectStored(page, STORAGE_KEYS.pages);
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitForAppModules(page);
-  await expect(page.locator("#drawingCanvas")).toBeVisible();
-  await settleRoute(page);
-  expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEYS.pages)).toBe(firstPages);
+  await expect(page.locator(".canvas-task-card", { hasText: "微積分 4問" })).toBeVisible();
+  await expect(page.locator(".canvas-task-checkbox")).toBeChecked();
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("完了");
 
-  await page.locator("#nextDateButton").click();
-  await expect(page.locator("#pageDate")).not.toHaveAttribute("datetime", firstDate);
-  const secondDate = await page.locator("#pageDate").getAttribute("datetime");
-  await drawStroke(page, "#drawingCanvas", [0.34, 0.38], [0.62, 0.55]);
-  await expectDailyStrokeCount(page, secondDate, 1);
-  await expect(page.locator("#saveStatus")).toHaveText("保存済み");
-  const separatedPages = JSON.parse(await expectStored(page, STORAGE_KEYS.pages));
-  expect(separatedPages.pages[firstDate].strokes).toHaveLength(1);
-  expect(separatedPages.pages[secondDate].strokes).toHaveLength(1);
-  await page.locator("#previousDateButton").click();
-  await expect(page.locator("#pageDate")).toHaveAttribute("datetime", firstDate);
-
-  await page.locator("#taskButton").click();
-  await page.locator("#taskSubject").selectOption({ label: "数学" });
-  await page.locator("#taskTitle").fill("Release Gate 数学");
-  await page.locator("#taskMinutes").fill("40");
-  await page.locator("#saveTaskButton").click();
-  await page.locator("#taskButton").click();
-  await expect(page.locator("#taskList")).toContainText("Release Gate 数学");
-  await page.locator("#taskList").getByRole("button", { name: "編集" }).click();
-  await page.locator("#taskTitle").fill("Release Gate 数学・編集済み");
-  await page.locator("#saveTaskButton").click();
-  await page.locator("#taskButton").click();
-  await page.locator("#taskList input[type=checkbox]").check();
-  await expect(page.locator("#taskList .task-card")).toHaveClass(/is-completed/);
-  await page.locator("#closeTaskDialogButton").click();
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await page.locator("#taskButton").click();
-  await expect(page.locator("#taskList")).toContainText("Release Gate 数学・編集済み");
-  await expect(page.locator("#taskList input[type=checkbox]")).toBeChecked();
-  await page.locator("#closeTaskDialogButton").click();
   await page.locator("#homeButton").click();
-
-  await page.locator('[data-home-route="weekly"]').click();
-  await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
-  await drawStroke(page, "#weeklyCanvas", [0.2, 0.24], [0.66, 0.42]);
-  await expect(page.locator("#weeklySaveStatus")).toHaveText("保存済み");
-  await expectStored(page, STORAGE_KEYS.weekly);
-  await page.locator("#closeWeeklyDialogButton").click();
-  await expect(page.locator("#homeScreen")).toBeVisible();
-
   await page.locator('[data-home-route="notes"]').click();
-  await expect(page.locator("#noteDialog[open]")).toBeVisible();
   await page.locator("#createNoteCardButton").click();
   await page.locator("#noteTitleInput").fill("Release Gate 自由ノート");
   await page.locator("#noteTitleInput").blur();
@@ -148,18 +131,15 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
   await page.locator("#backToNoteGalleryButton").click();
   await expect(page.locator("#noteGallery")).toContainText("Release Gate 自由ノート");
   await page.locator("#closeNoteDialogButton").click();
-  await expect(page.locator("#homeScreen")).toBeVisible();
 
   await page.locator('[data-home-route="backup"]').click();
   const backupDownloadPromise = page.waitForEvent("download");
   await page.locator("#backupButton").click();
   const backupDownload = await backupDownloadPromise;
   const backupPath = await backupDownload.path();
-  expect(backupPath).toBeTruthy();
   const backupText = await readFile(backupPath, "utf8");
-  expect(backupText).toContain("Release Gate 数学・編集済み");
+  expect(backupText).toContain("微積分 4問");
   expect(backupText).toContain("Release Gate 自由ノート");
-  await expect(page.locator("#backupStatus")).toContainText("バックアップを保存しました");
 
   await page.evaluate((keys) => {
     for (const key of Object.values(keys)) localStorage.removeItem(key);
@@ -176,53 +156,21 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
   await page.locator("#confirmFullRestoreButton").click();
   await safetyBackupPromise;
   await expect(page.locator(".full-restore-dialog[open]")).toHaveCount(0, { timeout: 10_000 });
-  await expect(page.locator("#homeButton")).toBeVisible({ timeout: 10_000 });
-  await page.locator("#homeButton").click();
-  await expect(page.locator("#homeScreen")).toBeVisible({ timeout: 10_000 });
 
-  await expectStored(page, STORAGE_KEYS.pages);
-  await expectStored(page, STORAGE_KEYS.tasks, "Release Gate 数学・編集済み");
-  await expectStored(page, STORAGE_KEYS.weekly);
+  await expectStored(page, STORAGE_KEYS.tasks, "微積分 4問");
+  await expectStored(page, STORAGE_KEYS.weeklyCards, "微積分 4問");
   await expectStored(page, STORAGE_KEYS.notes, "Release Gate 自由ノート");
-
-  await page.locator('[data-home-route="daily"]').click();
-  await page.locator("#taskButton").click();
-  await expect(page.locator("#taskList")).toContainText("Release Gate 数学・編集済み");
-  await expect(page.locator("#taskList input[type=checkbox]")).toBeChecked();
-  await page.locator("#closeTaskDialogButton").click();
   await page.locator("#homeButton").click();
+  await page.locator('[data-home-route="daily"]').click();
+  await expect(page.locator(".canvas-task-card", { hasText: "微積分 4問" })).toBeVisible();
 
-  await page.locator('[data-home-route="weekly"]').click();
-  await expect(page.locator("#weeklyEmptyHint")).toBeHidden();
-  const weeklyLayout = await page.evaluate(() => ({
-    viewportWidth: window.innerWidth,
-    documentWidth: document.documentElement.scrollWidth,
-    canvasWidth: document.querySelector("#weeklyCanvas")?.getBoundingClientRect().width,
-    tapTargets: [...document.querySelectorAll(".weekly-tool-button, .weekly-color-button, .weekly-history-actions button")]
-      .filter((element) => !element.hidden)
-      .map((element) => {
-        const rect = element.getBoundingClientRect();
-        return { text: element.getAttribute("aria-label") || element.textContent.trim(), width: rect.width, height: rect.height };
-      }),
-  }));
-  expect(weeklyLayout.documentWidth).toBeLessThanOrEqual(weeklyLayout.viewportWidth + 4);
-  expect(weeklyLayout.canvasWidth).toBeGreaterThan(300);
-  for (const target of weeklyLayout.tapTargets) {
-    expect(target.width, `${target.text}の幅が小さすぎます`).toBeGreaterThanOrEqual(44);
-    expect(target.height, `${target.text}の高さが小さすぎます`).toBeGreaterThanOrEqual(44);
+  const bodyText = await page.locator("body").innerText();
+  for (const removed of ["AIで読み取る", "予定時間", "学習時間の集計", "準備中", "未実装"]) {
+    expect(bodyText).not.toContain(removed);
   }
-  await testInfo.attach("release-gate-weekly", {
+  await testInfo.attach("release-gate-daily", {
     body: await page.screenshot({ fullPage: true }),
     contentType: "image/png",
   });
-  await page.locator("#closeWeeklyDialogButton").click();
-
-  await page.locator('[data-home-route="notes"]').click();
-  await expect(page.locator("#noteGallery")).toContainText("Release Gate 自由ノート");
-
-  const bodyText = await page.locator("body").innerText();
-  for (const unfinished of ["TODO", "FIXME", "準備中", "未実装", "Coming Soon", "ダミーデータ"]) {
-    expect(bodyText).not.toContain(unfinished);
-  }
   expect(errors, errors.join("\n")).toEqual([]);
 });

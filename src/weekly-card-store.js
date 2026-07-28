@@ -101,6 +101,27 @@ export function deleteWeeklyCard(store, weekStart, subject, cardId) {
   return setCards(store, weekStart, subject, next);
 }
 
+export function updateWeeklyCard(store, weekStart, subject, cardId, title) {
+  const current = getWeeklyCards(store, weekStart, subject);
+  const safeId = validateId(cardId);
+  const safeTitle = normalizeTitle(title);
+  let found = false;
+  const next = current.map((card) => {
+    if (card.id !== safeId) return card;
+    found = true;
+    return { ...card, title: safeTitle };
+  });
+  if (!found) throw new Error("変更する週間カードが見つかりません");
+  return setCards(store, weekStart, subject, next);
+}
+
+export function getWeeklyCardsForWeek(store, weekStart) {
+  assertWeekStart(weekStart);
+  return WEEKLY_CARD_SUBJECTS.flatMap((subject) =>
+    getWeeklyCards(store, weekStart, subject).map((card) => ({ ...card, subject })),
+  );
+}
+
 export function replaceStoredWeeklyCardStore(storage, key, nextStore) {
   const nextRaw = serializeWeeklyCardStore(nextStore);
   const previousRaw = storage.getItem(key);

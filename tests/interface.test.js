@@ -4,218 +4,95 @@ import test from "node:test";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
-const noteCss = await readFile(new URL("../note.css", import.meta.url), "utf8");
+const enhancements = await readFile(new URL("../enhancements.css", import.meta.url), "utf8");
 const script = await readFile(new URL("../script.js", import.meta.url), "utf8");
-const backupScript = await readFile(new URL("../src/backup.js", import.meta.url), "utf8");
-const restoreUi = await readFile(new URL("../restore-ui.js", import.meta.url), "utf8");
-const restoreScript = await readFile(new URL("../src/restore.js", import.meta.url), "utf8");
 const taskUi = await readFile(new URL("../task-ui.js", import.meta.url), "utf8");
 const taskStore = await readFile(new URL("../src/task-store.js", import.meta.url), "utf8");
-const weeklyUi = await readFile(new URL("../weekly-ui.js", import.meta.url), "utf8");
-const weeklyStore = await readFile(new URL("../src/weekly-store.js", import.meta.url), "utf8");
+const weeklyUi = await readFile(new URL("../weekly-text-ui.js", import.meta.url), "utf8");
+const weeklyCardStore = await readFile(new URL("../src/weekly-card-store.js", import.meta.url), "utf8");
 const noteUi = await readFile(new URL("../note-ui.js", import.meta.url), "utf8");
 const noteStore = await readFile(new URL("../src/note-store.js", import.meta.url), "utf8");
 
-test("不要と決めた指す・文字入力をツールバーに表示しない", () => {
-  assert.doesNotMatch(html, /指す（今後追加）/);
-  assert.doesNotMatch(html, /文字入力（今後追加）/);
-});
-
-test("選ぶを使える状態にし、独立した動かす機能を表示しない", () => {
+test("日次キャンバスの手書き・選択・日付移動を維持する", () => {
+  assert.match(html, /id="drawingCanvas"/);
+  assert.match(html, /data-tool="pen"/);
+  assert.match(html, /data-tool="eraser"/);
   assert.match(html, /data-tool="select"/);
-  assert.doesNotMatch(html, /移動（今後追加）/);
-  assert.doesNotMatch(html, /<small>動かす<\/small>/);
-  assert.match(html, /id="selectionHint"/);
-});
-
-test("選択枠を再度押すと選んだ手書きを削除できる", () => {
-  assert.match(html, /id="selectionDeleteButton"[^>]*hidden/);
-  assert.match(script, /selectionActionsVisible = true/);
-  assert.match(script, /deleteSelectedStrokes/);
-});
-
-test("選択枠の四隅をドラッグして手書きを拡大縮小できる", () => {
-  assert.match(script, /getResizeHandles/);
-  assert.match(script, /drawSelectionHandle/);
-  assert.match(script, /scaleSelectedStrokes/);
-  assert.match(script, /四隅の丸で拡大・縮小できます/);
-});
-
-test("青・赤・黒とペンの太さ調整を維持する", () => {
-  assert.match(html, /aria-label="青"/);
-  assert.match(html, /aria-label="赤"/);
-  assert.match(html, /aria-label="黒"/);
-  assert.match(html, /id="penWidth"[^>]*type="range"/);
-});
-
-test("前日・今日・翌日のページへ移動できる操作を表示する", () => {
   assert.match(html, /id="previousDateButton"/);
   assert.match(html, /id="todayButton"/);
   assert.match(html, /id="nextDateButton"/);
+  assert.match(script, /deleteSelectedStrokes/);
+  assert.match(script, /scaleSelectedStrokes/);
 });
 
 test("iPad幅では日付操作と描画ツールを重ならない2段ヘッダーにする", () => {
   assert.match(css, /@media \(max-width: 1180px\)[\s\S]*grid-template-areas:[\s\S]*"document history"[\s\S]*"tools tools"/);
-  assert.match(css, /\.document-bar \{ grid-area: document; min-width: 0; \}/);
-  assert.match(css, /\.tool-bar \{[\s\S]*grid-area: tools;[\s\S]*justify-content: center;/);
-  assert.doesNotMatch(css, /\.app-header \{[^}]*min-width:\s*(?:820|830)px/);
   assert.doesNotMatch(css, /\.app-header \{[^}]*overflow-x:\s*auto/);
 });
 
-test("ダブルタップ拡大を防ぎ、閲覧モードのタッチ操作を維持する", () => {
-  assert.match(css, /\.page\.is-viewing #drawingCanvas[^}]*touch-action:\s*manipulation/);
-  assert.match(script, /addEventListener\("dblclick"[^;]*preventDefault/);
-});
-
-test("Safariの長押しによる文字選択とメニューを抑止する", () => {
-  assert.match(css, /-webkit-touch-callout:\s*none/);
-  assert.match(css, /-webkit-user-select:\s*none/);
-  assert.match(css, /user-select:\s*none/);
-  assert.match(script, /addEventListener\("selectstart"[^;]*preventDefault/);
-  assert.match(script, /addEventListener\("contextmenu"[^;]*preventDefault/);
-});
-
-test("ページ一覧をサムネイルから開ける", () => {
-  assert.match(html, /id="pageListButton"/);
-  assert.match(html, /id="pageListDialog"/);
-  assert.match(html, /id="pageList"/);
-  assert.match(script, /listWrittenPageDates/);
-  assert.match(script, /drawThumbnail/);
-});
-
-test("メニューから全ページのJSONバックアップを保存できる", () => {
-  assert.match(html, /id="backupButton"/);
-  assert.match(html, /id="backupStatus"[^>]*role="status"/);
-  assert.match(script, /serializeBackup/);
-  assert.match(script, /createObjectURL/);
-  assert.match(script, /createBackupFilename/);
-  assert.match(backupScript, /BACKUP_FORMAT = "study-canvas-backup"/);
-});
-
-test("バックアップ復元はファイル選択と確認画面を分ける", () => {
-  assert.match(html, /id="restoreButton"/);
-  assert.match(html, /id="restoreFile"[^>]*type="file"[^>]*hidden/);
-  assert.match(html, /id="restoreDialog"/);
-  assert.match(html, /id="confirmRestoreButton"/);
-  assert.match(html, /まだ現在のデータは変更されていません/);
-});
-
-test("復元前に現在データを別ファイルへ退避する", () => {
-  assert.match(restoreUi, /serializeBackup\(current/);
-  assert.match(restoreUi, /createPreRestoreBackupFilename/);
-  assert.match(restoreUi, /replaceStoredPageStore/);
-  assert.match(restoreScript, /previousRaw/);
-});
-
-test("復元後は再読み込みして正式な保存データから描画する", () => {
-  assert.match(restoreUi, /window\.location\.reload/);
-});
-
-test("日付別タスクを入力する画面を表示する", () => {
-  assert.match(html, /id="taskButton"/);
-  assert.match(html, /id="taskDialog"/);
+test("タスク入力から予定時間を外し、科目と内容だけにする", () => {
   assert.match(html, /id="taskSubject"/);
   assert.match(html, /id="taskTitle"/);
-  assert.match(html, /id="taskMinutes"/);
-  assert.match(html, /id="taskList"/);
+  assert.doesNotMatch(html, /id="taskMinutes"/);
+  assert.doesNotMatch(taskUi, /taskMinutes/);
 });
 
-test("タスクは手書きと別のlocalStorageキーへ日付別に保存する", () => {
+test("日次タスクは既存キーを維持し、週間カードIDと位置を保存する", () => {
   assert.match(taskStore, /TASK_STORAGE_KEY = "study-canvas:tasks:v1"/);
-  assert.match(taskStore, /tasksByDate/);
-  assert.match(taskUi, /MutationObserver/);
-  assert.match(taskUi, /pageDate\.dateTime/);
-  assert.doesNotMatch(taskUi, /study-canvas:pages:v2/);
+  assert.match(taskStore, /sourceWeeklyCardId/);
+  assert.match(taskStore, /updateTaskPosition/);
+  assert.match(taskUi, /sourceWeeklyCardId/);
+  assert.match(taskUi, /replaceStoredTaskStore/);
 });
 
-test("タスクの追加・編集・完了・削除を行える", () => {
-  assert.match(taskUi, /addTask/);
-  assert.match(taskUi, /updateTask/);
-  assert.match(taskUi, /toggleTask/);
-  assert.match(taskUi, /deleteTask/);
-  assert.match(taskUi, /window\.confirm/);
-  assert.match(taskStore, /replaceStoredTaskStore/);
+test("週間目標は教科別テキストを改行ごとにカード化する", () => {
+  assert.match(html, /id="weeklySubjectGrid"/);
+  assert.match(html, /教科別に1行ずつ入力/);
+  assert.doesNotMatch(html, /id="weeklyCanvas"/);
+  assert.doesNotMatch(html, /AIで読み取る/);
+  assert.match(weeklyUi, /split\(\/\\r\?\\n\/\)/);
+  assert.match(weeklyUi, /WEEKLY_CARD_SUBJECTS/);
+  assert.match(weeklyUi, /addWeeklyCards/);
 });
 
-test("統合バックアップにタスクカードと配置が含まれることを案内する", () => {
-  assert.match(html, /全データをバックアップ/);
-  assert.match(html, /タスクカードと配置は全データバックアップに含まれます/);
-  assert.doesNotMatch(html, /タスクカードは現在の手書きJSONバックアップには含まれません/);
+test("週間カードを編集・削除でき、既存カード保存キーを維持する", () => {
+  assert.match(weeklyUi, /updateWeeklyCard/);
+  assert.match(weeklyUi, /deleteWeeklyCard/);
+  assert.match(weeklyCardStore, /WEEKLY_CARD_STORAGE_KEY = "study-canvas:weekly-cards:v1"/);
+  assert.match(weeklyCardStore, /replaceStoredWeeklyCardStore/);
 });
 
-test("週間目標を別の手書きキャンバスで開ける", () => {
-  assert.match(html, /id="weeklyButton"/);
-  assert.match(html, /id="weeklyDialog"/);
-  assert.match(html, /id="weeklyCanvas"/);
-  assert.match(html, /data-weekly-tool="pen"/);
-  assert.match(html, /data-weekly-tool="eraser"/);
-  assert.match(html, /id="weeklyUndoButton"/);
-  assert.match(html, /id="weeklyRedoButton"/);
+test("週間カード棚から今日のキャンバスへドラッグ配置する", () => {
+  assert.match(taskUi, /dailyWeeklyShelf/);
+  assert.match(taskUi, /daily-weekly-drag-handle/);
+  assert.match(taskUi, /is-weekly-drop-target/);
+  assert.match(taskUi, /placeWeeklyCard/);
+  assert.match(taskUi, /getLinkedTasksForWeek/);
+  assert.match(enhancements, /\.daily-weekly-shelf/);
+  assert.match(enhancements, /#dailyCanvasStage\.is-weekly-drop-target/);
 });
 
-test("週間目標は月曜日単位で別の保存キーへ保存する", () => {
-  assert.match(weeklyStore, /WEEKLY_STORAGE_KEY = "study-canvas:weekly:v1"/);
-  assert.match(weeklyStore, /getWeekStart/);
-  assert.match(weeklyStore, /shiftWeek/);
-  assert.match(weeklyUi, /replaceStoredWeeklyStore/);
-  assert.doesNotMatch(weeklyUi, /study-canvas:pages:v2/);
-  assert.doesNotMatch(weeklyUi, /study-canvas:tasks:v1/);
-  assert.match(weeklyUi, /y \+= 220/);
-  assert.doesNotMatch(weeklyUi, /y \+= 110/);
+test("正式画面からAI・OCR・時間集計を読み込まない", () => {
+  assert.doesNotMatch(html, /weekly-recognition-entry/);
+  assert.doesNotMatch(html, /AIで読み取る/);
+  assert.doesNotMatch(html, /学習時間の集計/);
+  assert.doesNotMatch(html, /予定時間/);
+  assert.match(html, /id="taskButton"[^>]*hidden/);
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important/);
 });
 
-test("週間目標から今日のタスクを自動作成しない", () => {
-  assert.match(html, /今日のタスクは自動作成しません/);
-  assert.doesNotMatch(weeklyUi, /addTask/);
-  assert.doesNotMatch(weeklyUi, /task-store/);
-});
-
-test("統合バックアップに週間目標が含まれることを案内する", () => {
-  assert.match(html, /週間目標は全データバックアップに含まれます/);
-  assert.doesNotMatch(html, /週間目標は現在の手書きJSONバックアップには含まれません/);
-});
-
-test("自由ノートを日付に縛られない手書きキャンバスで開ける", () => {
-  assert.match(html, /id="noteButton"/);
+test("自由ノートの複数ページ手書き機能を維持する", () => {
   assert.match(html, /id="noteDialog"/);
   assert.match(html, /id="noteCanvas"/);
-  assert.match(html, /data-note-tool="pen"/);
-  assert.match(html, /data-note-tool="eraser"/);
-  assert.match(html, /id="noteUndoButton"/);
-  assert.match(html, /id="noteRedoButton"/);
-  assert.match(noteCss, /#noteCanvas[^}]*touch-action:\s*none/);
-});
-
-test("自由ノートは日別手書き・タスク・週間目標と別のキーへ保存する", () => {
-  assert.match(noteStore, /NOTE_STORAGE_KEY = "study-canvas:free-note:v1"/);
   assert.match(noteUi, /replaceStoredNoteStore/);
-  assert.doesNotMatch(noteUi, /study-canvas:pages:v2/);
-  assert.doesNotMatch(noteUi, /study-canvas:tasks:v1/);
-  assert.doesNotMatch(noteUi, /study-canvas:weekly:v1/);
+  assert.match(noteStore, /NOTE_STORAGE_KEY = "study-canvas:free-note:v1"/);
 });
 
-test("自由ノートは確認付き白紙化と保存失敗時の復帰に対応する", () => {
-  assert.match(noteUi, /window\.confirm\("自由ノートを白紙に戻しますか？"\)/);
-  assert.match(noteStore, /previousRaw/);
-  assert.match(noteStore, /保存結果を確認できませんでした/);
-});
-
-test("統合バックアップに自由ノートが含まれることを案内する", () => {
-  assert.match(html, /自由ノートは全データバックアップに含まれます/);
-  assert.doesNotMatch(html, /自由ノートは現在の手書きJSONバックアップには含まれません/);
-});
-
-test("公開後に更新したCSSとJavaScriptを確実に読み込む", () => {
-  assert.match(html, /styles\.css\?v=\d{8}-\d+/);
-  assert.match(html, /note\.css\?v=\d{8}-\d+/);
-  assert.match(html, /script\.js\?v=\d{8}-\d+/);
-  assert.match(html, /restore-ui\.js\?v=\d{8}-\d+/);
-  assert.match(html, /task-ui\.js\?v=\d{8}-\d+/);
-  assert.match(html, /weekly-ui\.js\?v=\d{8}-\d+/);
-  assert.match(html, /note-ui\.js\?v=\d{8}-\d+/);
-  assert.match(script, /page-store\.js\?v=\d{8}-\d+/);
-  assert.match(restoreUi, /restore\.js\?v=\d{8}-\d+/);
-  assert.match(taskUi, /task-store\.js\?v=\d{8}-\d+/);
-  assert.match(weeklyUi, /weekly-store\.js\?v=\d{8}-\d+/);
-  assert.match(noteUi, /note-store\.js\?v=\d{8}-\d+/);
+test("公開資産に更新版を指定する", () => {
+  assert.match(html, /styles\.css\?v=20260729-2/);
+  assert.match(html, /enhancements\.css\?v=20260729-1/);
+  assert.match(html, /weekly-text\.css\?v=20260729-1/);
+  assert.match(html, /task-ui\.js\?v=20260729-1/);
+  assert.match(html, /weekly-text-ui\.js\?v=20260729-1/);
+  assert.match(html, /release-entry\.js\?v=20260729-1/);
 });

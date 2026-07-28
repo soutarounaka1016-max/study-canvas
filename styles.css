@@ -10,6 +10,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body {
   width: 100%; min-height: 100%; margin: 0; background: var(--workspace); color: var(--text);
   overscroll-behavior: none; touch-action: manipulation;
@@ -149,7 +150,7 @@ dialog h2 { margin-top: 0; font-size: 21px; }
 .task-dialog-header h2 { margin-bottom: 4px; }
 .task-dialog-header time { color: var(--muted); font-size: 14px; }
 .task-form {
-  display: grid; grid-template-columns: minmax(115px, .7fr) minmax(250px, 2fr) minmax(135px, .8fr);
+  display: grid; grid-template-columns: minmax(115px, .7fr) minmax(250px, 2fr);
   gap: 12px; margin-top: 20px; padding: 16px; border: 1px solid var(--border); border-radius: 14px;
   background: #f8fafc;
 }
@@ -159,8 +160,6 @@ dialog h2 { margin-top: 0; font-size: 21px; }
   background: white; color: var(--text); -webkit-user-select: text; user-select: text;
 }
 .task-form input:focus, .task-form select:focus { border-color: var(--accent); outline: 3px solid rgb(37 88 230 / 15%); }
-.minutes-input { display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 15px; font-weight: 400; }
-.minutes-input input { min-width: 80px; }
 .task-form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; }
 .task-form-actions button, .task-card-actions button {
   min-height: 44px; padding: 8px 15px; border: 1px solid var(--border); border-radius: 9px;
