@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  createGemmaWeeklyRequest,
+  createMistralWeeklyRequest,
   createWeeklyRequest,
   handleRequest,
   parseAiJson,
@@ -12,7 +12,7 @@ import {
 const origin = "https://soutarounaka1016-max.github.io";
 const image = { mimeType: "image/png", data: Buffer.from("sample-image").toString("base64") };
 const primaryModel = "@cf/moondream/moondream3.1-9B-A2B";
-const fallbackModel = "@cf/google/gemma-4-26b-a4b-it";
+const fallbackModel = "@cf/mistralai/mistral-small-3.1-24b-instruct";
 
 function request(path, body, method = "POST") {
   return new Request(`https://worker.example${path}`, {
@@ -68,7 +68,7 @@ test("Moondreamの日本語OCRから見出しを除いて候補化する", () =>
   ]);
 });
 
-test("日本語を含むMoondream OCRは画像とOCRヒントをGemmaで再確認する", async () => {
+test("日本語を含むMoondream OCRは画像とOCRヒントをMistralで再確認する", async () => {
   const calls = [];
   const env = {
     ALLOWED_ORIGIN: origin,
@@ -122,7 +122,7 @@ test("Moondreamが指示文を復唱した場合は候補として採用しな�
   assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
 });
 
-test("Moondream結果が空の場合だけGemma補助へ切り替える", async () => {
+test("Moondream結果が空の場合だけMistral補助へ切り替える", async () => {
   const calls = [];
   const env = {
     ALLOWED_ORIGIN: origin,
@@ -145,17 +145,16 @@ test("Moondream結果が空の場合だけGemma補助へ切り替える", async 
   assert.equal(calls[1].input.temperature, 0);
 });
 
-test("Gemma補助はbase64画像をメッセージ内にも含めて短い行単位OCRを指示する", () => {
-  const input = createGemmaWeeklyRequest(image, "数学", "減林分3間");
-  assert.equal(input.image, image.data);
+test("Mistral補助はbase64画像をメッセージ内に含めて短い行単位OCRを指示する", () => {
+  const input = createMistralWeeklyRequest(image, "数学", "減林分3間");
+  assert.equal(input.image, undefined);
   assert.match(input.messages[1].content[0].text, /減林分3間/);
   assert.equal(input.messages[1].content[1].type, "image_url");
   assert.equal(input.messages[1].content[1].image_url.url, `data:image/png;base64,${image.data}`);
-  assert.doesNotMatch(input.image, /^data:/);
   assert.match(input.messages[0].content, /画像OCR/);
   assert.match(input.messages[1].content[0].text, /1件につき1行/);
   assert.equal(input.response_format, undefined);
-  assert.equal(input.max_completion_tokens, 320);
+  assert.equal(input.max_tokens, 320);
   assert.equal(input.temperature, 0);
 });
 
@@ -169,7 +168,7 @@ test("healthは主系、補助、最大待ち時間を返す", async () => {
   assert.equal(payload.model, primaryModel);
   assert.equal(payload.primaryModel, primaryModel);
   assert.equal(payload.fallbackModel, fallbackModel);
-  assert.equal(payload.workerRevision, "20260728-gemma-message-image-2");
+  assert.equal(payload.workerRevision, "20260728-mistral-vision-1");
   assert.equal(payload.maxRecognitionMs, 32_000);
   assert.equal(payload.noPaidFallback, true);
 });
