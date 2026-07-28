@@ -17,19 +17,19 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Apply and verify
+      - name: Apply Worker and test patches
         shell: bash
         run: |
           set -euo pipefail
-          for patch in .automation/patches/*.patch; do
-            git apply "${patch}"
+          for number in 01 02 03 04 05 06 07 08; do
+            echo "Applying patch ${number}"
+            git apply ".automation/patches/${number}.patch"
           done
-          rm -rf .automation
+          rm -f .automation/patches/0[1-8].patch
           rm -f \
             .automation-trigger \
             .github/workflows/apply-japanese-refinement.yml \
-            .github/workflows/run-japanese-refinement.yml \
-            .github/workflows/apply-verified-ocr-patches.yml
+            .github/workflows/run-japanese-refinement.yml
           node --check cloudflare-worker.js
           npm ci --ignore-scripts
           npm test
