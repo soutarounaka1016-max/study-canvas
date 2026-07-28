@@ -1,6 +1,6 @@
 const PRIMARY_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 const FALLBACK_MODEL = "@cf/google/gemma-4-26b-a4b-it";
-const WORKER_REVISION = "20260728-gemma-plain-ocr-1";
+const WORKER_REVISION = "20260728-gemma-message-image-2";
 const PRIMARY_TIMEOUT_MS = 8_000;
 const FALLBACK_TIMEOUT_MS = 24_000;
 const MAX_IMAGE_BYTES = 1_250_000;
@@ -331,7 +331,13 @@ export function createGemmaWeeklyRequest(image, subject, ocrHint = "") {
   return {
     messages: [
       { role: "system", content: "画像OCRです。画像に見える文字以外は出力せず、各タスクを1行で返してください。" },
-      { role: "user", content: prompt },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } },
+        ],
+      },
     ],
     image: image.data,
     max_completion_tokens: 320,
@@ -351,7 +357,13 @@ export function createGemmaSingleRequest(image, ocrHint = "") {
   return {
     messages: [
       { role: "system", content: "画像OCRです。画像に見える文字以外は出力せず、タスクの文字だけを返してください。" },
-      { role: "user", content: prompt },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } },
+        ],
+      },
     ],
     image: image.data,
     max_completion_tokens: 240,
