@@ -167,6 +167,8 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
   await page.locator("#confirmFullRestoreButton").click();
   await safetyBackupPromise;
   await expect(page.locator(".full-restore-dialog[open]")).toHaveCount(0, { timeout: 10_000 });
+  await expect(page.locator("#homeButton")).toBeVisible({ timeout: 10_000 });
+  await page.locator("#homeButton").click();
   await expect(page.locator("#homeScreen")).toBeVisible({ timeout: 10_000 });
 
   await expectStored(page, STORAGE_KEYS.pages);
