@@ -1,0 +1,27 @@
+--- a/cloudflare-worker.js
++++ b/cloudflare-worker.js
+@@ -497,6 +555,24 @@
+   return "その他";
+ }
+ 
++function needsJapaneseRefinement(text) {
++  return /[\u3040-\u30ff\u3400-\u9fff]/u.test(String(text));
++}
++
++function normalizeOcrHint(value) {
++  return String(value || "")
++    .replace(/<\/?ocr_hint>/gi, "")
++    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
++    .trim()
++    .slice(0, 1200);
++}
++
++function refinementRequiredError() {
++  const error = new Error("JAPANESE_REFINEMENT_REQUIRED");
++  error.code = "JAPANESE_REFINEMENT_REQUIRED";
++  return error;
++}
++
+ export function describeAiShape(value, depth = 0) {
+   if (value === null) return { type: "null" };
+   if (value === undefined) return { type: "undefined" };
