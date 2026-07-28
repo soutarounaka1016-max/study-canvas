@@ -1,0 +1,44 @@
+name: Run Japanese OCR refinement patch
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply embedded patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          source = Path('.github/workflows/apply-japanese-refinement.yml')
+          lines = source.read_text().splitlines()
+          start = next(i for i, line in enumerate(lines) if "python - <<'PY'" in line) + 1
+          end = next(i for i in range(start, len(lines)) if lines[i].strip() == 'PY')
+          script = textwrap.dedent('\n'.join(lines[start:end]))
+          exec(compile(script, str(source), 'exec'))
+          PY
+          rm -f .github/workflows/run-japanese-refinement.yml .automation-trigger
+          node --check cloudflare-worker.js
+          npm ci --ignore-scripts
+          npm test
+          npm run build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "日本語OCRをGemmaで画像照合して補正"
+          git push origin HEAD:${{ github.head_ref }}
