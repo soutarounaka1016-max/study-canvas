@@ -26,32 +26,33 @@ function weeklyBody() {
   return { mode: "weekly", subject: "数学", weekStart: "2026-07-27", image };
 }
 
-test("Moondreamへ公式のquery入力を送る", () => {
+test("Moondreamへ短いOCR query入力を送る", () => {
   const input = createWeeklyRequest(image, "数学");
   assert.equal(input.task, "query");
   assert.equal(input.image, `data:image/png;base64,${image.data}`);
-  assert.match(input.question, /数学/);
-  assert.match(input.question, /予定時間、優先順位/);
+  assert.match(input.question, /Copy every visible line/);
+  assert.match(input.question, /original language/);
+  assert.doesNotMatch(input.question, /JSON/);
   assert.equal(input.reasoning, false);
   assert.equal(input.stream, false);
   assert.equal(input.temperature, 0);
 });
 
-test("Moondream主系から複数タスクを返す", async () => {
+test("MoondreamのプレーンOCRから複数タスクを返す", async () => {
   const calls = [];
   const env = {
     ALLOWED_ORIGIN: origin,
     AI: {
       async run(model, input) {
         calls.push({ model, input });
-        return { answer: '{"tasks":[{"title":"微積5問","confidence":0.9,"warning":""},{"title":"ベクトル復習","confidence":0.7,"warning":""}]}' };
+        return { answer: "MATH WEEKLY PLAN\nINTEGRAL 3 QUESTIONS\nVECTOR REVIEW" };
       },
     },
   };
   const response = await handleRequest(request("/recognize", weeklyBody()), env);
   const payload = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(payload.tasks.length, 2);
+  assert.deepEqual(payload.tasks.map((task) => task.title), ["INTEGRAL 3 QUESTIONS", "VECTOR REVIEW"]);
   assert.equal(payload.model, primaryModel);
   assert.equal(payload.fallbackUsed, false);
   assert.equal(calls.length, 1);
@@ -60,7 +61,37 @@ test("Moondream主系から複数タスクを返す", async () => {
   assert.equal(response.headers.get("Access-Control-Allow-Origin"), origin);
 });
 
-test("Moondream結果が使えない場合だけGemma補助へ切り替える", async () => {
+test("Moondreamの日本語OCRから見出しを除いて候補化する", () => {
+  assert.deepEqual(parseWeeklyText("数学 週間目標\n微積分 3問\nチョイス A").map((task) => task.title), [
+    "微積分 3問",
+    "チョイス A",
+  ]);
+});
+
+test("Moondreamが指示文を復唱した場合は候補として採用しない", async () => {
+  const calls = [];
+  const env = {
+    ALLOWED_ORIGIN: origin,
+    AI: {
+      async run(model, input) {
+        calls.push({ model, input });
+        if (model === primaryModel) {
+          return { answer: "読み取った内容\n1行または1項目を1件の勉強タスクにしてください\n返答はMarkdownを使わず、次のJSONだけにしてください" };
+        }
+        return { response: { tasks: [{ title: "積分3問", confidence: 0.8, warning: "" }] } };
+      },
+    },
+  };
+  const response = await handleRequest(request("/recognize", weeklyBody()), env);
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.model, fallbackModel);
+  assert.equal(payload.fallbackUsed, true);
+  assert.equal(payload.tasks[0].title, "積分3問");
+  assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
+});
+
+test("Moondream結果が空の場合だけGemma補助へ切り替える", async () => {
   const calls = [];
   const env = {
     ALLOWED_ORIGIN: origin,
@@ -137,7 +168,7 @@ test("両モデルが候補を返せない場合も既存データ不変の422�
   assert.match(payload.error.message, /既存のカードは変更されていません/);
 });
 
-test("Moondreamのanswer内JSONを解析できる", () => {
+test("Moondreamのanswer内JSONも後方互換で解析できる", () => {
   assert.deepEqual(parseAiJson({ answer: '```json\n{"tasks":[]}\n```' }), { tasks: [] });
 });
 

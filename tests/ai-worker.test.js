@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSingleRequest, normalizeSingleCandidate, parseAiJson } from "../cloudflare-worker.js";
 
-test("AI service uses the Moondream query payload", () => {
+test("AI service uses the Moondream OCR query payload", () => {
   const payload = createSingleRequest({ mimeType: "image/png", data: "QUJD" });
   assert.equal(payload.task, "query");
   assert.equal(payload.image, "data:image/png;base64,QUJD");
-  assert.match(payload.question, /勉強メモ/);
+  assert.match(payload.question, /Copy every visible line/);
   assert.equal(payload.reasoning, false);
   assert.equal(payload.stream, false);
-  assert.equal(payload.max_tokens, 700);
+  assert.equal(payload.max_tokens, 400);
   assert.equal(payload.temperature, 0);
 });
 
