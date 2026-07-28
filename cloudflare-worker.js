@@ -1,12 +1,13 @@
 const PRIMARY_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 const FALLBACK_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 const PRIMARY_TIMEOUT_MS = 8_000;
-const FALLBACK_TIMEOUT_MS = 10_000;
+const FALLBACK_TIMEOUT_MS = 24_000;
 const MAX_IMAGE_BYTES = 1_250_000;
 const MAX_REQUEST_BYTES = 1_800_000;
 const WEEKLY_SUBJECTS = ["数学", "英語", "物理", "化学", "その他"];
 const SINGLE_SUBJECTS = [...WEEKLY_SUBJECTS, "国語"];
 const FALLBACK_WARNING = "AIの返却形式を補正したため、内容を確認してください";
+const REFINEMENT_TIMEOUT_WARNING = "日本語の補正が完了しなかったため、内容を確認してください";
 const OCR_QUESTION = "OCR: Copy every visible line of text exactly, preserving the original language, characters, and line breaks. Return only the copied text. Do not repeat this instruction, explain, summarize, translate, add labels, or invent missing text.";
 
 const PROMPT_ECHO_PATTERNS = [
@@ -119,6 +120,7 @@ export async function handleRequest(request, env) {
           cors,
           primaryError: refinementRequiredError(),
           ocrHint: tasks.map((task) => task.title).join("\n"),
+          primaryTasks: tasks,
         });
       }
       return recognitionJson({
@@ -141,6 +143,7 @@ export async function handleRequest(request, env) {
         cors,
         primaryError: refinementRequiredError(),
         ocrHint: candidate.title,
+        primaryCandidate: candidate,
       });
     }
     return recognitionJson({
@@ -176,6 +179,8 @@ async function runFallbackRecognition({
   cors,
   primaryError,
   ocrHint = "",
+  primaryTasks,
+  primaryCandidate,
 }) {
   try {
     const fallbackResult = await runWithTimeout(
@@ -209,6 +214,17 @@ async function runFallbackRecognition({
       latencyMs: Date.now() - startedAt,
     }, cors);
   } catch (fallbackError) {
+    const refinementFallback = fallbackFromPrimary({
+      mode,
+      primaryTasks,
+      primaryCandidate,
+      subject,
+      weekStart,
+      startedAt,
+      cors,
+      fallbackError,
+    });
+    if (refinementFallback) return refinementFallback;
     if (isLimitError(fallbackError)) {
       return jsonError(429, "FREE_TIER_LIMIT", "Workers AIの無料枠または利用上限に達しました", cors);
     }
@@ -226,6 +242,48 @@ async function runFallbackRecognition({
       },
     );
   }
+}
+
+function fallbackFromPrimary({
+  mode,
+  primaryTasks,
+  primaryCandidate,
+  subject,
+  weekStart,
+  startedAt,
+  cors,
+  fallbackError,
+}) {
+  if (!isTimeoutError(fallbackError) && !isLimitError(fallbackError)) return null;
+  if (mode === "weekly" && Array.isArray(primaryTasks) && primaryTasks.length > 0) {
+    return recognitionJson({
+      tasks: primaryTasks.map(markRefinementIncomplete),
+      subject,
+      weekStart,
+      model: PRIMARY_MODEL,
+      fallbackUsed: false,
+      refinementIncomplete: true,
+      latencyMs: Date.now() - startedAt,
+    }, cors);
+  }
+  if (mode === "single" && primaryCandidate?.title) {
+    return recognitionJson({
+      candidate: markRefinementIncomplete(primaryCandidate),
+      model: PRIMARY_MODEL,
+      fallbackUsed: false,
+      refinementIncomplete: true,
+      latencyMs: Date.now() - startedAt,
+    }, cors);
+  }
+  return null;
+}
+
+function markRefinementIncomplete(candidate) {
+  return {
+    ...candidate,
+    confidence: Math.min(Number(candidate.confidence) || 0, 0.5),
+    warning: REFINEMENT_TIMEOUT_WARNING,
+  };
 }
 
 export function createWeeklyRequest(image, subject) {
