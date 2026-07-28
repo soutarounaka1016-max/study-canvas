@@ -6,7 +6,7 @@
 
 Study Canvasは、日別の手書き計画、タスクカード、科目別週間目標、Workers AIによる週間目標の読み取り、自由ノート、学習時間集計をまとめて使えるiPad Safari向け受験勉強管理Webアプリです。
 
-2026年7月28日の学校支給iPad Safari確認で、週間目標のAIモーダルに旧「準備中」UIが残る問題が判明しました。以前の自動確認は、最終DOMだけを新しいキャッシュ状態で確認しており、旧UIを生成するコードと、無関係な機能の直列読み込みにAI初期化が依存する構造を見逃していました。したがって、以前の完成判定はいったん撤回し、修正版の公開確認が成功するまでは未完成として扱います。
+2026年7月28日の学校支給iPad Safari確認で、週間目標のAIモーダルに旧「準備中」UIが残る問題が判明しました。以前の自動確認は、最終DOMだけを新しいキャッシュ状態で確認しており、旧UIを生成するコードと、無関係な機能の直列読み込みにAI初期化が依存する構造を見逃していました。修正版では旧UIを削除し、PR #66反映後の公開DOMと実操作で解消を確認しました。
 
 修正版では、旧UI文言を`weekly-ui.js`から削除し、最初から完成版の候補画面を生成します。週間AIモジュールは`release-entry.js`の直列読み込みから切り離して`index.html`から直接読み込み、二重初期化も防止します。公開テストは、旧文言の不在だけでなく、画面の「AIで読み取る」操作から本番WorkerへのPOST、候補表示、編集、選択保存、再読み込み後の保持まで確認します。
 
@@ -14,7 +14,7 @@ Study Canvasは、日別の手書き計画、タスクカード、科目別週�
 
 Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テスト、ビルド、主要画面移動、保存、Chromium、WebKit、iPad縦横、GitHub Pagesへのデプロイ、公開URLでの起動確認まで自動化しています。公開URL確認ではリポジトリ配下の`/study-canvas/`を保持し、古いPages実行は新しいmainで置き換えます。
 
-端末内OCRは日本語の自由手書きを実用精度で読めず不採用としました。現在の正式な画像認識はCloudflare WorkerとWorkers AIを使用し、英数字は`@cf/moondream/moondream3.1-9B-A2B`で高速転記し、日本語を含む結果は画像と一次OCRを`@cf/google/gemma-4-26b-a4b-it`で照合して補正します。
+端末内OCRは日本語の自由手書きを実用精度で読めず不採用としました。現在の正式な画像認識はCloudflare WorkerとWorkers AIを使用し、英数字は`@cf/moondream/moondream3.1-9B-A2B`で高速転記し、日本語を含む結果は画像と一次OCRを`@cf/mistralai/mistral-small-3.1-24b-instruct`で照合して補正します。Workers Freeの無料枠だけを利用し、有料プランへの変更は行っていません。
 
 ## 実装済み・利用者確認済み
 
@@ -41,10 +41,10 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 「AIで読み取る」を押した時だけ画像を外部送信
 - Cloudflare WorkerからWorkers AI bindingを呼び出す
 - 英数字だけのOCRはMoondream主系を採用
-- 日本語文字を含む一次OCRは、画像とOCRヒントをGemmaへ渡して再確認
+- 日本語文字を含む一次OCRは、画像とOCRヒントをMistral Small 3.1 Visionへ渡して再確認
 - 一次OCRは参考情報に限定し、画像を唯一の正として誤字を訂正
 - 科目名や「週間目標」などの見出し、指示文復唱、空の結果を候補から除外
-- 主系8秒、補助10秒、合計最大18秒で終了
+- 主系8秒、補助24秒、合計最大32秒で終了
 - 科目は表示中のタブで固定し、AIに推測させない
 - 複数のタスク候補を取得
 - 候補の内容修正、選択解除、削除、手動追加
@@ -64,12 +64,12 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - 再読み込み後のカード保持
 - AI失敗時の既存データ不変
 - 本番Workerの`/health`
-- 主系Moondream、補助Gemma、無料構成、最大18秒の設定
+- 主系Moondream、補助Mistral、Workers Free、最大32秒の設定
 - 公開HTMLから公開入口・週間AI JavaScriptまでのno-cache取得連鎖
 - 本番Workerへ英字合成PNGを送信し、Moondream主系で期待内容を取得
-- 続けて日本語合成PNGを送信し、Gemma補正経路で「微積分」または「チョイス」に一致する候補を取得
+- 続けて日本語合成PNGを送信し、Mistral補正経路で「微積分 3問」「チョイス A」の2候補を1,631msで取得
 - 公開版の完成したAI読み取り画面をChromiumで確認
-- mainコミット`b7a95f34c74d8318f68e0ba8a6afab885d59501f`のGitHub Pages実行`30325144478`が全工程成功
+- mainコミット`dfc7322798bb6595395b5c223bf8d82004fbce67`のGitHub Pages実行`30330796986`が全工程成功
 
 ### 実機未確認
 
@@ -197,12 +197,12 @@ Playwrightによるブラウザ確認をGitHub Actionsへ導入し、通常テ�
 - リポジトリ: `soutarounaka1016-max/study-canvas`
 - 正式ブランチ: `main`
 - 公開URL: `https://soutarounaka1016-max.github.io/study-canvas/`
-- GitHub Pagesデプロイ: 自動確認成功
+- GitHub Pagesデプロイ: main `dfc7322`で自動確認成功
 - 公開URL起動確認: Chromiumで自動確認成功
-- Workers AI本番英字・日本語連続PNG実動確認: 成功
+- Workers AI本番英字・日本語連続PNG実動確認: MoondreamとMistralで成功
 
 ## 完成判定
 
-週間目標AI読み取り機能は、iPad Safariで旧UIが残る問題が確認されたため、現時点では未完成として扱う。
+週間目標AI読み取り機能は、単体テスト、ビルド、Chromium、WebKit、iPad縦横相当、公開URLの実DOM、本番Workerへの画面経由POST、英字・日本語候補表示、保存、再読み込み、失敗時データ保護がすべて成功したため、自動確認上は完成とする。
 
-修正版について、単体テスト、ビルド、Chromium、WebKit、iPad縦横相当、公開URLの実DOM、本番Workerへの画面経由POST、候補表示、保存、再読み込み、失敗時データ保護がすべて成功した後に、自動確認上の完成へ更新する。学校支給iPad Safariで本人の手書きを使った精度と体感速度は、引き続き実機未確認として区別する。
+学校支給iPad Safariで本人の手書きを使った認識精度と体感速度は、引き続き実機未確認として区別する。
