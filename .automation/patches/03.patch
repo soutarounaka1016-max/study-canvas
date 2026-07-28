@@ -1,0 +1,123 @@
+--- a/cloudflare-worker.js
++++ b/cloudflare-worker.js
+@@ -129,56 +153,78 @@
+     if (isLimitError(primaryError)) {
+       return jsonError(429, "FREE_TIER_LIMIT", "Workers AIの無料枠または利用上限に達しました", cors);
+     }
++    return runFallbackRecognition({
++      env,
++      mode,
++      image: image.value,
++      subject,
++      weekStart,
++      startedAt,
++      cors,
++      primaryError,
++    });
++  }
++}
+ 
+-    try {
+-      const fallbackResult = await runWithTimeout(
+-        env.AI.run(
+-          FALLBACK_MODEL,
+-          mode === "weekly"
+-            ? createGemmaWeeklyRequest(image.value, subject)
+-            : createGemmaSingleRequest(image.value),
+-        ),
+-        FALLBACK_TIMEOUT_MS,
+-        "FALLBACK_TIMEOUT",
+-      );
+-
+-      if (mode === "weekly") {
+-        const tasks = parseWeeklyTasksFromResult(fallbackResult, subject);
+-        return recognitionJson({
+-          tasks,
+-          subject,
+-          weekStart,
+-          model: FALLBACK_MODEL,
+-          fallbackUsed: true,
+-          latencyMs: Date.now() - startedAt,
+-        }, cors);
+-      }
++async function runFallbackRecognition({
++  env,
++  mode,
++  image,
++  subject,
++  weekStart,
++  startedAt,
++  cors,
++  primaryError,
++  ocrHint = "",
++}) {
++  try {
++    const fallbackResult = await runWithTimeout(
++      env.AI.run(
++        FALLBACK_MODEL,
++        mode === "weekly"
++          ? createGemmaWeeklyRequest(image, subject, ocrHint)
++          : createGemmaSingleRequest(image, ocrHint),
++      ),
++      FALLBACK_TIMEOUT_MS,
++      "FALLBACK_TIMEOUT",
++    );
+ 
+-      const candidate = normalizeSingleCandidate(parseAiJson(fallbackResult));
++    if (mode === "weekly") {
++      const tasks = parseWeeklyTasksFromResult(fallbackResult, subject);
+       return recognitionJson({
+-        candidate,
++        tasks,
++        subject,
++        weekStart,
+         model: FALLBACK_MODEL,
+         fallbackUsed: true,
+         latencyMs: Date.now() - startedAt,
+       }, cors);
+-    } catch (fallbackError) {
+-      if (isLimitError(fallbackError)) {
+-        return jsonError(429, "FREE_TIER_LIMIT", "Workers AIの無料枠または利用上限に達しました", cors);
+-      }
+-      const timedOut = isTimeoutError(primaryError) || isTimeoutError(fallbackError);
+-      return jsonError(
+-        timedOut ? 504 : 422,
+-        timedOut ? "AI_TIMEOUT" : "INVALID_AI_RESULT",
+-        timedOut
+-          ? "画像認識が時間内に完了しませんでした。既存のカードは変更されていません"
+-          : "画像からタスク候補を作れませんでした。既存のカードは変更されていません",
+-        cors,
+-        {
+-          primary: safeDiagnostic(primaryError),
+-          fallback: safeDiagnostic(fallbackError),
+-        },
+-      );
+     }
++
++    const candidate = parseSingleCandidateFromResult(fallbackResult);
++    return recognitionJson({
++      candidate,
++      model: FALLBACK_MODEL,
++      fallbackUsed: true,
++      latencyMs: Date.now() - startedAt,
++    }, cors);
++  } catch (fallbackError) {
++    if (isLimitError(fallbackError)) {
++      return jsonError(429, "FREE_TIER_LIMIT", "Workers AIの無料枠または利用上限に達しました", cors);
++    }
++    const timedOut = isTimeoutError(primaryError) || isTimeoutError(fallbackError);
++    return jsonError(
++      timedOut ? 504 : 422,
++      timedOut ? "AI_TIMEOUT" : "INVALID_AI_RESULT",
++      timedOut
++        ? "画像認識が時間内に完了しませんでした。既存のカードは変更されていません"
++        : "画像からタスク候補を作れませんでした。既存のカードは変更されていません",
++      cors,
++      {
++        primary: safeDiagnostic(primaryError),
++        fallback: safeDiagnostic(fallbackError),
++      },
++    );
+   }
+ }
+ 
