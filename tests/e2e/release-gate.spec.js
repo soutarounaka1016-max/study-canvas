@@ -47,7 +47,7 @@ async function gotoCleanHome(page) {
 }
 
 async function waitForAppModules(page) {
-  await expect(page.locator(".note-gallery-card")).toBeAttached();
+  await expect(page.locator(".note-gallery-card").first()).toBeAttached();
   await expect(page.locator(".full-restore-dialog")).toBeAttached();
   await expect(page.locator("html")).not.toHaveAttribute("data-note-load-error", "true");
 }
