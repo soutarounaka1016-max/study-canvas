@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260728-weekly-ai-cache-1";
-const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260728-1";
+const EXPECTED_RELEASE = "20260728-weekly-ai-safari-2";
+const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260728-2";
 const TASK_STORAGE_KEY = "study-canvas:tasks:v1";
 
 function watchCriticalErrors(page) {
@@ -46,6 +46,9 @@ test("@published 最新版が起動し重大なJavaScriptエラーがない", as
   await expect(page.locator("#weeklyAddCandidate")).toBeVisible();
   await expect(page.locator("#weeklySaveCandidates")).toBeAttached();
   await expect(page.locator(".weekly-recognition-placeholder")).toHaveCount(0);
+  for (const obsoleteText of ["準備中", "次の段階で", "画像は外部へ送信しません", "土台まで実装"]) {
+    await expect(page.locator("body")).not.toContainText(obsoleteText);
+  }
   await expect(page.locator("html")).not.toHaveAttribute("data-note-load-error", "true");
   await expectNoCriticalErrors(errors);
 });

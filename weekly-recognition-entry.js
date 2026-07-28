@@ -9,6 +9,7 @@ import {
 } from "./src/weekly-card-store.js?v=20260727-1";
 import { recognizeWeeklyCanvas } from "./src/weekly-recognition.js?v=20260727-1";
 
+function installWeeklyRecognition() {
 installStyle();
 
 const weeklyButton = document.querySelector("#weeklyButton");
@@ -212,6 +213,12 @@ if (weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && re
     target.hidden = !text;
   }
 }
+}
+
+if (document.documentElement.dataset.weeklyRecognitionInstalled !== "true") {
+  document.documentElement.dataset.weeklyRecognitionInstalled = "true";
+  installWeeklyRecognition();
+}
 
 function upgradeRecognitionDialog() {
   const placeholder = recognitionDialog.querySelector(".weekly-recognition-placeholder");
@@ -237,7 +244,7 @@ function installStyle() {
   if (document.querySelector('link[data-weekly-recognition-style]')) return;
   const link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = "weekly-recognition.css?v=20260727-1";
+  link.href = "weekly-recognition.css?v=20260728-2";
   link.dataset.weeklyRecognitionStyle = "true";
   document.head.append(link);
 }
