@@ -118,7 +118,7 @@ jobs:
                 const value = JSON.parse(process.argv[1]);
                 const primary = "@cf/moondream/moondream3.1-9B-A2B";
                 const fallback = "@cf/mistralai/mistral-small-3.1-24b-instruct";
-                const revision = "20260728-mistral-vision-1";
+                const revision = "20260728-ocr-grounding-1";
                 const valid = value.ok === true
                   && value.noPaidFallback === true
                   && value.model === primary
@@ -144,7 +144,7 @@ jobs:
       - name: Verify published release chain
         env:
           BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-          EXPECTED_RELEASE: 20260728-weekly-ai-safari-2
+          EXPECTED_RELEASE: 20260728-ocr-grounding-1
           EXPECTED_ENTRY: release-entry.js?v=20260728-2
           EXPECTED_WEEKLY_ENTRY: weekly-recognition-entry.js?v=20260728-2
         shell: bash
@@ -162,7 +162,8 @@ jobs:
           weekly="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_WEEKLY_ENTRY}")"
           grep -F 'weeklyRunRecognition' <<<"${weekly}"
           grep -F 'weeklySaveCandidates' <<<"${weekly}"
-          weekly_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-ui.js?v=20260728-2")"
+          weekly_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}weekly-ui.js?v=20260728-3")"
+          grep -F 'y += 220' <<<"${weekly_ui}"
           for obsolete in '準備中' '次の段階で' '画像は外部へ送信しません' '土台まで実装'; do
             if grep -F "${obsolete}" <<<"${weekly_ui}"; then
               echo "Obsolete weekly AI text remains: ${obsolete}"
@@ -276,6 +277,20 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
         run: npm run test:browser -- --project=chromium --grep @published
+      - name: Upload Release Gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-evidence-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+            weekly-ai-live-en.png
+            weekly-ai-live-en-response.json
+            weekly-ai-live-ja.png
+            weekly-ai-live-ja-response.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Record published-page success
         if: success()
         env:
