@@ -1,0 +1,22 @@
+--- a/cloudflare-worker.js
++++ b/cloudflare-worker.js
+@@ -108,6 +108,19 @@
+ 
+     if (mode === "weekly") {
+       const tasks = parseWeeklyTasksFromResult(primaryResult, subject);
++      if (needsJapaneseRefinement(tasks.map((task) => task.title).join("\n"))) {
++        return runFallbackRecognition({
++          env,
++          mode,
++          image: image.value,
++          subject,
++          weekStart,
++          startedAt,
++          cors,
++          primaryError: refinementRequiredError(),
++          ocrHint: tasks.map((task) => task.title).join("\n"),
++        });
++      }
+       return recognitionJson({
+         tasks,
+         subject,
