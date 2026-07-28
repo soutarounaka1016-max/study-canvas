@@ -17,7 +17,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Update live verification and clean up
+      - name: Update live verification
         shell: bash
         run: |
           set -euo pipefail
@@ -75,18 +75,8 @@ jobs:
 
           path.write_text('\n'.join(lines) + '\n')
           PY
-          rm -rf .automation
-          rm -f \
-            .automation-trigger \
-            .github/workflows/apply-japanese-refinement.yml \
-            .github/workflows/run-japanese-refinement.yml \
-            .github/workflows/apply-verified-ocr-patches.yml
-          node --check cloudflare-worker.js
-          npm ci --ignore-scripts
-          npm test
-          npm run build
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add .github/workflows/pages.yml
           git commit -m "本番日本語OCR検証をGemma補正経路へ更新"
           git push origin HEAD:${{ github.head_ref }}
