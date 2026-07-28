@@ -22,6 +22,7 @@ function watchCriticalErrors(page) {
 async function drawStroke(page, selector, from = [0.28, 0.3], to = [0.58, 0.48]) {
   const canvas = page.locator(selector);
   await expect(canvas).toBeVisible();
+  await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
   const startX = box.x + box.width * from[0];
