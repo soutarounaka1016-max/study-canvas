@@ -9,7 +9,7 @@ const requiredFiles = [
   "full-backup-entry.js", "full-backup-ui.js", "full-backup-style.js",
   "ai-settings-ui.js", "cloudflare-worker.js", "wrangler.jsonc", "AI_SETUP.md",
   "src/drawing-model.js", "src/page-store.js", "src/backup.js", "src/restore.js", "src/task-store.js", "src/task-copy.js", "src/study-stats.js", "src/home-route.js", "src/weekly-store.js", "src/weekly-card-store.js", "src/weekly-recognition.js", "src/note-store.js", "src/selection-controller.js", "src/selection-dom.js", "src/ai-recognition.js",
-  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", "tests/e2e/weekly-recognition.spec.js", ".github/workflows/ci.yml", ".github/workflows/pages.yml",
+  "playwright.config.js", "scripts/serve.mjs", "tests/e2e/app.spec.js", "tests/e2e/weekly-recognition.spec.js", "tests/e2e/release-gate.spec.js", ".github/workflows/ci.yml", ".github/workflows/pages.yml",
   "AGENTS.md", "PROJECT_STATUS.md", "TODO.md", "DECISIONS.md",
 ];
 const textFiles = [...requiredFiles, "README.md", "package.json"];
@@ -50,7 +50,7 @@ for (const reference of ["styles.css", "note.css", "script.js", "restore-ui.js",
     failed = true;
   }
 }
-if (!html.includes('meta name="study-canvas-release" content="20260728-weekly-ai-safari-2"')) {
+if (!html.includes('meta name="study-canvas-release" content="20260728-ocr-grounding-1"')) {
   console.error("公開確認用のリリース識別子がありません");
   failed = true;
 }
@@ -58,7 +58,7 @@ if (!html.includes("release-entry.js?v=20260728-2")) {
   console.error("ブラウザ確認版の公開入口へ更新されていません");
   failed = true;
 }
-if (!html.includes("weekly-ui.js?v=20260728-2") || !html.includes("weekly-recognition-entry.js?v=20260728-2")) {
+if (!html.includes("weekly-ui.js?v=20260728-3") || !html.includes("weekly-recognition-entry.js?v=20260728-2")) {
   console.error("週間AI画面がSafariキャッシュ対策済みの独立した公開入口から読み込まれていません");
   failed = true;
 }
@@ -211,7 +211,7 @@ try {
 
 const packageJson = await readFile("package.json", "utf8");
 const playwrightConfig = await readFile("playwright.config.js", "utf8");
-const browserTests = `${await readFile("tests/e2e/app.spec.js", "utf8")}\n${await readFile("tests/e2e/weekly-recognition.spec.js", "utf8")}`;
+const browserTests = `${await readFile("tests/e2e/app.spec.js", "utf8")}\n${await readFile("tests/e2e/weekly-recognition.spec.js", "utf8")}\n${await readFile("tests/e2e/release-gate.spec.js", "utf8")}`;
 const workflow = await readFile(".github/workflows/ci.yml", "utf8");
 const pagesWorkflow = await readFile(".github/workflows/pages.yml", "utf8");
 if (!packageJson.includes('"@playwright/test": "1.61.1"') || !packageJson.includes('"test:browser"')) {
@@ -224,7 +224,7 @@ for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"])
     failed = true;
   }
 }
-for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "weeklyRunRecognition", "weeklySaveCandidates", "既存のカードは変更されていません", "waitForRequest", "公開版AI通信確認"]) {
+for (const requirement of ["#noteDialog[open]", "Playwright確認タスク", "localStorage", "documentWidth", "weeklyRunRecognition", "weeklySaveCandidates", "既存のカードは変更されていません", "waitForRequest", "公開版AI通信確認", "Version 0.2 Release Gate", "confirmFullRestoreButton", "Release Gate 自由ノート"]) {
   if (!browserTests.includes(requirement)) {
     console.error(`ブラウザテストに${requirement}の確認がありません`);
     failed = true;
@@ -247,6 +247,7 @@ for (const requirement of [
   "https://soutarounaka1016-max.github.io/study-canvas/",
   "study-canvas/pages-startup",
   "actions/upload-artifact@v4",
+  "release-gate-evidence",
 ]) {
   if (!pagesWorkflow.includes(requirement)) {
     console.error(`GitHub Pagesの公開・起動確認に${requirement}がありません`);
@@ -272,6 +273,8 @@ const wrangler = await readFile("wrangler.jsonc", "utf8");
 if (!worker.includes("@cf/mistralai/mistral-small-3.1-24b-instruct")
   || !worker.includes('type: "image_url"')
   || !worker.includes("env.AI.run")
+  || !worker.includes("filterGroundedWeeklyTasks")
+  || !worker.includes("AI_RESULTS_DISAGREE")
   || !worker.includes("noPaidFallback")
   || worker.includes("GEMINI_API_KEY")) {
   console.error("Workers AIによる画像認識中継を確認できません");
