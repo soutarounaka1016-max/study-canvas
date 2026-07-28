@@ -1,0 +1,41 @@
+name: Apply verified OCR patches
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for patch in .automation/patches/*.patch; do
+            git apply "${patch}"
+          done
+          rm -rf .automation
+          rm -f \
+            .automation-trigger \
+            .github/workflows/apply-japanese-refinement.yml \
+            .github/workflows/run-japanese-refinement.yml \
+            .github/workflows/apply-verified-ocr-patches.yml
+          node --check cloudflare-worker.js
+          npm ci --ignore-scripts
+          npm test
+          npm run build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "日本語OCRをGemmaで画像照合して補正"
+          git push origin HEAD:${{ github.head_ref }}
