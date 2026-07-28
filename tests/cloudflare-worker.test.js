@@ -93,7 +93,7 @@ test("日本語を含むMoondream OCRは画像とOCRヒントをGemmaで再確�
   assert.equal(payload.fallbackUsed, true);
   assert.deepEqual(payload.tasks.map((task) => task.title), ["微積分 3問", "チョイス A"]);
   assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
-  const refinementPrompt = calls[1].input.messages[1].content;
+  const refinementPrompt = calls[1].input.messages[1].content[0].text;
   assert.match(refinementPrompt, /高速OCR結果/);
   assert.match(refinementPrompt, /減林分3間/);
   assert.match(refinementPrompt, /画像を唯一の正/);
@@ -145,14 +145,15 @@ test("Moondream結果が空の場合だけGemma補助へ切り替える", async 
   assert.equal(calls[1].input.temperature, 0);
 });
 
-test("Gemma補助は公式形式のbase64画像と短い行単位OCR指示を含む", () => {
+test("Gemma補助はbase64画像をメッセージ内にも含めて短い行単位OCRを指示する", () => {
   const input = createGemmaWeeklyRequest(image, "数学", "減林分3間");
   assert.equal(input.image, image.data);
-  assert.match(input.messages[1].content, /減林分3間/);
-  assert.equal(typeof input.messages[1].content, "string");
+  assert.match(input.messages[1].content[0].text, /減林分3間/);
+  assert.equal(input.messages[1].content[1].type, "image_url");
+  assert.equal(input.messages[1].content[1].image_url.url, `data:image/png;base64,${image.data}`);
   assert.doesNotMatch(input.image, /^data:/);
   assert.match(input.messages[0].content, /画像OCR/);
-  assert.match(input.messages[1].content, /1件につき1行/);
+  assert.match(input.messages[1].content[0].text, /1件につき1行/);
   assert.equal(input.response_format, undefined);
   assert.equal(input.max_completion_tokens, 320);
   assert.equal(input.temperature, 0);
@@ -168,7 +169,7 @@ test("healthは主系、補助、最大待ち時間を返す", async () => {
   assert.equal(payload.model, primaryModel);
   assert.equal(payload.primaryModel, primaryModel);
   assert.equal(payload.fallbackModel, fallbackModel);
-  assert.equal(payload.workerRevision, "20260728-gemma-plain-ocr-1");
+  assert.equal(payload.workerRevision, "20260728-gemma-message-image-2");
   assert.equal(payload.maxRecognitionMs, 32_000);
   assert.equal(payload.noPaidFallback, true);
 });

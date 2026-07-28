@@ -118,7 +118,7 @@ jobs:
                 const value = JSON.parse(process.argv[1]);
                 const primary = "@cf/moondream/moondream3.1-9B-A2B";
                 const fallback = "@cf/google/gemma-4-26b-a4b-it";
-                const revision = "20260728-gemma-plain-ocr-1";
+                const revision = "20260728-gemma-message-image-2";
                 const valid = value.ok === true
                   && value.noPaidFallback === true
                   && value.model === primary
