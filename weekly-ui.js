@@ -318,7 +318,7 @@ function drawGuideLines(context) {
   context.strokeStyle = "#e5e7eb";
   context.lineWidth = 1;
   context.setLineDash([8, 8]);
-  for (let y = 110; y < BASE_HEIGHT; y += 110) {
+  for (let y = 110; y < BASE_HEIGHT; y += 220) {
     context.beginPath();
     context.moveTo(30, y);
     context.lineTo(BASE_WIDTH - 30, y);
@@ -442,7 +442,7 @@ function renderExportCanvas() {
   context.fillText(`${activeSubject}　${formatShortDate(activeWeekStart)}の週`, 32, 48);
   context.strokeStyle = "#d1d5db";
   context.lineWidth = 1;
-  for (let y = 110; y < BASE_HEIGHT; y += 110) {
+  for (let y = 110; y < BASE_HEIGHT; y += 220) {
     context.beginPath();
     context.moveTo(30, y);
     context.lineTo(BASE_WIDTH - 30, y);

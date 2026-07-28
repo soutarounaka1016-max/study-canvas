@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   createMistralWeeklyRequest,
   createWeeklyRequest,
+  filterGroundedWeeklyTasks,
   handleRequest,
+  hasRecognitionSupport,
   parseAiJson,
   parseWeeklyTasksFromResult,
   parseWeeklyText,
@@ -68,7 +70,7 @@ test("Moondreamの日本語OCRから見出しを除いて候補化する", () =>
   ]);
 });
 
-test("日本語を含むMoondream OCRは画像とOCRヒントをMistralで再確認する", async () => {
+test("日本語を含むMoondream OCRは画像だけを読むMistralとの一致候補に絞る", async () => {
   const calls = [];
   const env = {
     ALLOWED_ORIGIN: origin,
@@ -94,9 +96,8 @@ test("日本語を含むMoondream OCRは画像とOCRヒントをMistralで再確
   assert.deepEqual(payload.tasks.map((task) => task.title), ["微積分 3問", "チョイス A"]);
   assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
   const refinementPrompt = calls[1].input.messages[1].content[0].text;
-  assert.match(refinementPrompt, /高速OCR結果/);
-  assert.match(refinementPrompt, /減林分3間/);
-  assert.match(refinementPrompt, /画像を唯一の正/);
+  assert.doesNotMatch(refinementPrompt, /高速OCR結果|減林分3間|ocr_hint/);
+  assert.match(refinementPrompt, /画像だけを根拠/);
 });
 
 test("Moondreamが指示文を復唱した場合は候補として採用しない", async () => {
@@ -115,14 +116,13 @@ test("Moondreamが指示文を復唱した場合は候補として採用しな�
   };
   const response = await handleRequest(request("/recognize", weeklyBody()), env);
   const payload = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(payload.model, fallbackModel);
-  assert.equal(payload.fallbackUsed, true);
-  assert.equal(payload.tasks[0].title, "積分3問");
+  assert.equal(response.status, 422);
+  assert.equal(payload.error.code, "INVALID_AI_RESULT");
+  assert.match(payload.error.message, /既存のカードは変更されていません/);
   assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
 });
 
-test("Moondream結果が空の場合だけMistral補助へ切り替える", async () => {
+test("Moondream結果が空の場合はMistral単独候補を採用しない", async () => {
   const calls = [];
   const env = {
     ALLOWED_ORIGIN: origin,
@@ -136,19 +136,18 @@ test("Moondream結果が空の場合だけMistral補助へ切り替える", asyn
   };
   const response = await handleRequest(request("/recognize", weeklyBody()), env);
   const payload = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(payload.model, fallbackModel);
-  assert.equal(payload.fallbackUsed, true);
-  assert.equal(payload.tasks[0].title, "積分3問");
+  assert.equal(response.status, 422);
+  assert.equal(payload.error.code, "INVALID_AI_RESULT");
+  assert.match(payload.error.message, /既存のカードは変更されていません/);
   assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
   assert.equal(calls[1].input.response_format, undefined);
   assert.equal(calls[1].input.temperature, 0);
 });
 
-test("Mistral補助はbase64画像をメッセージ内に含めて短い行単位OCRを指示する", () => {
-  const input = createMistralWeeklyRequest(image, "数学", "減林分3間");
+test("Mistral補助は一次OCRを渡さずbase64画像だけで短い行単位OCRを行う", () => {
+  const input = createMistralWeeklyRequest(image, "数学");
   assert.equal(input.image, undefined);
-  assert.match(input.messages[1].content[0].text, /減林分3間/);
+  assert.doesNotMatch(input.messages[1].content[0].text, /ocr_hint|高速OCR結果/);
   assert.equal(input.messages[1].content[1].type, "image_url");
   assert.equal(input.messages[1].content[1].image_url.url, `data:image/png;base64,${image.data}`);
   assert.match(input.messages[0].content, /画像OCR/);
@@ -168,12 +167,12 @@ test("healthは主系、補助、最大待ち時間を返す", async () => {
   assert.equal(payload.model, primaryModel);
   assert.equal(payload.primaryModel, primaryModel);
   assert.equal(payload.fallbackModel, fallbackModel);
-  assert.equal(payload.workerRevision, "20260728-mistral-vision-1");
+  assert.equal(payload.workerRevision, "20260728-ocr-grounding-1");
   assert.equal(payload.maxRecognitionMs, 32_000);
   assert.equal(payload.noPaidFallback, true);
 });
 
-test("日本語補正が時間切れでもMoondream候補を確認用に返す", async () => {
+test("日本語補正が時間切れの場合は一次候補を表示しない", async () => {
   const env = {
     ALLOWED_ORIGIN: origin,
     AI: {
@@ -187,13 +186,46 @@ test("日本語補正が時間切れでもMoondream候補を確認用に返す",
   };
   const response = await handleRequest(request("/recognize", weeklyBody()), env);
   const payload = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(payload.model, primaryModel);
-  assert.equal(payload.fallbackUsed, false);
-  assert.equal(payload.refinementIncomplete, true);
-  assert.deepEqual(payload.tasks.map((task) => task.title), ["微積分 3問", "チョイス A"]);
-  assert.ok(payload.tasks.every((task) => task.confidence <= 0.5));
-  assert.ok(payload.tasks.every((task) => /内容を確認/.test(task.warning)));
+  assert.equal(response.status, 504);
+  assert.equal(payload.error.code, "AI_TIMEOUT");
+  assert.match(payload.error.message, /既存のカードは変更されていません/);
+});
+
+test("二つのOCRに文字上の根拠がある補正候補だけを採用する", () => {
+  const primaryTasks = [
+    { title: "減林分3間" },
+    { title: "CHOIS A" },
+  ];
+  const refinedTasks = [
+    { title: "微積分 3問", confidence: 0.5, warning: "" },
+    { title: "チョイス A", confidence: 0.5, warning: "" },
+    { title: "第2章の問題", confidence: 0.5, warning: "" },
+  ];
+  assert.equal(hasRecognitionSupport("減林分3間", "微積分 3問"), true);
+  assert.equal(hasRecognitionSupport("CHOIS A", "チョイス A"), true);
+  assert.equal(hasRecognitionSupport("英問", "第2章の問題"), false);
+  assert.deepEqual(
+    filterGroundedWeeklyTasks(primaryTasks, refinedTasks).map((task) => task.title),
+    ["微積分 3問", "チョイス A"],
+  );
+});
+
+test("手書きと無関係な候補が二つ返っても表示せず422にする", async () => {
+  const env = {
+    ALLOWED_ORIGIN: origin,
+    AI: {
+      async run(model) {
+        if (model === primaryModel) return { answer: "英問" };
+        return { answer: "27日の課題\n第2章の問題" };
+      },
+    },
+  };
+  const response = await handleRequest(request("/recognize", weeklyBody()), env);
+  const payload = await response.json();
+  assert.equal(response.status, 422);
+  assert.equal(payload.error.code, "INVALID_AI_RESULT");
+  assert.match(payload.error.message, /既存のカードは変更されていません/);
+  assert.equal(payload.tasks, undefined);
 });
 
 test("許可されていない公開元を拒否する", async () => {

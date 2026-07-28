@@ -54,6 +54,14 @@ test("前日・今日・翌日のページへ移動できる操作を表示す�
   assert.match(html, /id="nextDateButton"/);
 });
 
+test("iPad幅では日付操作と描画ツールを重ならない2段ヘッダーにする", () => {
+  assert.match(css, /@media \(max-width: 1180px\)[\s\S]*grid-template-areas:[\s\S]*"document history"[\s\S]*"tools tools"/);
+  assert.match(css, /\.document-bar \{ grid-area: document; min-width: 0; \}/);
+  assert.match(css, /\.tool-bar \{[\s\S]*grid-area: tools;[\s\S]*justify-content: center;/);
+  assert.doesNotMatch(css, /\.app-header \{[^}]*min-width:\s*(?:820|830)px/);
+  assert.doesNotMatch(css, /\.app-header \{[^}]*overflow-x:\s*auto/);
+});
+
 test("ダブルタップ拡大を防ぎ、閲覧モードのタッチ操作を維持する", () => {
   assert.match(css, /\.page\.is-viewing #drawingCanvas[^}]*touch-action:\s*manipulation/);
   assert.match(script, /addEventListener\("dblclick"[^;]*preventDefault/);
@@ -152,6 +160,8 @@ test("週間目標は月曜日単位で別の保存キーへ保存する", () =>
   assert.match(weeklyUi, /replaceStoredWeeklyStore/);
   assert.doesNotMatch(weeklyUi, /study-canvas:pages:v2/);
   assert.doesNotMatch(weeklyUi, /study-canvas:tasks:v1/);
+  assert.match(weeklyUi, /y \+= 220/);
+  assert.doesNotMatch(weeklyUi, /y \+= 110/);
 });
 
 test("週間目標から今日のタスクを自動作成しない", () => {
