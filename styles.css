@@ -277,15 +277,34 @@ dialog h2 { margin-top: 0; font-size: 21px; }
 .empty-page-list { margin: 24px 0 4px; color: var(--muted); text-align: center; }
 .empty-page-list[hidden] { display: none; }
 
-@media (orientation: portrait) {
-  :root { --toolbar-height: 76px; }
-  .orientation-note { display: block; }
-  .app-header { grid-template-columns: 180px minmax(360px, 1fr) 220px; min-width: 820px; overflow-x: auto; }
+@media (max-width: 1180px) {
+  :root { --toolbar-height: 138px; }
+  .app-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "document history"
+      "tools tools";
+    gap: 4px 10px;
+    min-width: 0;
+    min-height: var(--toolbar-height);
+    overflow: visible;
+  }
+  .document-bar { grid-area: document; min-width: 0; }
+  .document-title { flex: 1 1 auto; min-width: 0; }
+  .tool-bar {
+    grid-area: tools;
+    justify-content: center;
+    border-inline: 0;
+    border-top: 1px solid var(--line);
+  }
+  .history-bar { grid-area: history; }
   .tool-button, .icon-button { min-width: 48px; min-height: 58px; padding-inline: 5px; }
+}
+@media (orientation: portrait) {
+  .orientation-note { display: block; }
   .page { width: min(1100px, calc(100vw - 32px)); }
 }
 @media (max-width: 900px) {
-  .app-header { grid-template-columns: 190px minmax(410px, 1fr) 230px; min-width: 830px; overflow-x: auto; }
   .document-title strong { font-size: 15px; }
   .pen-options { gap: 14px; padding-inline: 14px; }
   .save-state { min-width: max-content; }
