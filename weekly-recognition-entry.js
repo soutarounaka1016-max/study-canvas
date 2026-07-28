@@ -23,7 +23,10 @@ const previousWeekButton = document.querySelector("#previousWeekButton");
 const nextWeekButton = document.querySelector("#nextWeekButton");
 const currentWeekButton = document.querySelector("#currentWeekButton");
 
-if (weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && recognitionPreview && subjectTabs) {
+if (!(weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && recognitionPreview && subjectTabs)) {
+  return false;
+}
+
   const today = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
@@ -212,12 +215,18 @@ if (weeklyButton && weeklyDialog && recognitionButton && recognitionDialog && re
     target.classList.toggle("is-error", isError);
     target.hidden = !text;
   }
-}
+  return true;
 }
 
-if (document.documentElement.dataset.weeklyRecognitionInstalled !== "true") {
+function bootWeeklyRecognition() {
+  if (document.documentElement.dataset.weeklyRecognitionInstalled === "true") return true;
+  if (!installWeeklyRecognition()) return false;
   document.documentElement.dataset.weeklyRecognitionInstalled = "true";
-  installWeeklyRecognition();
+  return true;
+}
+
+if (!bootWeeklyRecognition()) {
+  document.addEventListener("study-canvas:weekly-ui-ready", bootWeeklyRecognition, { once: true });
 }
 
 function upgradeRecognitionDialog() {

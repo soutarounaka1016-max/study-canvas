@@ -42,6 +42,7 @@ const weeklyWidthControl = weeklyDialog.querySelector(".weekly-width-control");
 const weeklyContext = weeklyCanvas.getContext("2d", { alpha: false });
 
 installWeeklySubjectUi();
+document.dispatchEvent(new CustomEvent("study-canvas:weekly-ui-ready"));
 const subjectTabs = weeklyDialog.querySelector("#weeklySubjectTabs");
 const exportButton = weeklyDialog.querySelector("#weeklyExportButton");
 const recognitionButton = weeklyDialog.querySelector("#weeklyRecognitionButton");
