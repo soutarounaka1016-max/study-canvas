@@ -1,6 +1,6 @@
 const PRIMARY_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
-const FALLBACK_MODEL = "@cf/google/gemma-4-26b-a4b-it";
-const WORKER_REVISION = "20260728-gemma-message-image-2";
+const FALLBACK_MODEL = "@cf/mistralai/mistral-small-3.1-24b-instruct";
+const WORKER_REVISION = "20260728-mistral-vision-1";
 const PRIMARY_TIMEOUT_MS = 8_000;
 const FALLBACK_TIMEOUT_MS = 24_000;
 const MAX_IMAGE_BYTES = 1_250_000;
@@ -189,8 +189,8 @@ async function runFallbackRecognition({
       env.AI.run(
         FALLBACK_MODEL,
         mode === "weekly"
-          ? createGemmaWeeklyRequest(image, subject, ocrHint)
-          : createGemmaSingleRequest(image, ocrHint),
+          ? createMistralWeeklyRequest(image, subject, ocrHint)
+          : createMistralSingleRequest(image, ocrHint),
       ),
       FALLBACK_TIMEOUT_MS,
       "FALLBACK_TIMEOUT",
@@ -315,7 +315,7 @@ export function createSingleRequest(image) {
   };
 }
 
-export function createGemmaWeeklyRequest(image, subject, ocrHint = "") {
+export function createMistralWeeklyRequest(image, subject, ocrHint = "") {
   const hint = normalizeOcrHint(ocrHint);
   const prompt = [
     `画像は高校生が手書きした${subject}の週間目標です。`,
@@ -339,13 +339,12 @@ export function createGemmaWeeklyRequest(image, subject, ocrHint = "") {
         ],
       },
     ],
-    image: image.data,
-    max_completion_tokens: 320,
+    max_tokens: 320,
     temperature: 0,
   };
 }
 
-export function createGemmaSingleRequest(image, ocrHint = "") {
+export function createMistralSingleRequest(image, ocrHint = "") {
   const hint = normalizeOcrHint(ocrHint);
   const prompt = [
     "画像内に実際に見える勉強メモの文字だけを読み取ってください。",
@@ -365,8 +364,7 @@ export function createGemmaSingleRequest(image, ocrHint = "") {
         ],
       },
     ],
-    image: image.data,
-    max_completion_tokens: 240,
+    max_tokens: 240,
     temperature: 0,
   };
 }
