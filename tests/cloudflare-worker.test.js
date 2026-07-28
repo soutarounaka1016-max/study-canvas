@@ -141,16 +141,21 @@ test("Moondream結果が空の場合だけGemma補助へ切り替える", async 
   assert.equal(payload.fallbackUsed, true);
   assert.equal(payload.tasks[0].title, "積分3問");
   assert.deepEqual(calls.map((call) => call.model), [primaryModel, fallbackModel]);
-  assert.equal(calls[1].input.response_format.type, "json_schema");
+  assert.equal(calls[1].input.response_format, undefined);
+  assert.equal(calls[1].input.temperature, 0);
 });
 
-test("Gemma補助は公式形式のbase64画像、OCRヒント、JSON Schemaを含む", () => {
+test("Gemma補助は公式形式のbase64画像と短い行単位OCR指示を含む", () => {
   const input = createGemmaWeeklyRequest(image, "数学", "減林分3間");
   assert.equal(input.image, image.data);
   assert.match(input.messages[1].content, /減林分3間/);
   assert.equal(typeof input.messages[1].content, "string");
   assert.doesNotMatch(input.image, /^data:/);
-  assert.equal(input.response_format.type, "json_schema");
+  assert.match(input.messages[0].content, /画像OCR/);
+  assert.match(input.messages[1].content, /1件につき1行/);
+  assert.equal(input.response_format, undefined);
+  assert.equal(input.max_completion_tokens, 320);
+  assert.equal(input.temperature, 0);
 });
 
 test("healthは主系、補助、最大待ち時間を返す", async () => {
@@ -163,6 +168,7 @@ test("healthは主系、補助、最大待ち時間を返す", async () => {
   assert.equal(payload.model, primaryModel);
   assert.equal(payload.primaryModel, primaryModel);
   assert.equal(payload.fallbackModel, fallbackModel);
+  assert.equal(payload.workerRevision, "20260728-gemma-plain-ocr-1");
   assert.equal(payload.maxRecognitionMs, 32_000);
   assert.equal(payload.noPaidFallback, true);
 });
@@ -240,4 +246,13 @@ test("JSONでない箇条書きを週間候補へ補正する", () => {
     { title: "ベクトル復習", confidence: 0.5, warning: "AIの返却形式を補正したため、内容を確認してください" },
   ]);
   assert.equal(parseWeeklyTasksFromResult({ answer: "1. 積分 3問\n2. ベクトル復習" }, "数学").length, 2);
+});
+
+test("壊れたJSON断片をタスク候補として採用しない", () => {
+  assert.deepEqual(parseWeeklyText([
+    '{"tasks": [',
+    '{"confidence": 1.0, "title": "青チャート 数I・A 二次関数 p.12',
+    '"warning": ""}',
+    "]",
+  ].join("\n")), []);
 });
