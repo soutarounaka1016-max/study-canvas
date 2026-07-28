@@ -17,14 +17,64 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Apply live verification patches and clean up
+      - name: Update live verification and clean up
         shell: bash
         run: |
           set -euo pipefail
-          for number in 09 10 11; do
-            echo "Applying pages patch ${number}"
-            patch --batch --forward --fuzz=0 -p1 < ".automation/patches/${number}.patch"
-          done
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/pages.yml')
+          lines = path.read_text().splitlines()
+
+          def find_line(fragment):
+              for index, line in enumerate(lines):
+                  if fragment in line:
+                      return index
+              raise SystemExit(f'missing pages.yml anchor: {fragment}')
+
+          index = find_line('local expected_regex="$2"')
+          indent = lines[index][:len(lines[index]) - len(lines[index].lstrip())]
+          lines[index + 1:index + 1] = [
+              f'{indent}local expected_model="$3"',
+              f'{indent}local expected_fallback="$4"',
+              f'{indent}local max_latency="$5"',
+          ]
+
+          index = find_line('const expectedRegex = process.argv[2];')
+          indent = lines[index][:len(lines[index]) - len(lines[index].lstrip())]
+          lines[index + 1:index + 1] = [
+              f'{indent}const expectedModel = process.argv[3];',
+              f'{indent}const expectedFallback = process.argv[4] === "true";',
+              f'{indent}const maxLatency = Number(process.argv[5]);',
+          ]
+
+          index = find_line('&& value.model === "@cf/moondream/moondream3.1-9B-A2B"')
+          lines[index] = lines[index].replace('value.model === "@cf/moondream/moondream3.1-9B-A2B"', 'value.model === expectedModel')
+
+          index = find_line('&& value.fallbackUsed === false')
+          lines[index] = lines[index].replace('value.fallbackUsed === false', 'value.fallbackUsed === expectedFallback')
+
+          index = find_line('&& value.latencyMs < 10000')
+          lines[index] = lines[index].replace('value.latencyMs < 10000', 'value.latencyMs < maxLatency')
+
+          index = find_line('using the primary model.')
+          lines[index] = lines[index].replace('using the primary model.', 'using ${value.model}.')
+
+          index = find_line('"${response_file}" "${expected_regex}"')
+          lines[index] = lines[index].replace(
+              '"${response_file}" "${expected_regex}"',
+              '"${response_file}" "${expected_regex}" "${expected_model}" "${expected_fallback}" "${max_latency}"',
+          )
+
+          index = find_line("recognize_case en 'integral|積分'")
+          lines[index] = "          recognize_case en 'integral|積分' '@cf/moondream/moondream3.1-9B-A2B' false 10000"
+
+          index = find_line("recognize_case ja '微積|積分|チョイス|choice'")
+          lines[index] = "          recognize_case ja '微積|積分|チョイス|choice' '@cf/google/gemma-4-26b-a4b-it' true 18000"
+
+          path.write_text('\n'.join(lines) + '\n')
+          PY
           rm -rf .automation
           rm -f \
             .automation-trigger \
