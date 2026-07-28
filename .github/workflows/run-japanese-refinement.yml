@@ -29,6 +29,94 @@ jobs:
           start = next(i for i, line in enumerate(lines) if "python - <<'PY'" in line) + 1
           end = next(i for i in range(start, len(lines)) if lines[i].strip() == 'PY')
           script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines[start:end])
+
+          handle_marker = "worker, count = re.subn(\n    r'  const startedAt = Date\\.now\\(\\);"
+          fix_handle = '''handle_parts = handle_replacement.split("\\n\\nasync function runFallbackRecognition", 1)
+          handle_lines = handle_parts[0].splitlines()
+          handle_replacement = "\\n".join(
+              [handle_lines[0]]
+              + [("  " + line if line else line) for line in handle_lines[1:-1]]
+              + [handle_lines[-1]]
+          )
+          if len(handle_parts) == 2:
+              handle_replacement += "\\n\\nasync function runFallbackRecognition" + handle_parts[1]
+
+          '''
+          assert handle_marker in script
+          script = script.replace(handle_marker, fix_handle + handle_marker, 1)
+
+          pages_start = script.index('pages_path = Path(".github/workflows/pages.yml")')
+          pages_end = script.index('workflow_path = Path(".github/workflows/apply-japanese-refinement.yml")', pages_start)
+          pages_code = r'''pages_path = Path(".github/workflows/pages.yml")
+          pages = pages_path.read_text()
+
+          pages, count = re.subn(
+              r'(?m)^(\s*)local name="\$1"\n\1local expected_regex="\$2"\n\1local image_file="weekly-ai-live-\$\{name\}\.png"',
+              lambda match: (
+                  f'{match.group(1)}local name="$1"\n'
+                  f'{match.group(1)}local expected_regex="$2"\n'
+                  f'{match.group(1)}local expected_model="$3"\n'
+                  f'{match.group(1)}local expected_fallback="$4"\n'
+                  f'{match.group(1)}local max_latency="$5"\n'
+                  f'{match.group(1)}local image_file="weekly-ai-live-${{name}}.png"'
+              ),
+              pages,
+              count=1,
+          )
+          assert count == 1, "recognize_case arguments patch target changed"
+
+          validation_pattern = re.compile(
+              r'(?m)^(\s*)const expectedRegex = process\.argv\[2\];\n'
+              r'\1const titles = Array\.isArray\(value\.tasks\).*?\n'
+              r'\1const valid = value\.subject === "数学"\n'
+              r'\s*&& value\.weekStart === "2026-07-27"\n'
+              r'\s*&& value\.model === "@cf/moondream/moondream3\.1-9B-A2B"\n'
+              r'\s*&& value\.fallbackUsed === false\n'
+              r'\s*&& Number\.isFinite\(value\.latencyMs\)\n'
+              r'\s*&& value\.latencyMs >= 0\n'
+              r'\s*&& value\.latencyMs < 10000'
+          )
+
+          def replace_validation(match):
+              indent = match.group(1)
+              continuation = indent + "  "
+              return "\n".join([
+                  f"{indent}const expectedRegex = process.argv[2];",
+                  f"{indent}const expectedModel = process.argv[3];",
+                  f"{indent}const expectedFallback = process.argv[4] === \\\"true\\\";",
+                  f"{indent}const maxLatency = Number(process.argv[5]);",
+                  f'{indent}const titles = Array.isArray(value.tasks) ? value.tasks.map((task) => task?.title || "").join("\\\\n") : "";',
+                  f'{indent}const valid = value.subject === "数学"',
+                  f'{continuation}&& value.weekStart === "2026-07-27"',
+                  f'{continuation}&& value.model === expectedModel',
+                  f'{continuation}&& value.fallbackUsed === expectedFallback',
+                  f'{continuation}&& Number.isFinite(value.latencyMs)',
+                  f'{continuation}&& value.latencyMs >= 0',
+                  f'{continuation}&& value.latencyMs < maxLatency',
+              ])
+
+          pages, count = validation_pattern.subn(replace_validation, pages, count=1)
+          assert count == 1, "live validation patch target changed"
+
+          pages, count = re.subn(
+              r'console\.log\(`Workers AI recognized \$\{value\.tasks\.length\} task\(s\) in \$\{value\.latencyMs\}ms using the primary model\.`\);',
+              'console.log(`Workers AI recognized ${value.tasks.length} task(s) in ${value.latencyMs}ms using ${value.model}.`);',
+              pages,
+              count=1,
+          )
+          assert count == 1, "live validation log patch target changed"
+
+          pages, count = re.subn(
+              r"' \"\$\{response_file\}\" \"\$\{expected_regex\}\"\n\s*}\n\n\s*recognize_case en 'integral\|積分'\n\s*recognize_case ja '微積\|積分\|チョイス\|choice'",
+              "' \\\"${response_file}\\\" \\\"${expected_regex}\\\" \\\"${expected_model}\\\" \\\"${expected_fallback}\\\" \\\"${max_latency}\\\"\n          }\n\n          recognize_case en 'integral|積分' '@cf/moondream/moondream3.1-9B-A2B' false 10000\n          recognize_case ja '微積|積分|チョイス|choice' '@cf/google/gemma-4-26b-a4b-it' true 18000",
+              pages,
+              count=1,
+          )
+          assert count == 1, "live recognition calls patch target changed"
+          pages_path.write_text(pages)
+
+          '''
+          script = script[:pages_start] + pages_code + script[pages_end:]
           exec(compile(script, str(source), 'exec'))
           PY
           rm -f .github/workflows/run-japanese-refinement.yml .automation-trigger
