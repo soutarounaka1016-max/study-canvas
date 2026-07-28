@@ -50,6 +50,18 @@ async function expectStored(page, key, text) {
   return raw;
 }
 
+async function expectDailyStrokeCount(page, date, count) {
+  await expect.poll(async () => page.evaluate(({ key, targetDate }) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return 0;
+    try {
+      return JSON.parse(raw)?.pages?.[targetDate]?.strokes?.length || 0;
+    } catch {
+      return 0;
+    }
+  }, { key: STORAGE_KEYS.pages, targetDate: date })).toBe(count);
+}
+
 test("@published Version 0.2 Release Gateを公開ユーザー経路で完走する", async ({ page }, testInfo) => {
   test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 180_000 : 90_000);
   const errors = watchCriticalErrors(page);
@@ -59,6 +71,7 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
   await expect(page.locator("#drawingCanvas")).toBeVisible();
   const firstDate = await page.locator("#pageDate").getAttribute("datetime");
   await drawStroke(page, "#drawingCanvas");
+  await expectDailyStrokeCount(page, firstDate, 1);
   await expect(page.locator("#saveStatus")).toHaveText("保存済み");
   const firstPages = await expectStored(page, STORAGE_KEYS.pages);
 
@@ -67,9 +80,10 @@ test("@published Version 0.2 Release Gateを公開ユーザー経路で完走す
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEYS.pages)).toBe(firstPages);
 
   await page.locator("#nextDateButton").click();
+  await expect(page.locator("#pageDate")).not.toHaveAttribute("datetime", firstDate);
   const secondDate = await page.locator("#pageDate").getAttribute("datetime");
-  expect(secondDate).not.toBe(firstDate);
   await drawStroke(page, "#drawingCanvas", [0.34, 0.38], [0.62, 0.55]);
+  await expectDailyStrokeCount(page, secondDate, 1);
   await expect(page.locator("#saveStatus")).toHaveText("保存済み");
   const separatedPages = JSON.parse(await expectStored(page, STORAGE_KEYS.pages));
   expect(separatedPages.pages[firstDate].strokes).toHaveLength(1);
