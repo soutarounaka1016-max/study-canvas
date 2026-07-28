@@ -77,6 +77,8 @@ test("正式画面からAI・OCR・時間集計を読み込まない", () => {
   assert.doesNotMatch(html, /AIで読み取る/);
   assert.doesNotMatch(html, /学習時間の集計/);
   assert.doesNotMatch(html, /予定時間/);
+  assert.match(html, /id="taskButton"[^>]*hidden/);
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important/);
 });
 
 test("自由ノートの複数ページ手書き機能を維持する", () => {
@@ -87,7 +89,7 @@ test("自由ノートの複数ページ手書き機能を維持する", () => {
 });
 
 test("公開資産に更新版を指定する", () => {
-  assert.match(html, /styles\.css\?v=20260729-1/);
+  assert.match(html, /styles\.css\?v=20260729-2/);
   assert.match(html, /enhancements\.css\?v=20260729-1/);
   assert.match(html, /weekly-text\.css\?v=20260729-1/);
   assert.match(html, /task-ui\.js\?v=20260729-1/);

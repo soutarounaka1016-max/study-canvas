@@ -10,6 +10,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body {
   width: 100%; min-height: 100%; margin: 0; background: var(--workspace); color: var(--text);
   overscroll-behavior: none; touch-action: manipulation;
