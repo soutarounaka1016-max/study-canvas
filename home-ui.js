@@ -29,7 +29,7 @@ homeScreen.innerHTML = `
     <section class="home-menu-grid" aria-label="主な機能">
       ${menuCard("weekly", "◎", "週間目標", "教科別にテキスト入力してカードを作る")}
       ${menuCard("notes", "▤", "自由ノート", "模試の反省や長期計画を手書きする")}
-      ${menuCard("pages", "▦", "ページ一覧", "過去の日付のキャンバスを開く")}
+      ${menuCard("pages", "▦", "日付を選ぶ", "白紙の日を含むカレンダーから開く")}
       ${menuCard("backup", "⇩", "バックアップ・復元", "全データの保存と復元を行う")}
     </section>
   </div>

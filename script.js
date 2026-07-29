@@ -120,6 +120,12 @@ nextDateButton.addEventListener("click", () => switchDate(shiftDate(activeDate, 
 todayButton.addEventListener("click", () => switchDate(today));
 pageListButton.addEventListener("click", openPageList);
 closePageListButton.addEventListener("click", () => pageListDialog.close());
+document.addEventListener("study-canvas:open-date", (event) => {
+  const date = event.detail?.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return;
+  switchDate(date);
+  pageListDialog.close();
+});
 undoButton.addEventListener("click", () => { history.undo(); clearSelection(); afterDocumentChange(); });
 redoButton.addEventListener("click", () => { history.redo(); clearSelection(); afterDocumentChange(); });
 selectionDeleteButton.addEventListener("click", deleteSelection);

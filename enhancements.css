@@ -74,8 +74,10 @@
   color: var(--text);
   text-align: left;
 }
-.calendar-day-button:disabled { color: #9aa1ad; background: #f5f6f8; }
+.calendar-day-button:hover { border-color: #9db5ff; background: #f3f6ff; }
+.calendar-day-button:focus-visible { outline: 3px solid rgb(37 88 230 / 30%); outline-offset: 2px; }
 .calendar-day-button.has-writing { border-color: #9db5ff; background: #eef3ff; }
+.calendar-day-button.has-tasks:not(.has-writing) { border-color: #b8a1ee; background: #f6f1ff; }
 .calendar-day-button.is-current { outline: 3px solid rgb(37 88 230 / 24%); }
 .calendar-day-button.is-today .calendar-day-number {
   display: inline-grid;
@@ -95,7 +97,9 @@
   border-radius: 5px;
   background: white;
 }
-.calendar-writing-label { color: #2558e6; font-size: 11px; font-weight: 700; }
+.calendar-writing-label { color: #667085; font-size: 11px; font-weight: 700; }
+.calendar-day-button.has-writing .calendar-writing-label { color: #2558e6; }
+.calendar-day-button.has-tasks:not(.has-writing) .calendar-writing-label { color: #6941c6; }
 
 .note-page-nav {
   display: grid;

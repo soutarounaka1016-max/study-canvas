@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260729-text-card-drag-1";
-const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260729-1";
+const EXPECTED_RELEASE = "20260729-calendar-all-dates-1";
+const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260729-2";
 
 function watchCriticalErrors(page) {
   const errors = [];
@@ -69,6 +69,33 @@ test("主要画面へ移動し自由ノートを開ける", async ({ page }) => 
   await page.locator('[data-home-route="backup"]').click();
   await expect(page.locator("details.menu")).toHaveAttribute("open", "");
   await expect(page.locator("#backupButton")).toBeVisible();
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("白紙を含むすべての日付をカレンダーから開ける", async ({ page }) => {
+  const errors = watchCriticalErrors(page);
+  await gotoHome(page);
+  await page.evaluate(() => {
+    localStorage.removeItem("study-canvas:pages:v2");
+    localStorage.removeItem("study-canvas:tasks:v1");
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator('[data-home-route="pages"]').click();
+
+  const blankDay = page.locator(".calendar-day-button:not(.is-current)").first();
+  await expect(blankDay).toBeEnabled();
+  await expect(blankDay.locator(".calendar-writing-label")).toHaveText("白紙");
+  const selectedDay = await blankDay.getAttribute("aria-label");
+  await blankDay.click();
+
+  await expect(page.locator("#pageListDialog")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#drawingCanvas")).toBeVisible();
+  await expect(page.locator("#pageDate")).not.toHaveAttribute("datetime", "");
+  await page.locator("#pageListButton").click();
+  await expect(page.locator(".calendar-day-button.is-current")).toHaveAttribute("aria-label", selectedDay);
+
+  await page.locator("#nextCalendarMonthButton").click();
+  await expect(page.locator(".calendar-day-button").first()).toBeEnabled();
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
