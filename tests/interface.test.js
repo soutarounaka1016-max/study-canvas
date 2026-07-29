@@ -5,6 +5,7 @@ import test from "node:test";
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
 const enhancements = await readFile(new URL("../enhancements.css", import.meta.url), "utf8");
+const taskCardColors = await readFile(new URL("../task-card-colors.css", import.meta.url), "utf8");
 const script = await readFile(new URL("../script.js", import.meta.url), "utf8");
 const taskUi = await readFile(new URL("../task-ui.js", import.meta.url), "utf8");
 const taskStore = await readFile(new URL("../src/task-store.js", import.meta.url), "utf8");
@@ -72,6 +73,21 @@ test("週間カード棚から今日のキャンバスへドラッグ配置す�
   assert.match(enhancements, /#dailyCanvasStage\.is-weekly-drop-target/);
 });
 
+test("タスクカードを数学青・英語紫・化学緑・物理黄・その他灰色で表示する", () => {
+  for (const [subject, color] of [
+    ["数学", "#e8f1ff"],
+    ["英語", "#f3e8ff"],
+    ["化学", "#e8f8ee"],
+    ["物理", "#fff7d6"],
+    ["その他", "#f1f3f5"],
+  ]) {
+    assert.match(taskCardColors, new RegExp(`data-subject="${subject}"`));
+    assert.match(taskCardColors, new RegExp(color));
+  }
+  assert.match(taskUi, /card\.dataset\.subject = task\.subject/);
+  assert.match(weeklyUi, /data-subject="\$\{escapeAttribute\(subject\)\}"/);
+});
+
 test("正式画面からAI・OCR・時間集計を読み込まない", () => {
   assert.doesNotMatch(html, /weekly-recognition-entry/);
   assert.doesNotMatch(html, /AIで読み取る/);
@@ -92,8 +108,9 @@ test("公開資産に更新版を指定する", () => {
   assert.match(html, /styles\.css\?v=20260729-2/);
   assert.match(html, /enhancements\.css\?v=20260729-2/);
   assert.match(html, /weekly-text\.css\?v=20260729-1/);
-  assert.match(html, /task-ui\.js\?v=20260729-1/);
-  assert.match(html, /weekly-text-ui\.js\?v=20260729-1/);
+  assert.match(html, /task-card-colors\.css\?v=20260729-1/);
+  assert.match(html, /task-ui\.js\?v=20260729-2/);
+  assert.match(html, /weekly-text-ui\.js\?v=20260729-2/);
   assert.match(html, /release-entry\.js\?v=20260729-3/);
 });
 

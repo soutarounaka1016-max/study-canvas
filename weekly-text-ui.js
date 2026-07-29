@@ -169,7 +169,7 @@ function render() {
     list.innerHTML = cards.length === 0
       ? '<p class="weekly-text-empty">カードはまだありません。</p>'
       : cards.map((card) => `
-        <article class="weekly-text-card" data-weekly-card-id="${escapeAttribute(card.id)}">
+        <article class="weekly-text-card" data-weekly-card-id="${escapeAttribute(card.id)}" data-subject="${escapeAttribute(subject)}">
           <input type="text" maxlength="120" value="${escapeAttribute(card.title)}" aria-label="${escapeAttribute(subject)}のカード内容" />
           <button type="button" data-card-action="save">保存</button>
           <button class="weekly-card-delete" type="button" data-card-action="delete">削除</button>
