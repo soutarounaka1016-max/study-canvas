@@ -63,7 +63,7 @@ for (const requirement of [
   "weekly-text.css?v=20260729-1",
   "weekly-text-ui.js?v=20260729-1",
   "task-ui.js?v=20260729-1",
-  "release-entry.js?v=20260729-2",
+  "release-entry.js?v=20260729-3",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
 ]) {
@@ -85,7 +85,7 @@ const releaseEntry = contents["release-entry.js"] || "";
 for (const requirement of [
   "daily-enhancements.js?v=20260729-2",
   "full-backup-entry.js?v=20260729-1",
-  "home-entry.js?v=20260729-2",
+  "home-entry.js?v=20260729-3",
 ]) {
   requireText(releaseEntry, requirement, `公開入口に${requirement}がありません`);
 }

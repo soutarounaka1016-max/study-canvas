@@ -67,7 +67,7 @@ for (const [route, dialog] of routeDialogs) {
 }
 
 pageListDialog?.addEventListener("click", (event) => {
-  if (!event.target.closest(".page-card")) return;
+  if (!event.target.closest(".page-card, .calendar-day-button")) return;
   history.replaceState(null, "", homeRouteHash("daily"));
 });
 

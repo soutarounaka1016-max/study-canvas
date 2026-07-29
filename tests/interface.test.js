@@ -94,7 +94,7 @@ test("公開資産に更新版を指定する", () => {
   assert.match(html, /weekly-text\.css\?v=20260729-1/);
   assert.match(html, /task-ui\.js\?v=20260729-1/);
   assert.match(html, /weekly-text-ui\.js\?v=20260729-1/);
-  assert.match(html, /release-entry\.js\?v=20260729-2/);
+  assert.match(html, /release-entry\.js\?v=20260729-3/);
 });
 
 test("ページ一覧は白紙を含むすべての日付を選べる", () => {
