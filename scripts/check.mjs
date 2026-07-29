@@ -61,12 +61,12 @@ for (const [file, content] of Object.entries(contents)) {
 
 const html = contents["index.html"] || "";
 for (const requirement of [
-  'meta name="study-canvas-release" content="20260729-card-visibility-1"',
+  'meta name="study-canvas-release" content="20260729-large-task-titles-1"',
   "weekly-text.css?v=20260729-1",
   "task-card-colors.css?v=20260729-2",
   "weekly-text-ui.js?v=20260729-2",
-  "task-ui.js?v=20260729-3",
-  "release-entry.js?v=20260729-4",
+  "task-ui.js?v=20260729-4",
+  "release-entry.js?v=20260729-5",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
 ]) {
@@ -140,7 +140,8 @@ for (const requirement of [
   "grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))",
   ".calendar-task-mini-card",
   ".canvas-task-content strong",
-  "font-size: 18px",
+  "font-size: 28px",
+  "font-size: 26px",
 ]) {
   requireText(enhancements, requirement, `教科別表示・文字拡大・日付一覧表示に${requirement}がありません`);
 }

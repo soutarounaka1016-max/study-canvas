@@ -181,7 +181,7 @@ dialog h2 { margin-top: 0; font-size: 21px; }
 .task-completion input { width: 25px; height: 25px; margin: 0; accent-color: #16835b; }
 .task-card-body { display: grid; align-content: start; gap: 9px; padding: 16px 16px 12px; min-width: 0; }
 .task-card-heading { display: grid; gap: 8px; min-width: 0; }
-.task-card-heading strong { overflow-wrap: anywhere; font-size: 18px; line-height: 1.45; }
+.task-card-heading strong { overflow-wrap: anywhere; font-size: 26px; line-height: 1.35; }
 .task-card.is-completed .task-card-heading strong { text-decoration: line-through; }
 .task-subject {
   justify-self: start; padding: 4px 9px; border-radius: 999px; background: #eaf0ff; color: #1949b8;

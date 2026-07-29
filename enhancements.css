@@ -236,7 +236,7 @@
 
 .canvas-task-content strong {
   overflow: hidden;
-  font-size: 18px;
+  font-size: 26px;
   line-height: 1.35;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -375,21 +375,16 @@
   display: grid;
   min-width: 0;
   align-content: center;
-  gap: 4px;
+  gap: 2px;
   padding: 9px 11px;
 }
 
 .daily-weekly-card strong {
   overflow: hidden;
-  font-size: 18px;
+  font-size: 28px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.daily-weekly-card small {
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .daily-weekly-drag-handle {
@@ -402,24 +397,6 @@
   font-size: 24px;
   cursor: grab;
   touch-action: none;
-}
-
-.daily-weekly-card.is-placed {
-  opacity: .6;
-  background: #f5f6f8;
-}
-
-.daily-weekly-card.is-placed .daily-weekly-drag-handle {
-  cursor: default;
-}
-
-.daily-weekly-card.is-completed {
-  border-color: #9ed7bd;
-  background: #f1fbf6;
-}
-
-.daily-weekly-card.is-completed strong {
-  text-decoration: line-through;
 }
 
 .daily-weekly-subject {

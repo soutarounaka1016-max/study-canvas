@@ -82,11 +82,13 @@ test("週間カード棚は教科タブと折り返し一覧で表示する", ()
   assert.doesNotMatch(enhancements, /\.daily-weekly-card-list\s*\{[^}]*overflow-x:\s*auto/);
 });
 
-test("タスク名を18pxへ拡大し、教科ラベルの大きさは維持する", () => {
-  assert.match(css, /\.task-card-heading strong[^}]*font-size:\s*18px/);
-  assert.match(enhancements, /\.canvas-task-content strong[\s\S]*font-size:\s*18px/);
-  assert.match(enhancements, /\.daily-weekly-card strong[\s\S]*font-size:\s*18px/);
+test("タスク名を大きくし、状態文を表示せず教科ラベルの大きさは維持する", () => {
+  assert.match(css, /\.task-card-heading strong[^}]*font-size:\s*26px/);
+  assert.match(enhancements, /\.canvas-task-content strong[\s\S]*font-size:\s*26px/);
+  assert.match(enhancements, /\.daily-weekly-card strong[\s\S]*font-size:\s*28px/);
   assert.match(enhancements, /\.canvas-task-subject[\s\S]*font-size:\s*11px/);
+  assert.doesNotMatch(taskUi, /今日に配置済み/);
+  assert.doesNotMatch(taskUi, /ドラッグして配置/);
 });
 
 test("タスクカードを数学青・英語紫・化学緑・物理黄・その他灰色で表示する", () => {
@@ -121,13 +123,13 @@ test("自由ノートの複数ページ手書き機能を維持する", () => {
 });
 
 test("公開資産に更新版を指定する", () => {
-  assert.match(html, /styles\.css\?v=20260729-3/);
-  assert.match(html, /enhancements\.css\?v=20260729-3/);
+  assert.match(html, /styles\.css\?v=20260729-4/);
+  assert.match(html, /enhancements\.css\?v=20260729-4/);
   assert.match(html, /weekly-text\.css\?v=20260729-1/);
   assert.match(html, /task-card-colors\.css\?v=20260729-2/);
-  assert.match(html, /task-ui\.js\?v=20260729-3/);
+  assert.match(html, /task-ui\.js\?v=20260729-4/);
   assert.match(html, /weekly-text-ui\.js\?v=20260729-2/);
-  assert.match(html, /release-entry\.js\?v=20260729-4/);
+  assert.match(html, /release-entry\.js\?v=20260729-5/);
 });
 
 test("ページ一覧は白紙を含むすべての日付を選べる", () => {
