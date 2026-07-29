@@ -35,6 +35,7 @@ const emptyTaskList = document.querySelector("#emptyTaskList");
 const taskList = document.querySelector("#taskList");
 const dailyCanvasStage = document.querySelector("#dailyCanvasStage");
 const workspace = document.querySelector(".workspace");
+const WEEKLY_SUBJECT_FILTERS = ["すべて", "数学", "英語", "物理", "化学", "その他"];
 
 const weeklyShelf = document.createElement("section");
 weeklyShelf.id = "dailyWeeklyShelf";
@@ -46,6 +47,11 @@ weeklyShelf.innerHTML = `
       <p>左の持ち手をつかみ、下の「今日の目標」へ置きます。</p>
     </div>
     <button id="openWeeklyFromShelf" type="button">週間目標を編集</button>
+  </div>
+  <div class="daily-weekly-subject-tabs" role="tablist" aria-label="週間タスクカードの教科">
+    ${WEEKLY_SUBJECT_FILTERS.map((subject, index) => `
+      <button type="button" role="tab" data-weekly-subject-filter="${subject}" aria-selected="${index === 0 ? "true" : "false"}">${subject}</button>
+    `).join("")}
   </div>
   <p id="dailyWeeklyShelfStatus" class="daily-weekly-shelf-status" role="status" aria-live="polite" hidden></p>
   <div id="dailyWeeklyCardList" class="daily-weekly-card-list"></div>
@@ -62,6 +68,7 @@ let activeDate = pageDate.dateTime;
 let editingTaskId = null;
 let canvasDragState = null;
 let weeklyDragState = null;
+let weeklySubjectFilter = "すべて";
 let taskStore = loadTaskStore(localStorage.getItem(TASK_STORAGE_KEY)).store;
 
 new MutationObserver(() => {
@@ -79,6 +86,12 @@ weeklyShelf.querySelector("#openWeeklyFromShelf").addEventListener("click", () =
   document.querySelector("#weeklyButton")?.click();
 });
 weeklyShelf.addEventListener("pointerdown", startWeeklyCardDrag);
+weeklyShelf.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-weekly-subject-filter]");
+  if (!button) return;
+  weeklySubjectFilter = button.dataset.weeklySubjectFilter;
+  renderWeeklyShelf();
+});
 
 for (const eventName of ["selectstart", "contextmenu", "dblclick"]) {
   taskDialog.addEventListener(eventName, (event) => event.stopPropagation());
@@ -164,7 +177,15 @@ function renderWeeklyShelf() {
   const weeklyStore = loadWeeklyCardStore(localStorage.getItem(WEEKLY_CARD_STORAGE_KEY)).store;
   const cards = getWeeklyCardsForWeek(weeklyStore, weekStart);
   const list = weeklyShelf.querySelector("#dailyWeeklyCardList");
+  const visibleCards = weeklySubjectFilter === "すべて"
+    ? cards
+    : cards.filter((card) => card.subject === weeklySubjectFilter);
   list.replaceChildren();
+  for (const button of weeklyShelf.querySelectorAll("[data-weekly-subject-filter]")) {
+    const selected = button.dataset.weeklySubjectFilter === weeklySubjectFilter;
+    button.setAttribute("aria-selected", String(selected));
+    button.classList.toggle("is-selected", selected);
+  }
 
   if (cards.length === 0) {
     const empty = document.createElement("p");
@@ -174,7 +195,15 @@ function renderWeeklyShelf() {
     return;
   }
 
-  for (const card of cards) {
+  if (visibleCards.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "daily-weekly-card-empty";
+    empty.textContent = `${weeklySubjectFilter}のカードはまだありません。`;
+    list.append(empty);
+    return;
+  }
+
+  for (const card of visibleCards) {
     const linkedTasks = getLinkedTasksForWeek(weekStart, card.id);
     const todayTask = getTasksForDate(taskStore, activeDate).find((task) => task.sourceWeeklyCardId === card.id);
     const completed = linkedTasks.some((task) => task.completed);

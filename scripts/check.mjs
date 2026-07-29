@@ -8,6 +8,7 @@ const requiredFiles = [
   "task-card-colors.css",
   "weekly-text-ui.js",
   "task-ui.js",
+  "daily-enhancements.js",
   "release-entry.js",
   "home-entry.js",
   "home-ui.js",
@@ -60,12 +61,12 @@ for (const [file, content] of Object.entries(contents)) {
 
 const html = contents["index.html"] || "";
 for (const requirement of [
-  'meta name="study-canvas-release" content="20260729-task-card-colors-1"',
+  'meta name="study-canvas-release" content="20260729-card-visibility-1"',
   "weekly-text.css?v=20260729-1",
-  "task-card-colors.css?v=20260729-1",
+  "task-card-colors.css?v=20260729-2",
   "weekly-text-ui.js?v=20260729-2",
-  "task-ui.js?v=20260729-2",
-  "release-entry.js?v=20260729-3",
+  "task-ui.js?v=20260729-3",
+  "release-entry.js?v=20260729-4",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
 ]) {
@@ -85,7 +86,7 @@ for (const removed of [
 
 const releaseEntry = contents["release-entry.js"] || "";
 for (const requirement of [
-  "daily-enhancements.js?v=20260729-2",
+  "daily-enhancements.js?v=20260729-3",
   "full-backup-entry.js?v=20260729-1",
   "home-entry.js?v=20260729-3",
 ]) {
@@ -120,11 +121,29 @@ for (const requirement of [
   "updateTaskPosition",
   "study-canvas:weekly-cards-changed",
   "getLinkedTasksForWeek",
+  "WEEKLY_SUBJECT_FILTERS",
+  "data-weekly-subject-filter",
 ]) {
   requireText(taskUi, requirement, `週間カードのドラッグ配置に${requirement}がありません`);
 }
 rejectText(taskUi, "taskMinutes", "日次タスク画面に予定時間入力が残っています");
 requireText(taskUi, "card.dataset.subject = task.subject", "日次タスクカードに教科情報が設定されていません");
+
+const dailyEnhancements = contents["daily-enhancements.js"] || "";
+for (const requirement of ["calendar-page-preview", "calendar-task-mini-card", "readTasksByDate", "task.title", "task.subject"]) {
+  requireText(dailyEnhancements, requirement, `日付一覧のタスクカード表示に${requirement}がありません`);
+}
+
+const enhancements = contents["enhancements.css"] || "";
+for (const requirement of [
+  ".daily-weekly-subject-tabs",
+  "grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))",
+  ".calendar-task-mini-card",
+  ".canvas-task-content strong",
+  "font-size: 18px",
+]) {
+  requireText(enhancements, requirement, `教科別表示・文字拡大・日付一覧表示に${requirement}がありません`);
+}
 
 const taskCardColors = contents["task-card-colors.css"] || "";
 for (const [subject, color] of [

@@ -101,6 +101,18 @@ test("@published Version 0.4 Release Gateを公開ユーザー経路で完走す
 
   await page.locator('[data-home-route="daily"]').click();
   await expect(page.locator("#dailyWeeklyShelf")).toContainText("微積分 4問");
+  await expect(page.locator("[data-weekly-subject-filter]")).toHaveCount(6);
+  await page.getByRole("tab", { name: "数学", exact: true }).click();
+  await expect(page.locator('.daily-weekly-card[data-subject="数学"]')).toHaveCount(2);
+  await expect(page.locator('.daily-weekly-card[data-subject="英語"]')).toHaveCount(0);
+  await page.getByRole("tab", { name: "すべて", exact: true }).click();
+  const shelfLayout = await page.locator("#dailyWeeklyCardList").evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    display: getComputedStyle(element).display,
+  }));
+  expect(shelfLayout.display).toBe("grid");
+  expect(shelfLayout.scrollWidth).toBeLessThanOrEqual(shelfLayout.clientWidth + 2);
   for (const [subject, background] of [
     ["数学", "rgb(232, 241, 255)"],
     ["英語", "rgb(243, 232, 255)"],
@@ -112,7 +124,13 @@ test("@published Version 0.4 Release Gateを公開ユーザー経路で完走す
   }
   await dragWeeklyCardToCanvas(page, "微積分 4問");
   await expect(page.locator(".canvas-task-card")).toContainText("微積分 4問");
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" }).locator("strong")).toHaveCSS("font-size", "18px");
+  await expect(page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator("strong")).toHaveCSS("font-size", "18px");
   await expect(page.locator('.canvas-task-card[data-subject="数学"]')).toHaveCSS("background-color", "rgb(232, 241, 255)");
+  await page.evaluate(() => document.querySelector("#taskButton").click());
+  await expect(page.locator("#taskDialog[open]")).toBeVisible();
+  await expect(page.locator(".task-card-heading strong", { hasText: "微積分 4問" })).toHaveCSS("font-size", "18px");
+  await page.locator("#closeTaskDialogButton").click();
   const linkedRaw = await expectStored(page, STORAGE_KEYS.tasks, "sourceWeeklyCardId");
   expect(linkedRaw).toContain("微積分 4問");
   await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("今日に配置済み");
@@ -141,6 +159,13 @@ test("@published Version 0.4 Release Gateを公開ユーザー経路で完走す
   await expect(page.locator(".canvas-task-checkbox")).toBeChecked();
   await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("完了");
 
+  await page.locator("#homeButton").click();
+  await page.locator('[data-home-route="pages"]').click();
+  const currentCalendarDay = page.locator(".calendar-day-button.is-current");
+  await expect(currentCalendarDay.locator('.calendar-task-mini-card[data-subject="数学"]')).toContainText("微積分 4問");
+  await expect(currentCalendarDay.locator('.calendar-task-mini-card[data-subject="数学"]')).toHaveCSS("background-color", "rgb(232, 241, 255)");
+  await currentCalendarDay.click();
+  await expect(page.locator(".canvas-task-card", { hasText: "微積分 4問" })).toBeVisible();
   await page.locator("#homeButton").click();
   await page.locator('[data-home-route="notes"]').click();
   await page.locator("#createNoteCardButton").click();
