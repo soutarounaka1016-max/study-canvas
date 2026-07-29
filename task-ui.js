@@ -201,6 +201,7 @@ function createDialogTaskCard(task) {
   const card = document.createElement("article");
   card.className = "task-card";
   card.classList.toggle("is-completed", task.completed);
+  card.dataset.subject = task.subject;
 
   const completionLabel = document.createElement("label");
   completionLabel.className = "task-completion";
@@ -246,6 +247,7 @@ function createCanvasTaskCard(task) {
   card.style.left = `${task.x * 100}%`;
   card.style.top = `${task.y * 100}%`;
   card.dataset.taskId = task.id;
+  card.dataset.subject = task.subject;
 
   const dragHandle = document.createElement("button");
   dragHandle.type = "button";

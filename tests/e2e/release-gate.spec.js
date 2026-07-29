@@ -73,7 +73,7 @@ async function expectStored(page, key, text) {
   return raw;
 }
 
-test("@published Version 0.3 Release Gateを公開ユーザー経路で完走する", async ({ page }, testInfo) => {
+test("@published Version 0.4 Release Gateを公開ユーザー経路で完走する", async ({ page }, testInfo) => {
   test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 240_000 : 120_000);
   const errors = watchCriticalErrors(page);
   await gotoCleanHome(page);
@@ -87,12 +87,32 @@ test("@published Version 0.3 Release Gateを公開ユーザー経路で完走す
   await math.locator(".weekly-text-card").first().locator("input").fill("微積分 4問");
   await math.locator(".weekly-text-card").first().getByRole("button", { name: "保存" }).click();
   await expect(math).toContainText("カードを更新しました");
+  for (const [subject, title] of [
+    ["英語", "長文 1題"],
+    ["化学", "有機化学 2問"],
+    ["物理", "力学 2問"],
+    ["その他", "提出物を確認"],
+  ]) {
+    const editor = page.locator(`.weekly-subject-editor[data-subject="${subject}"]`);
+    await editor.locator("textarea").fill(title);
+    await editor.getByRole("button", { name: "カードを作成" }).click();
+  }
   await page.locator("#closeWeeklyDialogButton").click();
 
   await page.locator('[data-home-route="daily"]').click();
   await expect(page.locator("#dailyWeeklyShelf")).toContainText("微積分 4問");
+  for (const [subject, background] of [
+    ["数学", "rgb(232, 241, 255)"],
+    ["英語", "rgb(243, 232, 255)"],
+    ["化学", "rgb(232, 248, 238)"],
+    ["物理", "rgb(255, 247, 214)"],
+    ["その他", "rgb(241, 243, 245)"],
+  ]) {
+    await expect(page.locator(`.daily-weekly-card[data-subject="${subject}"]`).first()).toHaveCSS("background-color", background);
+  }
   await dragWeeklyCardToCanvas(page, "微積分 4問");
   await expect(page.locator(".canvas-task-card")).toContainText("微積分 4問");
+  await expect(page.locator('.canvas-task-card[data-subject="数学"]')).toHaveCSS("background-color", "rgb(232, 241, 255)");
   const linkedRaw = await expectStored(page, STORAGE_KEYS.tasks, "sourceWeeklyCardId");
   expect(linkedRaw).toContain("微積分 4問");
   await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("今日に配置済み");

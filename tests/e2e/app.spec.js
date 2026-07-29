@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260729-calendar-all-dates-1";
+const EXPECTED_RELEASE = "20260729-task-card-colors-1";
 const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260729-3";
 
 function watchCriticalErrors(page) {

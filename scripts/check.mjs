@@ -5,6 +5,7 @@ const requiredFiles = [
   "styles.css",
   "enhancements.css",
   "weekly-text.css",
+  "task-card-colors.css",
   "weekly-text-ui.js",
   "task-ui.js",
   "release-entry.js",
@@ -59,10 +60,11 @@ for (const [file, content] of Object.entries(contents)) {
 
 const html = contents["index.html"] || "";
 for (const requirement of [
-  'meta name="study-canvas-release" content="20260729-calendar-all-dates-1"',
+  'meta name="study-canvas-release" content="20260729-task-card-colors-1"',
   "weekly-text.css?v=20260729-1",
-  "weekly-text-ui.js?v=20260729-1",
-  "task-ui.js?v=20260729-1",
+  "task-card-colors.css?v=20260729-1",
+  "weekly-text-ui.js?v=20260729-2",
+  "task-ui.js?v=20260729-2",
   "release-entry.js?v=20260729-3",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
@@ -122,6 +124,19 @@ for (const requirement of [
   requireText(taskUi, requirement, `週間カードのドラッグ配置に${requirement}がありません`);
 }
 rejectText(taskUi, "taskMinutes", "日次タスク画面に予定時間入力が残っています");
+requireText(taskUi, "card.dataset.subject = task.subject", "日次タスクカードに教科情報が設定されていません");
+
+const taskCardColors = contents["task-card-colors.css"] || "";
+for (const [subject, color] of [
+  ["数学", "#e8f1ff"],
+  ["英語", "#f3e8ff"],
+  ["化学", "#e8f8ee"],
+  ["物理", "#fff7d6"],
+  ["その他", "#f1f3f5"],
+]) {
+  requireText(taskCardColors, `data-subject="${subject}"`, `${subject}のタスクカード色指定がありません`);
+  requireText(taskCardColors, color, `${subject}のタスクカード背景色がありません`);
+}
 
 const taskStore = contents["src/task-store.js"] || "";
 requireText(taskStore, "sourceWeeklyCardId", "日次タスクへ週間カードIDを保持できません");
