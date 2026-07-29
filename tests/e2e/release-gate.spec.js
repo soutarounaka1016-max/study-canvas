@@ -108,7 +108,7 @@ test("@published Version 0.4 Release Gateを公開ユーザー経路で完走す
     ["物理", "rgb(255, 247, 214)"],
     ["その他", "rgb(241, 243, 245)"],
   ]) {
-    await expect(page.locator(`.daily-weekly-card[data-subject="${subject}"]`)).toHaveCSS("background-color", background);
+    await expect(page.locator(`.daily-weekly-card[data-subject="${subject}"]`).first()).toHaveCSS("background-color", background);
   }
   await dragWeeklyCardToCanvas(page, "微積分 4問");
   await expect(page.locator(".canvas-task-card")).toContainText("微積分 4問");
