@@ -152,8 +152,8 @@ jobs:
       - name: Verify published release chains
         env:
           BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-          EXPECTED_RELEASE: 20260729-text-card-drag-1
-          EXPECTED_ENTRY: release-entry.js?v=20260729-1
+          EXPECTED_RELEASE: 20260729-calendar-all-dates-1
+          EXPECTED_ENTRY: release-entry.js?v=20260729-3
         shell: bash
         run: |
           set -euo pipefail
