@@ -152,8 +152,8 @@ jobs:
       - name: Verify published release chains
         env:
           BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-          EXPECTED_RELEASE: 20260729-card-visibility-1
-          EXPECTED_ENTRY: release-entry.js?v=20260729-4
+          EXPECTED_RELEASE: 20260729-large-task-titles-1
+          EXPECTED_ENTRY: release-entry.js?v=20260729-5
         shell: bash
         run: |
           set -euo pipefail
@@ -161,7 +161,7 @@ jobs:
           grep -F "meta name=\"study-canvas-release\" content=\"${EXPECTED_RELEASE}\"" <<<"${html}"
           grep -F "src=\"${EXPECTED_ENTRY}\"" <<<"${html}"
           grep -F 'weekly-text-ui.js?v=20260729-2' <<<"${html}"
-          grep -F 'task-ui.js?v=20260729-3' <<<"${html}"
+          grep -F 'task-ui.js?v=20260729-4' <<<"${html}"
           grep -F 'task-card-colors.css?v=20260729-2' <<<"${html}"
           if grep -E 'weekly-recognition|AIで読み取る|予定時間|学習時間の集計' <<<"${html}"; then
             echo "The official HTML still contains removed OCR or time UI."
@@ -174,7 +174,7 @@ jobs:
             echo "The official entry still loads removed AI or time modules."
             exit 1
           fi
-          task_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-ui.js?v=20260729-3")"
+          task_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-ui.js?v=20260729-4")"
           grep -F 'dailyWeeklyShelf' <<<"${task_ui}"
           grep -F 'sourceWeeklyCardId' <<<"${task_ui}"
           grep -F 'card.dataset.subject = task.subject' <<<"${task_ui}"
