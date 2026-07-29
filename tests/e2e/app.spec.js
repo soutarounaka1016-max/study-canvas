@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260729-card-visibility-1";
-const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260729-4";
+const EXPECTED_RELEASE = "20260729-large-task-titles-1";
+const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260729-5";
 
 function watchCriticalErrors(page) {
   const errors = [];
