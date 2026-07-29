@@ -59,11 +59,11 @@ for (const [file, content] of Object.entries(contents)) {
 
 const html = contents["index.html"] || "";
 for (const requirement of [
-  'meta name="study-canvas-release" content="20260729-text-card-drag-1"',
+  'meta name="study-canvas-release" content="20260729-calendar-all-dates-1"',
   "weekly-text.css?v=20260729-1",
   "weekly-text-ui.js?v=20260729-1",
   "task-ui.js?v=20260729-1",
-  "release-entry.js?v=20260729-1",
+  "release-entry.js?v=20260729-3",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
 ]) {
@@ -83,9 +83,9 @@ for (const removed of [
 
 const releaseEntry = contents["release-entry.js"] || "";
 for (const requirement of [
-  "daily-enhancements.js?v=20260729-1",
+  "daily-enhancements.js?v=20260729-2",
   "full-backup-entry.js?v=20260729-1",
-  "home-entry.js?v=20260729-1",
+  "home-entry.js?v=20260729-3",
 ]) {
   requireText(releaseEntry, requirement, `公開入口に${requirement}がありません`);
 }

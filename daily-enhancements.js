@@ -1,6 +1,7 @@
 import { calculateMonthGrid } from "./src/canvas-viewport.js?v=20260720-5";
 
 const PAGE_STORE_KEY = "study-canvas:pages:v2";
+const TASK_STORE_KEY = "study-canvas:tasks:v1";
 const pageDate = document.querySelector("#pageDate");
 const todayButton = document.querySelector("#todayButton");
 const pageListButton = document.querySelector("#pageListButton");
@@ -54,6 +55,7 @@ function renderCalendar() {
   const [year, month] = calendarMonth.split("-").map(Number);
   const { firstWeekday, dayCount } = calculateMonthGrid(year, month);
   const activeDate = pageDate.dateTime || today;
+  const taskDates = readTaskDates();
   const formatter = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long" });
   calendarMonthLabel.textContent = formatter.format(new Date(Date.UTC(year, month - 1, 1)));
   pageList.className = "page-list calendar-grid";
@@ -81,21 +83,41 @@ function renderCalendar() {
     button.type = "button";
     button.className = "calendar-day-button";
     button.classList.toggle("has-writing", Boolean(original));
+    button.classList.toggle("has-tasks", taskDates.has(date));
     button.classList.toggle("is-current", date === activeDate);
     button.classList.toggle("is-today", date === today);
-    button.disabled = !original;
-    button.setAttribute("aria-label", original ? `${formatDate(date)}のページを開く` : `${formatDate(date)}は白紙です`);
+    button.disabled = false;
+    button.setAttribute("aria-label", `${formatDate(date)}のページを開く${original ? "、手書きあり" : ""}${taskDates.has(date) ? "、タスクあり" : ""}`);
+    if (!original) {
+      button.addEventListener("click", () => {
+        document.dispatchEvent(new CustomEvent("study-canvas:open-date", { detail: { date } }));
+      });
+    }
 
     const dayNumber = document.createElement("span");
     dayNumber.className = "calendar-day-number";
     dayNumber.textContent = String(day);
     const writingLabel = document.createElement("span");
     writingLabel.className = "calendar-writing-label";
-    writingLabel.textContent = original ? "手書きあり" : "白紙";
+    writingLabel.textContent = [
+      original ? "手書きあり" : "",
+      taskDates.has(date) ? "タスクあり" : "",
+    ].filter(Boolean).join("・") || "白紙";
     button.replaceChildren(dayNumber);
     if (thumbnail) button.append(thumbnail);
     button.append(writingLabel);
     pageList.append(button);
+  }
+}
+
+function readTaskDates() {
+  try {
+    const value = JSON.parse(localStorage.getItem(TASK_STORE_KEY) || "null");
+    return new Set(Object.entries(value?.tasksByDate || value?.days || {})
+      .filter(([, tasks]) => Array.isArray(tasks) && tasks.length > 0)
+      .map(([date]) => date));
+  } catch {
+    return new Set();
   }
 }
 
