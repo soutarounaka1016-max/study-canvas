@@ -124,16 +124,17 @@ test("@published Version 0.4 Release Gateを公開ユーザー経路で完走す
   }
   await dragWeeklyCardToCanvas(page, "微積分 4問");
   await expect(page.locator(".canvas-task-card")).toContainText("微積分 4問");
-  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" }).locator("strong")).toHaveCSS("font-size", "18px");
-  await expect(page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator("strong")).toHaveCSS("font-size", "18px");
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" }).locator("strong")).toHaveCSS("font-size", "28px");
+  await expect(page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator("strong")).toHaveCSS("font-size", "26px");
   await expect(page.locator('.canvas-task-card[data-subject="数学"]')).toHaveCSS("background-color", "rgb(232, 241, 255)");
   await page.evaluate(() => document.querySelector("#taskButton").click());
   await expect(page.locator("#taskDialog[open]")).toBeVisible();
-  await expect(page.locator(".task-card-heading strong", { hasText: "微積分 4問" })).toHaveCSS("font-size", "18px");
+  await expect(page.locator(".task-card-heading strong", { hasText: "微積分 4問" })).toHaveCSS("font-size", "26px");
   await page.locator("#closeTaskDialogButton").click();
   const linkedRaw = await expectStored(page, STORAGE_KEYS.tasks, "sourceWeeklyCardId");
   expect(linkedRaw).toContain("微積分 4問");
-  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("今日に配置済み");
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).not.toContainText("今日に配置済み");
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).not.toContainText("ドラッグして配置");
 
   const firstPosition = JSON.parse(linkedRaw).tasksByDate;
   const firstTask = Object.values(firstPosition)[0][0];
@@ -149,7 +150,7 @@ test("@published Version 0.4 Release Gateを公開ユーザー経路で完走す
   expect(movedTask.x !== firstTask.x || movedTask.y !== firstTask.y).toBe(true);
 
   await page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator(".canvas-task-checkbox").check();
-  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("完了");
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).not.toContainText("完了");
   await drawStroke(page, "#drawingCanvas");
   await expectStored(page, STORAGE_KEYS.pages);
 
@@ -157,7 +158,7 @@ test("@published Version 0.4 Release Gateを公開ユーザー経路で完走す
   await waitForAppModules(page);
   await expect(page.locator(".canvas-task-card", { hasText: "微積分 4問" })).toBeVisible();
   await expect(page.locator(".canvas-task-checkbox")).toBeChecked();
-  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).toContainText("完了");
+  await expect(page.locator(".daily-weekly-card", { hasText: "微積分 4問" })).not.toContainText("完了");
 
   await page.locator("#homeButton").click();
   await page.locator('[data-home-route="pages"]').click();

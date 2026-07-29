@@ -204,13 +204,9 @@ function renderWeeklyShelf() {
   }
 
   for (const card of visibleCards) {
-    const linkedTasks = getLinkedTasksForWeek(weekStart, card.id);
     const todayTask = getTasksForDate(taskStore, activeDate).find((task) => task.sourceWeeklyCardId === card.id);
-    const completed = linkedTasks.some((task) => task.completed);
     const article = document.createElement("article");
     article.className = "daily-weekly-card";
-    article.classList.toggle("is-placed", Boolean(todayTask));
-    article.classList.toggle("is-completed", completed);
     article.dataset.weeklyCardId = card.id;
     article.dataset.subject = card.subject;
     article.dataset.title = card.title;
@@ -219,7 +215,6 @@ function renderWeeklyShelf() {
       <div>
         <span class="daily-weekly-subject" data-subject="${escapeAttribute(card.subject)}">${escapeHtml(card.subject)}</span>
         <strong>${escapeHtml(card.title)}</strong>
-        <small>${completed ? "完了" : todayTask ? "今日に配置済み" : "ドラッグして配置"}</small>
       </div>
     `;
     list.append(article);
