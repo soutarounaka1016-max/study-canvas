@@ -9,11 +9,12 @@
 
 ## 現在の状態
 
-- 完成段階: 実装完了
-- 進行状態: テスト中
+- 完成段階: 完成
+- 進行状態: 完了
 - 開発開始時main Commit: `c14080c064372da94e3e4a1b8b9f1c182ca998b2`
-- 最新公開Commit: `c14080c064372da94e3e4a1b8b9f1c182ca998b2`
-- 作業ブランチ: `agent/ui-card-visibility`
+- 最新機能main Commit: `fcbf3fd219558ddefd2db70e614b7b06938ae078`
+- 最新機能公開Commit: `fcbf3fd219558ddefd2db70e614b7b06938ae078`
+- 作業ブランチ: なし（PR #74をmainへ反映済み）
 
 ## 今回の変更
 
@@ -27,11 +28,11 @@
 - 単体テスト: 合格（100件）
 - ビルド: 合格
 - ローカルブラウザ: 実行不能（配布ファイルが0MBで返る環境制限。PR用CIで代替）
-- PR用CI: 未実行
-- main反映後CI: 未実行
-- デプロイ: 未実行
-- 公開環境E2E: 未実行
-- Release Gate: 未実行
+- PR用CI: 合格（[Actions Run 30421736541](https://github.com/soutarounaka1016-max/study-canvas/actions/runs/30421736541)）
+- main反映後CI: 合格（[Actions Run 30421895498](https://github.com/soutarounaka1016-max/study-canvas/actions/runs/30421895498)）
+- デプロイ: 合格（[Actions Run 30421895531](https://github.com/soutarounaka1016-max/study-canvas/actions/runs/30421895531)）
+- 公開環境E2E: 合格
+- Release Gate: 合格
 
 ## 外部操作待ち
 
@@ -39,13 +40,14 @@
 
 ## 既知の問題
 
-- 現時点で既知の重大な問題はなし
+- アプリの既知の重大な問題はなし
 - 学校支給iPad実機での教科タブ、文字サイズ、日付一覧の見え方は未確認
-- ローカルブラウザ検査は環境制限で実行不能。CI上のChromium、WebKit、iPad縦横で検証予定
+- ローカルブラウザ検査は環境制限で実行不能だったが、CI上のChromium、WebKit、iPad縦横で合格
 
 ## AI工場OS改善提案
 
-- Release Gate完了後に記録する
+- AI工場OS改善提案あり
+- npmキャッシュの事前確認は、ディレクトリの書き込み属性だけでなく、実際に使用する環境変数を適用してファイル作成まで試す。今回は既定の`NPM_CONFIG_CACHE`が`/root/.npm`を上書きしており、単純な権限確認だけでは準備済みと誤判定した
 
 ## 最終更新
 
