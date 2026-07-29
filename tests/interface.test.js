@@ -8,6 +8,7 @@ const enhancements = await readFile(new URL("../enhancements.css", import.meta.u
 const taskCardColors = await readFile(new URL("../task-card-colors.css", import.meta.url), "utf8");
 const script = await readFile(new URL("../script.js", import.meta.url), "utf8");
 const taskUi = await readFile(new URL("../task-ui.js", import.meta.url), "utf8");
+const dailyEnhancements = await readFile(new URL("../daily-enhancements.js", import.meta.url), "utf8");
 const taskStore = await readFile(new URL("../src/task-store.js", import.meta.url), "utf8");
 const weeklyUi = await readFile(new URL("../weekly-text-ui.js", import.meta.url), "utf8");
 const weeklyCardStore = await readFile(new URL("../src/weekly-card-store.js", import.meta.url), "utf8");
@@ -73,6 +74,21 @@ test("週間カード棚から今日のキャンバスへドラッグ配置す�
   assert.match(enhancements, /#dailyCanvasStage\.is-weekly-drop-target/);
 });
 
+test("週間カード棚は教科タブと折り返し一覧で表示する", () => {
+  assert.match(taskUi, /WEEKLY_SUBJECT_FILTERS = \["すべて", "数学", "英語", "物理", "化学", "その他"\]/);
+  assert.match(taskUi, /data-weekly-subject-filter/);
+  assert.match(enhancements, /\.daily-weekly-subject-tabs/);
+  assert.match(enhancements, /\.daily-weekly-card-list[\s\S]*display:\s*grid/);
+  assert.doesNotMatch(enhancements, /\.daily-weekly-card-list\s*\{[^}]*overflow-x:\s*auto/);
+});
+
+test("タスク名を18pxへ拡大し、教科ラベルの大きさは維持する", () => {
+  assert.match(css, /\.task-card-heading strong[^}]*font-size:\s*18px/);
+  assert.match(enhancements, /\.canvas-task-content strong[\s\S]*font-size:\s*18px/);
+  assert.match(enhancements, /\.daily-weekly-card strong[\s\S]*font-size:\s*18px/);
+  assert.match(enhancements, /\.canvas-task-subject[\s\S]*font-size:\s*11px/);
+});
+
 test("タスクカードを数学青・英語紫・化学緑・物理黄・その他灰色で表示する", () => {
   for (const [subject, color] of [
     ["数学", "#e8f1ff"],
@@ -105,17 +121,21 @@ test("自由ノートの複数ページ手書き機能を維持する", () => {
 });
 
 test("公開資産に更新版を指定する", () => {
-  assert.match(html, /styles\.css\?v=20260729-2/);
-  assert.match(html, /enhancements\.css\?v=20260729-2/);
+  assert.match(html, /styles\.css\?v=20260729-3/);
+  assert.match(html, /enhancements\.css\?v=20260729-3/);
   assert.match(html, /weekly-text\.css\?v=20260729-1/);
-  assert.match(html, /task-card-colors\.css\?v=20260729-1/);
-  assert.match(html, /task-ui\.js\?v=20260729-2/);
+  assert.match(html, /task-card-colors\.css\?v=20260729-2/);
+  assert.match(html, /task-ui\.js\?v=20260729-3/);
   assert.match(html, /weekly-text-ui\.js\?v=20260729-2/);
-  assert.match(html, /release-entry\.js\?v=20260729-3/);
+  assert.match(html, /release-entry\.js\?v=20260729-4/);
 });
 
 test("ページ一覧は白紙を含むすべての日付を選べる", () => {
-  assert.match(html, /白紙の日を含むすべての日付/);
+  assert.match(html, /手書きとタスクカードを縮小キャンバスで確認/);
   assert.match(html, /aria-label="日付のカレンダー"/);
   assert.match(enhancements, /\.calendar-day-button\.has-tasks/);
+  assert.match(dailyEnhancements, /calendar-page-preview/);
+  assert.match(dailyEnhancements, /calendar-task-mini-card/);
+  assert.match(dailyEnhancements, /miniCard\.style\.left/);
+  assert.match(dailyEnhancements, /miniCard\.style\.top/);
 });

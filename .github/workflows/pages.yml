@@ -152,8 +152,8 @@ jobs:
       - name: Verify published release chains
         env:
           BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-          EXPECTED_RELEASE: 20260729-task-card-colors-1
-          EXPECTED_ENTRY: release-entry.js?v=20260729-3
+          EXPECTED_RELEASE: 20260729-card-visibility-1
+          EXPECTED_ENTRY: release-entry.js?v=20260729-4
         shell: bash
         run: |
           set -euo pipefail
@@ -161,27 +161,30 @@ jobs:
           grep -F "meta name=\"study-canvas-release\" content=\"${EXPECTED_RELEASE}\"" <<<"${html}"
           grep -F "src=\"${EXPECTED_ENTRY}\"" <<<"${html}"
           grep -F 'weekly-text-ui.js?v=20260729-2' <<<"${html}"
-          grep -F 'task-ui.js?v=20260729-2' <<<"${html}"
-          grep -F 'task-card-colors.css?v=20260729-1' <<<"${html}"
+          grep -F 'task-ui.js?v=20260729-3' <<<"${html}"
+          grep -F 'task-card-colors.css?v=20260729-2' <<<"${html}"
           if grep -E 'weekly-recognition|AIで読み取る|予定時間|学習時間の集計' <<<"${html}"; then
             echo "The official HTML still contains removed OCR or time UI."
             exit 1
           fi
           entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_ENTRY}")"
+          grep -F 'daily-enhancements.js?v=20260729-3' <<<"${entry}"
           grep -F 'full-backup-entry.js?v=20260729-1' <<<"${entry}"
           if grep -E 'ai-recognition|taskize|dashboard' <<<"${entry}"; then
             echo "The official entry still loads removed AI or time modules."
             exit 1
           fi
-          task_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-ui.js?v=20260729-2")"
+          task_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-ui.js?v=20260729-3")"
           grep -F 'dailyWeeklyShelf' <<<"${task_ui}"
           grep -F 'sourceWeeklyCardId' <<<"${task_ui}"
           grep -F 'card.dataset.subject = task.subject' <<<"${task_ui}"
-          task_colors="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-card-colors.css?v=20260729-1")"
+          grep -F 'data-weekly-subject-filter' <<<"${task_ui}"
+          task_colors="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-card-colors.css?v=20260729-2")"
           grep -F 'data-subject="数学"' <<<"${task_colors}"
           grep -F 'data-subject="英語"' <<<"${task_colors}"
           grep -F 'data-subject="化学"' <<<"${task_colors}"
           grep -F 'data-subject="物理"' <<<"${task_colors}"
+          grep -F 'calendar-task-mini-card' <<<"${task_colors}"
 
           archive_html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}ocr-experiment/?archive=${GITHUB_SHA}")"
           grep -F 'meta name="study-canvas-release" content="20260728-ocr-grounding-1"' <<<"${archive_html}"
