@@ -141,9 +141,11 @@ test("@published Version 0.6 Release Gateを公開ユーザー経路で完走す
   const cardHandle = page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator(".canvas-task-drag-handle");
   const cardHandleBox = await cardHandle.boundingBox();
   const canvasBox = await page.locator("#dailyCanvasStage").boundingBox();
+  const targetX = firstTask.x > canvasBox.width / 2 ? canvasBox.x + 24 : canvasBox.x + canvasBox.width - 24;
+  const targetY = firstTask.y > canvasBox.height / 2 ? canvasBox.y + 32 : canvasBox.y + canvasBox.height - 32;
   await page.mouse.move(cardHandleBox.x + 10, cardHandleBox.y + 20);
   await page.mouse.down();
-  await page.mouse.move(canvasBox.x + canvasBox.width * 0.7, canvasBox.y + canvasBox.height * 0.6, { steps: 10 });
+  await page.mouse.move(targetX, targetY, { steps: 10 });
   await page.mouse.up();
   const movedRaw = await expectStored(page, STORAGE_KEYS.tasks);
   const movedTask = Object.values(JSON.parse(movedRaw).tasksByDate)[0][0];
