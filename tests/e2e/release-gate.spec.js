@@ -73,7 +73,7 @@ async function expectStored(page, key, text) {
   return raw;
 }
 
-test("@published Version 0.4 Release Gateを公開ユーザー経路で完走する", async ({ page }, testInfo) => {
+test("@published Version 0.6 Release Gateを公開ユーザー経路で完走する", async ({ page }, testInfo) => {
   test.setTimeout(process.env.PLAYWRIGHT_BASE_URL ? 240_000 : 120_000);
   const errors = watchCriticalErrors(page);
   await gotoCleanHome(page);

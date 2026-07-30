@@ -1,7 +1,8 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
-const EXPECTED_RELEASE = "20260729-large-task-titles-1";
-const EXPECTED_RELEASE_ENTRY = "release-entry.js?v=20260729-5";
+const FACTORY_MANIFEST = JSON.parse(await readFile(new URL("../../factory-manifest.json", import.meta.url), "utf8"));
+const EXPECTED_RELEASE = process.env.EXPECTED_RELEASE || FACTORY_MANIFEST.releaseId;
 
 function watchCriticalErrors(page) {
   const errors = [];
@@ -25,14 +26,15 @@ test("@published 最新版が起動しAI・時間UIがない", async ({ page }) 
   const errors = watchCriticalErrors(page);
   await expect.poll(async () => {
     await page.goto(`./?release-check=${Date.now()}#home`, { waitUntil: "domcontentloaded" });
-    return page.locator('meta[name="study-canvas-release"]').getAttribute("content");
+    return page.locator("html").getAttribute("data-release");
   }, {
     timeout: process.env.PLAYWRIGHT_BASE_URL ? 600_000 : 10_000,
     intervals: [1_000, 3_000, 5_000, 10_000, 15_000],
   }).toBe(EXPECTED_RELEASE);
 
   await expect(page.locator("#homeScreen")).toBeVisible();
-  await expect(page.locator('script[src^="release-entry.js"]')).toHaveAttribute("src", EXPECTED_RELEASE_ENTRY);
+  await expect(page.locator("html")).toHaveAttribute("data-release-source", "git-commit-sha");
+  await expect(page.locator('script[src^="release-entry.js?v="]')).toHaveCount(1);
   await expect(page.locator("body")).not.toContainText("予定時間");
   await expect(page.locator("body")).not.toContainText("学習時間の集計");
   await expect(page.locator("body")).not.toContainText("AIで読み取る");
@@ -130,6 +132,78 @@ test("主要部分が画面幅から大きくはみ出さない", async ({ page 
     expect(box.left).toBeGreaterThanOrEqual(-4);
     expect(box.right).toBeLessThanOrEqual(layout.viewportWidth + 4);
   }
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("スマホ縦画面で主要操作が画面内に収まり44pxで押せる", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone-portrait", "スマホ縦向き専用の検査");
+  const errors = watchCriticalErrors(page);
+  await gotoHome(page);
+
+  const expectNoHorizontalOverflow = async (selectors) => {
+    const layout = await page.evaluate((targets) => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      boxes: targets.map((selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return { selector, missing: true };
+        const rect = element.getBoundingClientRect();
+        return {
+          selector,
+          left: rect.left,
+          right: rect.right,
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+        };
+      }),
+    }), selectors);
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 2);
+    for (const box of layout.boxes) {
+      expect(box.missing, `${box.selector}が見つかりません`).not.toBe(true);
+      expect(box.left, `${box.selector}の左端`).toBeGreaterThanOrEqual(-2);
+      expect(box.right, `${box.selector}の右端`).toBeLessThanOrEqual(layout.viewportWidth + 2);
+      expect(box.scrollWidth, `${box.selector}の内部幅`).toBeLessThanOrEqual(box.clientWidth + 2);
+    }
+  };
+
+  await expectNoHorizontalOverflow(["#homeScreen", ".home-today-card", ".home-menu-grid"]);
+  await page.locator('[data-home-route="daily"]').click();
+  await expectNoHorizontalOverflow([".app-header", ".pen-options", "#dailyWeeklyShelf", ".workspace", ".page"]);
+
+  const undersizedControls = await page.locator(
+    ".app-header button, .app-header summary, .pen-options button, .daily-weekly-subject-tabs button",
+  ).evaluateAll((elements) => elements
+    .filter((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    })
+    .map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        label: element.getAttribute("aria-label") || element.textContent.trim(),
+        width: rect.width,
+        height: rect.height,
+      };
+    })
+    .filter(({ width, height }) => width < 43.5 || height < 43.5));
+  expect(undersizedControls).toEqual([]);
+
+  await page.locator("#homeButton").click();
+  await page.locator('[data-home-route="weekly"]').click();
+  await expect(page.locator("#weeklyDialog[open]")).toBeVisible();
+  await expectNoHorizontalOverflow(["#weeklyDialog", ".weekly-dialog-header", ".weekly-week-nav", ".weekly-subject-grid"]);
+  await expect(page.locator(".weekly-text-form textarea").first()).toHaveCSS("font-size", "16px");
+  await page.locator("#closeWeeklyDialogButton").click();
+
+  await page.locator('[data-home-route="notes"]').click();
+  await expect(page.locator("#noteDialog[open]")).toBeVisible();
+  await page.locator("#createNoteCardButton").click();
+  await expectNoHorizontalOverflow(["#noteDialog", ".note-editor-header", ".note-toolbar", ".note-canvas-wrap"]);
+  await page.locator("#closeNoteDialogButton").click();
+
+  await page.locator('[data-home-route="pages"]').click();
+  await expect(page.locator("#pageListDialog[open]")).toBeVisible();
+  await expectNoHorizontalOverflow(["#pageListDialog", ".calendar-nav", ".calendar-grid"]);
   expect(errors, errors.join("\n")).toEqual([]);
 });
 

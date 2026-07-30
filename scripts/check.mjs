@@ -2,8 +2,10 @@ import { readFile, stat } from "node:fs/promises";
 
 const requiredFiles = [
   "index.html",
+  "factory-manifest.json",
   "styles.css",
   "enhancements.css",
+  "note.css",
   "weekly-text.css",
   "task-card-colors.css",
   "weekly-text-ui.js",
@@ -61,12 +63,14 @@ for (const [file, content] of Object.entries(contents)) {
 
 const html = contents["index.html"] || "";
 for (const requirement of [
-  'meta name="study-canvas-release" content="20260729-large-task-titles-1"',
-  "weekly-text.css?v=20260729-1",
+  "styles.css?v=20260730-mobile-1",
+  "note.css?v=20260730-mobile-1",
+  "enhancements.css?v=20260730-mobile-1",
+  "weekly-text.css?v=20260730-mobile-1",
   "task-card-colors.css?v=20260729-2",
   "weekly-text-ui.js?v=20260729-2",
   "task-ui.js?v=20260729-4",
-  "release-entry.js?v=20260729-5",
+  "release-entry.js?v=20260730-mobile-1",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
 ]) {
@@ -80,6 +84,7 @@ for (const removed of [
   "予定時間",
   "学習時間の集計",
   'id="weeklyCanvas"',
+  'meta name="study-canvas-release"',
 ]) {
   rejectText(html, removed, `正式HTMLに廃止した表示または機能が残っています: ${removed}`);
 }
@@ -88,7 +93,9 @@ const releaseEntry = contents["release-entry.js"] || "";
 for (const requirement of [
   "daily-enhancements.js?v=20260729-3",
   "full-backup-entry.js?v=20260729-1",
-  "home-entry.js?v=20260729-3",
+  "home-entry.js?v=20260730-mobile-1",
+  "factory-manifest.json",
+  "document.documentElement.dataset.release",
 ]) {
   requireText(releaseEntry, requirement, `公開入口に${requirement}がありません`);
 }
@@ -142,6 +149,8 @@ for (const requirement of [
   ".canvas-task-content strong",
   "font-size: 28px",
   "font-size: 26px",
+  "@media (max-width: 520px)",
+  "grid-template-columns: repeat(3, minmax(0, 1fr))",
 ]) {
   requireText(enhancements, requirement, `教科別表示・文字拡大・日付一覧表示に${requirement}がありません`);
 }
@@ -196,6 +205,7 @@ for (const requirement of [
   "actions/deploy-pages@v4",
   "Verify published release chains",
   "release-gate-evidence",
+  'sed -i "s/__BUILD_COMMIT__/${GITHUB_SHA}/g" _site/factory-manifest.json',
 ]) {
   requireText(workflow, requirement, `Pages公開に${requirement}がありません`);
 }
@@ -205,9 +215,31 @@ for (const removed of ["Verify Workers AI health", "Verify live Workers AI recog
 
 const playwrightConfig = contents["playwright.config.js"] || "";
 const ci = contents[".github/workflows/ci.yml"] || "";
-for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape"]) {
+for (const project of ["chromium", "webkit", "ipad-portrait", "ipad-landscape", "phone-portrait"]) {
   requireText(playwrightConfig, `name: "${project}"`, `Playwrightに${project}がありません`);
   requireText(ci, `project: ${project}`, `CIに${project}がありません`);
+}
+
+const manifest = contents["factory-manifest.json"] || "";
+for (const requirement of [
+  '"officialUrl": "https://soutarounaka1016-max.github.io/study-canvas/"',
+  '"publishWorkflow": ".github/workflows/pages.yml"',
+  '"publishBranch": "main"',
+  '"releaseId": "__BUILD_COMMIT__"',
+  '"releaseSource": "git-commit-sha"',
+]) {
+  requireText(manifest, requirement, `Factory Manifestに${requirement}がありません`);
+}
+
+const responsiveCss = `${contents["styles.css"] || ""}\n${contents["enhancements.css"] || ""}\n${contents["weekly-text.css"] || ""}\n${contents["note.css"] || ""}`;
+for (const requirement of [
+  "--toolbar-height: 116px",
+  '"document document"',
+  "width: calc(100vw - 10px)",
+  ".daily-weekly-subject-tabs",
+  ".note-history-actions",
+]) {
+  requireText(responsiveCss, requirement, `スマホ縦画面のレスポンシブ指定に${requirement}がありません`);
 }
 
 const browserTests = `${contents["tests/e2e/app.spec.js"] || ""}\n${contents["tests/e2e/release-gate.spec.js"] || ""}`;
@@ -219,6 +251,7 @@ for (const requirement of [
   "ocr-experiment",
   "Release Gate 自由ノート",
   "confirmFullRestoreButton",
+  "スマホ縦画面で主要操作が画面内に収まり44pxで押せる",
 ]) {
   requireText(browserTests, requirement, `ブラウザ検査に${requirement}がありません`);
 }

@@ -207,3 +207,34 @@
     padding-inline: 14px;
   }
 }
+
+@media (max-width: 520px) {
+  .weekly-dialog {
+    width: calc(100vw - 8px);
+    max-height: calc(100dvh - 8px);
+  }
+  .weekly-dialog-header {
+    gap: 10px;
+    padding: 13px 12px 10px;
+  }
+  .weekly-dialog-header p {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .weekly-week-nav {
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .weekly-week-nav button { padding-inline: 6px; }
+  .weekly-subject-grid { gap: 10px; }
+  .weekly-subject-editor {
+    gap: 10px;
+    padding: 12px;
+  }
+  .weekly-text-card {
+    grid-template-columns: 1fr 1fr;
+  }
+  .weekly-text-card input { grid-column: 1 / -1; }
+  .weekly-text-card button { width: 100%; }
+  .weekly-backup-note { padding-inline: 12px; }
+}

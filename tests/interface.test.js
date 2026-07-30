@@ -14,6 +14,8 @@ const weeklyUi = await readFile(new URL("../weekly-text-ui.js", import.meta.url)
 const weeklyCardStore = await readFile(new URL("../src/weekly-card-store.js", import.meta.url), "utf8");
 const noteUi = await readFile(new URL("../note-ui.js", import.meta.url), "utf8");
 const noteStore = await readFile(new URL("../src/note-store.js", import.meta.url), "utf8");
+const releaseEntry = await readFile(new URL("../release-entry.js", import.meta.url), "utf8");
+const factoryManifest = await readFile(new URL("../factory-manifest.json", import.meta.url), "utf8");
 
 test("日次キャンバスの手書き・選択・日付移動を維持する", () => {
   assert.match(html, /id="drawingCanvas"/);
@@ -30,6 +32,20 @@ test("日次キャンバスの手書き・選択・日付移動を維持する",
 test("iPad幅では日付操作と描画ツールを重ならない2段ヘッダーにする", () => {
   assert.match(css, /@media \(max-width: 1180px\)[\s\S]*grid-template-areas:[\s\S]*"document history"[\s\S]*"tools tools"/);
   assert.doesNotMatch(css, /\.app-header \{[^}]*overflow-x:\s*auto/);
+});
+
+test("スマホ縦画面ではヘッダーとペン設定を画面幅内へ再配置する", () => {
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*"document document"[\s\S]*"tools history"/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.pen-options[\s\S]*grid-template-columns/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.tool-button,[\s\S]*width:\s*44px/);
+});
+
+test("リリース識別子はFactory ManifestのGit Commitから取得する", () => {
+  assert.match(factoryManifest, /"releaseId": "__BUILD_COMMIT__"/);
+  assert.match(factoryManifest, /"releaseSource": "git-commit-sha"/);
+  assert.match(releaseEntry, /factory-manifest\.json/);
+  assert.match(releaseEntry, /dataset\.release = manifest\.releaseId/);
+  assert.doesNotMatch(html, /meta name="study-canvas-release"/);
 });
 
 test("タスク入力から予定時間を外し、科目と内容だけにする", () => {
@@ -123,13 +139,14 @@ test("自由ノートの複数ページ手書き機能を維持する", () => {
 });
 
 test("公開資産に更新版を指定する", () => {
-  assert.match(html, /styles\.css\?v=20260729-4/);
-  assert.match(html, /enhancements\.css\?v=20260729-4/);
-  assert.match(html, /weekly-text\.css\?v=20260729-1/);
+  assert.match(html, /styles\.css\?v=20260730-mobile-1/);
+  assert.match(html, /note\.css\?v=20260730-mobile-1/);
+  assert.match(html, /enhancements\.css\?v=20260730-mobile-1/);
+  assert.match(html, /weekly-text\.css\?v=20260730-mobile-1/);
   assert.match(html, /task-card-colors\.css\?v=20260729-2/);
   assert.match(html, /task-ui\.js\?v=20260729-4/);
   assert.match(html, /weekly-text-ui\.js\?v=20260729-2/);
-  assert.match(html, /release-entry\.js\?v=20260729-5/);
+  assert.match(html, /release-entry\.js\?v=20260730-mobile-1/);
 });
 
 test("ページ一覧は白紙を含むすべての日付を選べる", () => {
