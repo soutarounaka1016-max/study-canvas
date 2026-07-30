@@ -535,7 +535,7 @@ body.is-dragging-weekly-card * {
     padding: 8px 8px 8px 4px;
   }
   .canvas-task-content strong {
-    font-size: 20px;
+    font-size: 26px;
     line-height: 1.25;
   }
 }

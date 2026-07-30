@@ -203,7 +203,7 @@ test("スマホ縦画面で主要操作が画面内に収まり44pxで押せる"
 
   await page.locator('[data-home-route="pages"]').click();
   await expect(page.locator("#pageListDialog[open]")).toBeVisible();
-  await expectNoHorizontalOverflow(["#pageListDialog", ".calendar-nav", ".calendar-grid"]);
+  await expectNoHorizontalOverflow(["#pageListDialog", ".calendar-nav", "#pageList"]);
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
