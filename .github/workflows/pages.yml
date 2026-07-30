@@ -68,6 +68,8 @@ jobs:
             --exclude 'src/study-stats.js' \
             ./ _site/
 
+          sed -i "s/__BUILD_COMMIT__/${GITHUB_SHA}/g" _site/factory-manifest.json
+
           mkdir -p _site/ocr-experiment
           git archive "${OCR_ARCHIVE_SHA}" | tar -x -C _site/ocr-experiment
           rm -rf \
@@ -147,19 +149,20 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install release browsers
+        run: npx playwright install --with-deps chromium webkit
       - name: Verify published release chains
         env:
           BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-          EXPECTED_RELEASE: 20260729-large-task-titles-1
-          EXPECTED_ENTRY: release-entry.js?v=20260729-5
         shell: bash
         run: |
           set -euo pipefail
           html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}?release-chain=${GITHUB_SHA}")"
-          grep -F "meta name=\"study-canvas-release\" content=\"${EXPECTED_RELEASE}\"" <<<"${html}"
-          grep -F "src=\"${EXPECTED_ENTRY}\"" <<<"${html}"
+          manifest="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}factory-manifest.json?release-chain=${GITHUB_SHA}")"
+          grep -F "\"releaseId\": \"${GITHUB_SHA}\"" <<<"${manifest}"
+          grep -F '"releaseSource": "git-commit-sha"' <<<"${manifest}"
+          entry_path="$(grep -o 'release-entry.js?v=[^"]*' <<<"${html}" | head -n 1)"
+          test -n "${entry_path}"
           grep -F 'weekly-text-ui.js?v=20260729-2' <<<"${html}"
           grep -F 'task-ui.js?v=20260729-4' <<<"${html}"
           grep -F 'task-card-colors.css?v=20260729-2' <<<"${html}"
@@ -167,7 +170,7 @@ jobs:
             echo "The official HTML still contains removed OCR or time UI."
             exit 1
           fi
-          entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${EXPECTED_ENTRY}")"
+          entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${entry_path}")"
           grep -F 'daily-enhancements.js?v=20260729-3' <<<"${entry}"
           grep -F 'full-backup-entry.js?v=20260729-1' <<<"${entry}"
           if grep -E 'ai-recognition|taskize|dashboard' <<<"${entry}"; then
@@ -194,7 +197,11 @@ jobs:
       - name: Verify the published app and OCR archive
         env:
           PLAYWRIGHT_BASE_URL: https://soutarounaka1016-max.github.io/study-canvas/
-        run: npm run test:browser -- --project=chromium --grep @published
+          EXPECTED_RELEASE: ${{ github.sha }}
+        shell: bash
+        run: |
+          npm run test:browser -- --project=chromium --grep @published
+          npm run test:browser -- --project=phone-portrait --grep @published
       - name: Upload Release Gate evidence
         if: always()
         uses: actions/upload-artifact@v4

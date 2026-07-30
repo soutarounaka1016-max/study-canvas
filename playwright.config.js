@@ -58,5 +58,15 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    {
+      name: "phone-portrait",
+      use: {
+        browserName: "webkit",
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
 });

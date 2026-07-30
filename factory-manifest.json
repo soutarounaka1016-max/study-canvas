@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "app": "Study Canvas",
+  "officialUrl": "https://soutarounaka1016-max.github.io/study-canvas/",
+  "publishWorkflow": ".github/workflows/pages.yml",
+  "publishBranch": "main",
+  "releaseId": "__BUILD_COMMIT__",
+  "releaseSource": "git-commit-sha"
+}

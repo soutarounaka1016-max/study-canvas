@@ -474,3 +474,68 @@ body.is-dragging-weekly-card * {
   .daily-weekly-shelf-heading { align-items: flex-start; }
   .daily-weekly-card-list { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
 }
+
+@media (max-width: 520px) {
+  .calendar-day-button {
+    min-height: 82px;
+    gap: 3px;
+    padding: 3px;
+    border-radius: 7px;
+  }
+  .calendar-day-placeholder { min-height: 82px; }
+  .calendar-day-number { font-size: 12px; }
+  .calendar-day-button.is-today .calendar-day-number {
+    width: 24px;
+    height: 24px;
+  }
+  .calendar-writing-label { font-size: 8px; }
+  .calendar-task-more { right: 1px; bottom: 1px; font-size: 6px; }
+
+  .daily-weekly-shelf {
+    width: calc(100% - 12px);
+    margin-top: 6px;
+    padding: 10px;
+    border-radius: 13px;
+  }
+  .daily-weekly-shelf-heading {
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+  .daily-weekly-shelf-heading > div { min-width: 0; }
+  .daily-weekly-shelf-heading button { width: 100%; }
+  .daily-weekly-subject-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .daily-weekly-subject-tabs button {
+    min-width: 0;
+    padding-inline: 5px;
+  }
+  .daily-weekly-card-list {
+    grid-template-columns: 1fr;
+    min-height: 76px;
+  }
+  .daily-weekly-card { min-height: 76px; }
+
+  .canvas-task-card {
+    grid-template-columns: 28px 30px minmax(0, 1fr);
+    width: clamp(158px, 48%, 176px);
+    min-height: 88px;
+    border-radius: 11px;
+  }
+  .canvas-task-drag-handle { font-size: 20px; }
+  .canvas-task-checkbox {
+    width: 20px;
+    height: 20px;
+    margin: 12px 5px;
+  }
+  .canvas-task-content {
+    gap: 4px;
+    padding: 8px 8px 8px 4px;
+  }
+  .canvas-task-content strong {
+    font-size: 26px;
+    line-height: 1.25;
+  }
+}

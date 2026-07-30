@@ -239,3 +239,43 @@
 @media (max-width: 620px) {
   .note-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+@media (max-width: 520px) {
+  .note-dialog {
+    width: calc(100vw - 10px);
+    max-height: calc(100dvh - 10px);
+    padding: 12px;
+  }
+  .note-dialog-header { gap: 10px; }
+  .note-dialog-header p {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .note-gallery { gap: 12px 8px; }
+  .note-gallery-card,
+  .note-create-card { padding: 6px; }
+  .note-toolbar {
+    gap: 8px;
+    padding: 8px;
+  }
+  .note-tool-group,
+  .note-history-actions {
+    display: grid;
+    width: 100%;
+  }
+  .note-tool-group { grid-template-columns: 1fr 1fr; }
+  .note-history-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .note-toolbar button {
+    min-width: 0;
+    padding-inline: 6px;
+  }
+  .note-width-control {
+    width: 100%;
+  }
+  .note-width-control input {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+  .note-save-status { margin-left: auto; }
+}
