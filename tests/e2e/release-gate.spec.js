@@ -139,11 +139,14 @@ test("@published Version 0.6 Release Gateを公開ユーザー経路で完走す
   const firstPosition = JSON.parse(linkedRaw).tasksByDate;
   const firstTask = Object.values(firstPosition)[0][0];
   const cardHandle = page.locator(".canvas-task-card", { hasText: "微積分 4問" }).locator(".canvas-task-drag-handle");
+  await cardHandle.scrollIntoViewIfNeeded();
   const cardHandleBox = await cardHandle.boundingBox();
-  const canvasBox = await page.locator("#dailyCanvasStage").boundingBox();
-  const targetX = firstTask.x > canvasBox.width / 2 ? canvasBox.x + 24 : canvasBox.x + canvasBox.width - 24;
-  const targetY = firstTask.y > canvasBox.height / 2 ? canvasBox.y + 32 : canvasBox.y + canvasBox.height - 32;
-  await page.mouse.move(cardHandleBox.x + 10, cardHandleBox.y + 20);
+  const viewport = page.viewportSize();
+  const originX = cardHandleBox.x + cardHandleBox.width / 2;
+  const originY = cardHandleBox.y + cardHandleBox.height / 2;
+  const targetX = originX > viewport.width / 2 ? Math.max(8, originX - 90) : Math.min(viewport.width - 8, originX + 90);
+  const targetY = originY > viewport.height / 2 ? Math.max(8, originY - 60) : Math.min(viewport.height - 8, originY + 60);
+  await page.mouse.move(originX, originY);
   await page.mouse.down();
   await page.mouse.move(targetX, targetY, { steps: 10 });
   await page.mouse.up();
