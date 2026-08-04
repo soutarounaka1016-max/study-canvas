@@ -43,7 +43,7 @@ test("@published 最新版が起動しAI・時間UIがない", async ({ page }) 
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
-test("今日のスケジュールを作成し、手書き・カード・完了状態を保存する", async ({ page }) => {
+test("@published 今日のスケジュールを作成し、手書き・カード・完了状態を保存する", async ({ page }) => {
   const errors = watchCriticalErrors(page);
   await gotoHome(page);
   await page.evaluate(() => {
