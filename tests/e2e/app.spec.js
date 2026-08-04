@@ -64,7 +64,8 @@ test("@published 今日のスケジュールを作成し、手書き・カード
   await expect(page.locator(".schedule-time-slot")).toHaveCount(8);
   await expect(page.locator("#scheduleCanvasWrap")).toBeVisible();
   await page.locator('[data-place-task="schedule-e2e-task"]').click();
-  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"]')).toBeVisible();
+  await page.locator('[data-place-task="schedule-e2e-task"]').click();
+  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"]')).toHaveCount(2);
 
   const canvas = page.locator("#scheduleCanvas");
   await canvas.scrollIntoViewIfNeeded();
@@ -75,13 +76,19 @@ test("@published 今日のスケジュールを作成し、手書き・カード
   await page.mouse.up();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("study-canvas:schedule:v1")).days[Object.keys(JSON.parse(localStorage.getItem("study-canvas:schedule:v1")).days)[0]].drawing.strokes.length)).toBe(1);
 
-  await page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input').check();
+  await page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input').first().check();
+  const scheduleChecks = page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input');
+  await expect(scheduleChecks).toHaveCount(2);
+  await expect(scheduleChecks.nth(0)).toBeChecked();
+  await expect(scheduleChecks.nth(1)).toBeChecked();
   await page.locator('[data-daily-view="plan"]').click();
   await expect(page.locator('.canvas-task-card[data-task-id="schedule-e2e-task"] input')).toBeChecked();
   await page.reload();
   await expect(page.locator("#dailyViewTabs")).toBeVisible();
   await page.locator('[data-daily-view="schedule"]').click();
-  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input')).toBeChecked();
+  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"]')).toHaveCount(2);
+  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input').nth(0)).toBeChecked();
+  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input').nth(1)).toBeChecked();
   expect(errors).toEqual([]);
 });
 
@@ -153,6 +160,17 @@ test("日次上部は時間集計や追加ボタンではなく週間カード�
   await expect(page.locator("body")).not.toContainText("今日の集計");
   await expect(page.locator("body")).not.toContainText("今週の集計");
   expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("ペン設定は書くボタンから開き、常時キャンバスを圧迫しない", async ({ page }) => {
+  await gotoHome(page);
+  await page.locator('[data-home-route="daily"]').click();
+  await expect(page.locator("#penOptions")).toBeHidden();
+  await page.locator("#penToolButton").click();
+  await expect(page.locator("#penOptions")).toBeVisible();
+  await expect(page.locator("#penOptions .color-button")).toHaveCount(3);
+  await page.locator('[data-tool="eraser"]').click();
+  await expect(page.locator("#penOptions")).toBeHidden();
 });
 
 test("主要部分が画面幅から大きくはみ出さない", async ({ page }) => {

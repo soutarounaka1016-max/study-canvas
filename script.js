@@ -36,6 +36,8 @@ const emptyHint = document.querySelector("#emptyHint");
 const undoButton = document.querySelector("#undoButton");
 const redoButton = document.querySelector("#redoButton");
 const penWidth = document.querySelector("#penWidth");
+const penToolButton = document.querySelector("#penToolButton");
+const penOptions = document.querySelector("#penOptions");
 const colorOptions = document.querySelector(".color-options");
 const widthControl = document.querySelector(".width-control");
 const selectionHint = document.querySelector("#selectionHint");
@@ -100,7 +102,12 @@ const viewport = new CanvasViewport(page, dailyCanvasStage, {
 new ResizeObserver(resizeCanvas).observe(page);
 
 document.querySelectorAll("[data-tool]").forEach((button) => {
-  button.addEventListener("click", () => selectTool(button.dataset.tool));
+  button.addEventListener("click", () => {
+    const tool = button.dataset.tool;
+    const shouldOpenPenOptions = tool === "pen" && (selectedTool !== "pen" || penOptions.hidden);
+    selectTool(tool);
+    setPenOptionsOpen(shouldOpenPenOptions);
+  });
 });
 
 document.querySelectorAll("[data-color]").forEach((button) => {
@@ -151,6 +158,12 @@ canvas.addEventListener("lostpointercapture", finishPointer);
 document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
 document.addEventListener("selectstart", (event) => event.preventDefault());
 document.addEventListener("contextmenu", (event) => event.preventDefault());
+document.addEventListener("pointerdown", (event) => {
+  if (!penOptions.hidden && !event.target.closest(".pen-tool-menu")) setPenOptionsOpen(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") setPenOptionsOpen(false);
+});
 window.addEventListener("pagehide", saveImmediately);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") saveImmediately();
@@ -161,8 +174,7 @@ function selectTool(tool) {
   selectedTool = tool;
   page.classList.toggle("is-viewing", tool === "view");
   const selecting = tool === "select";
-  colorOptions.hidden = selecting;
-  widthControl.hidden = selecting;
+  if (tool !== "pen") setPenOptionsOpen(false);
   selectionHint.hidden = !selecting;
   updateSelectionHint();
   document.querySelectorAll("[data-tool]").forEach((button) => {
@@ -170,6 +182,11 @@ function selectTool(tool) {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   });
+}
+
+function setPenOptionsOpen(open) {
+  penOptions.hidden = !open;
+  penToolButton.setAttribute("aria-expanded", String(open));
 }
 
 function switchDate(nextDate) {

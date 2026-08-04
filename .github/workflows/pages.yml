@@ -166,8 +166,11 @@ jobs:
           grep -F 'weekly-text-ui.js?v=20260729-2' <<<"${html}"
           grep -F 'task-ui.js?v=20260804-1' <<<"${html}"
           grep -F 'task-card-colors.css?v=20260804-1' <<<"${html}"
-          grep -F 'schedule-ui.js?v=20260804-1' <<<"${html}"
-          grep -F 'schedule.css?v=20260804-1' <<<"${html}"
+          grep -F 'styles.css?v=20260804-2' <<<"${html}"
+          grep -F 'script.js?v=20260804-2' <<<"${html}"
+          grep -F 'id="penOptions"' <<<"${html}"
+          grep -F 'schedule-ui.js?v=20260804-2' <<<"${html}"
+          grep -F 'schedule.css?v=20260804-2' <<<"${html}"
           if grep -E 'weekly-recognition|AIで読み取る|予定時間|学習時間の集計' <<<"${html}"; then
             echo "The official HTML still contains removed OCR or time UI."
             exit 1
@@ -190,10 +193,12 @@ jobs:
           grep -F 'data-subject="化学"' <<<"${task_colors}"
           grep -F 'data-subject="物理"' <<<"${task_colors}"
           grep -F 'calendar-task-mini-card' <<<"${task_colors}"
-          schedule_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}schedule-ui.js?v=20260804-1")"
+          schedule_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}schedule-ui.js?v=20260804-2")"
           grep -F 'study-canvas:schedule-placement-request' <<<"${schedule_ui}"
-          schedule_store="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}src/schedule-store.js?v=20260804-1")"
+          grep -F 'addSchedulePlacement' <<<"${schedule_ui}"
+          schedule_store="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}src/schedule-store.js?v=20260804-2")"
           grep -F 'study-canvas:schedule:v1' <<<"${schedule_store}"
+          grep -F 'placementCopies' <<<"${schedule_store}"
 
           archive_html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}ocr-experiment/?archive=${GITHUB_SHA}")"
           grep -F 'meta name="study-canvas-release" content="20260728-ocr-grounding-1"' <<<"${archive_html}"

@@ -1,9 +1,10 @@
 import { CanvasViewport } from "./src/canvas-viewport.js?v=20260804-1";
 import { TASK_STORAGE_KEY, getTasksForDate, loadTaskStore, replaceStoredTaskStore, toggleTask } from "./src/task-store.js?v=20260729-1";
 import {
-  SCHEDULE_STORAGE_KEY, getScheduleDay, loadScheduleStore, removeSchedulePlacement,
-  replaceStoredScheduleStore, setScheduleDrawing, setSchedulePlacement,
-} from "./src/schedule-store.js?v=20260804-1";
+  SCHEDULE_STORAGE_KEY, addSchedulePlacement, getScheduleDay, getSchedulePlacementInstances,
+  loadScheduleStore, removeSchedulePlacementInstance, replaceStoredScheduleStore,
+  setScheduleDrawing, updateSchedulePlacement,
+} from "./src/schedule-store.js?v=20260804-2";
 
 const pageDate = document.querySelector("#pageDate");
 const planWorkspace = document.querySelector(".workspace");
@@ -139,39 +140,47 @@ function persistDrawing() {
 
 function renderTasks() {
   const tasks = getTasksForDate(loadTaskStore(localStorage.getItem(TASK_STORAGE_KEY)).store, activeDate);
-  const day = getScheduleDay(scheduleStore, activeDate);
+  const placements = getSchedulePlacementInstances(scheduleStore, activeDate);
   const taskIds = new Set(tasks.map((task) => task.id));
   let changed = false;
-  for (const id of Object.keys(day.placements)) if (!taskIds.has(id)) { scheduleStore = removeSchedulePlacement(scheduleStore, activeDate, id); changed = true; }
+  for (const placement of placements) {
+    if (!taskIds.has(placement.taskId)) {
+      scheduleStore = removeSchedulePlacementInstance(scheduleStore, activeDate, placement.placementId, placement.taskId);
+      changed = true;
+    }
+  }
   if (changed) replaceStoredScheduleStore(localStorage, scheduleStore);
   taskBoard.replaceChildren(); unplacedList.replaceChildren();
-  for (const task of tasks) {
-    const position = day.placements[task.id];
-    if (position) taskBoard.append(createScheduleCard(task, position));
-    else unplacedList.append(createUnplacedCard(task));
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  for (const placement of getSchedulePlacementInstances(scheduleStore, activeDate)) {
+    const task = taskById.get(placement.taskId);
+    if (task) taskBoard.append(createScheduleCard(task, placement));
   }
-  document.querySelector("#scheduleUnplacedEmpty").hidden = tasks.some((task) => !day.placements[task.id]);
+  for (const task of tasks) {
+    unplacedList.append(createUnplacedCard(task));
+  }
+  document.querySelector("#scheduleUnplacedEmpty").hidden = tasks.length > 0;
 }
 
-function createScheduleCard(task, position) {
+function createScheduleCard(task, placement) {
   const card = document.createElement("article");
-  card.className = "schedule-task-card"; card.dataset.taskId = task.id; card.dataset.subject = task.subject;
-  card.classList.toggle("is-completed", task.completed); card.style.left = `${position.x * 100}%`; card.style.top = `${position.y * 100}%`;
+  card.className = "schedule-task-card"; card.dataset.taskId = task.id; card.dataset.placementId = placement.placementId; card.dataset.subject = task.subject;
+  card.classList.toggle("is-completed", task.completed); card.style.left = `${placement.x * 100}%`; card.style.top = `${placement.y * 100}%`;
   card.innerHTML = `<button class="schedule-card-handle" type="button" aria-label="${escapeHtml(task.title)}を移動">⠿</button><label><input type="checkbox" ${task.completed ? "checked" : ""} aria-label="完了"/><span>${escapeHtml(task.title)}</span></label><button class="schedule-card-remove" type="button" aria-label="予定表から外す">×</button>`;
   card.querySelector("input").addEventListener("change", () => toggleCompletion(task.id));
-  card.querySelector(".schedule-card-remove").addEventListener("click", () => removePlacement(task.id));
+  card.querySelector(".schedule-card-remove").addEventListener("click", () => removePlacement(placement.placementId, task.id));
   return card;
 }
 
 function createUnplacedCard(task) {
   const card = document.createElement("article"); card.className = "schedule-unplaced-card"; card.dataset.subject = task.subject;
-  card.innerHTML = `<span>${escapeHtml(task.subject)}</span><strong>${escapeHtml(task.title)}</strong><button type="button" data-place-task="${escapeHtml(task.id)}">予定へ置く</button>`;
+  card.innerHTML = `<span>${escapeHtml(task.subject)}</span><strong>${escapeHtml(task.title)}</strong><button type="button" data-place-task="${escapeHtml(task.id)}">もう1枚置く</button>`;
   return card;
 }
 
 function placeUnscheduledTask(event) {
   const button = event.target.closest("[data-place-task]"); if (!button) return;
-  const count = Object.keys(getScheduleDay(scheduleStore, activeDate).placements).length;
+  const count = getSchedulePlacementInstances(scheduleStore, activeDate).length;
   savePlacement(button.dataset.placeTask, { x: 0.16 + (count % 2) * 0.4, y: 0.02 + (count % 8) * 0.12 });
 }
 
@@ -180,20 +189,25 @@ function placeRequestedTask(event) {
   savePlacement(taskId, { x, y });
 }
 
-function savePlacement(taskId, position) {
-  try { scheduleStore = setSchedulePlacement(scheduleStore, activeDate, taskId, position); replaceStoredScheduleStore(localStorage, scheduleStore); renderTasks(); setStatus("カード位置を保存しました"); }
+function savePlacement(taskId, position, placementId = null) {
+  try {
+    scheduleStore = placementId
+      ? updateSchedulePlacement(scheduleStore, activeDate, placementId, taskId, position)
+      : addSchedulePlacement(scheduleStore, activeDate, taskId, position, createPlacementId());
+    replaceStoredScheduleStore(localStorage, scheduleStore); renderTasks(); setStatus("カード位置を保存しました");
+  }
   catch { setStatus("カード位置を保存できませんでした", true); }
 }
 
-function removePlacement(taskId) {
-  scheduleStore = removeSchedulePlacement(scheduleStore, activeDate, taskId); replaceStoredScheduleStore(localStorage, scheduleStore); renderTasks();
+function removePlacement(placementId, taskId) {
+  scheduleStore = removeSchedulePlacementInstance(scheduleStore, activeDate, placementId, taskId); replaceStoredScheduleStore(localStorage, scheduleStore); renderTasks();
 }
 
 function startCardDrag(event) {
   const handle = event.target.closest(".schedule-card-handle"); if (!handle) return;
   const card = handle.closest(".schedule-task-card"); event.preventDefault(); event.stopPropagation();
   const rect = stage.getBoundingClientRect();
-  cardDrag = { pointerId: event.pointerId, taskId: card.dataset.taskId, card, rect, offsetX: event.clientX - card.getBoundingClientRect().left, offsetY: event.clientY - card.getBoundingClientRect().top };
+  cardDrag = { pointerId: event.pointerId, taskId: card.dataset.taskId, placementId: card.dataset.placementId, card, rect, offsetX: event.clientX - card.getBoundingClientRect().left, offsetY: event.clientY - card.getBoundingClientRect().top };
   card.classList.add("is-dragging");
 }
 
@@ -208,7 +222,7 @@ function moveCard(event) {
 function finishCard(event) {
   if (!cardDrag || event.pointerId !== cardDrag.pointerId) return;
   const state = cardDrag; cardDrag = null; state.card.classList.remove("is-dragging");
-  if (state.position) savePlacement(state.taskId, state.position);
+  if (state.position) savePlacement(state.taskId, state.position, state.placementId);
 }
 
 function toggleCompletion(taskId) {
@@ -237,6 +251,7 @@ function renderDrawing() {
 }
 function getPoint(event) { const rect = canvas.getBoundingClientRect(); return { x: clamp((event.clientX - rect.left) / rect.width, 0, 1), y: clamp((event.clientY - rect.top) / rect.height, 0, 1) }; }
 function setStatus(message, error = false) { status.textContent = message; status.classList.toggle("is-error", error); }
+function createPlacementId() { return globalThis.crypto?.randomUUID?.() || `schedule-copy-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[c]); }
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 
