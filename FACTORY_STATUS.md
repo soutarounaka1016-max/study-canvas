@@ -9,12 +9,12 @@
 
 ## 現在の状態
 
-- 完成段階: 実装・ローカル検証完了、Release Gate待ち
-- 進行状態: 開発中
+- 完成段階: 完成
+- 進行状態: 公開完了
 - 開発開始時main Commit: `9c475036070408213952ee6092d44feddc14ae05`
-- 最新機能main Commit: `9c475036070408213952ee6092d44feddc14ae05`
-- 最新機能公開Commit: `9c475036070408213952ee6092d44feddc14ae05`
-- 作業ブランチ: `agent/compact-toolbar-repeat-tasks`
+- 最新機能main Commit: `cbd2d17503faed82dd5ac4334a8e46a99362d780`
+- 最新機能公開Commit: `cbd2d17503faed82dd5ac4334a8e46a99362d780`
+- 作業ブランチ: `agent/compact-toolbar-repeat-tasks`（PR #81、main反映済み）
 
 ## 今回の変更
 
@@ -28,21 +28,21 @@
 - 単体テスト: 合格（109件）
 - ビルド: 合格
 - ローカルブラウザ: 実行不能（Playwrightブラウザ実行ファイルなし。PR用CIで代替予定）
-- PR用CI: 未実行
-- main反映後CI: 未実行
-- デプロイ: 未実行
-- 公開環境E2E: 未実行
-- Release Gate: 未通過
+- PR用CI: 合格（Actions run `30879020916`）
+- main反映後CI: 合格
+- デプロイ: 成功（Actions run `30879215415`）
+- 公開環境E2E: 合格（Chromium・スマホ縦向き、同一タスク2枚・完了同期・再読み込み）
+- Release Gate: 通過
 
 ## 外部操作待ち
 
-- PR用Release Gate、main反映、Pages公開、公開環境E2E
+- 学校支給iPad実機での操作感確認のみ
 
 ## 既知の問題
 
 - アプリの既知の重大な問題はなし
 - 学校支給iPad実機でのペン設定パネルと複数カード操作は未確認
-- ローカルブラウザ検査はPlaywrightブラウザ実行ファイルがないため開始不能。PR用CIで確認する
+- ローカルブラウザ検査はPlaywrightブラウザ実行ファイル不足で開始不能だったが、CIの5環境と公開E2Eで合格
 
 ## AI工場OS改善提案
 
