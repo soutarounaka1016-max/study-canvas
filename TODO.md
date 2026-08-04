@@ -21,10 +21,10 @@
 - [x] 正式版のAI・OCR読み込み撤去
 - [x] 旧保存キーと統合バックアップ互換の維持
 - [x] 単体テストとビルド
-- [ ] Chromium、WebKit、iPad縦横のCI
-- [ ] PRをmainへ反映
-- [ ] 正式URLのRelease Gate
-- [ ] OCR観賞版URLの公開確認
+- [x] Chromium、WebKit、iPad縦横、スマホ縦向きのCI
+- [x] PRをmainへ反映
+- [x] 正式URLのRelease Gate
+- [x] OCR観賞版URLの公開確認
 
 ## 公開後の実機確認
 
