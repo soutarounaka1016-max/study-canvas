@@ -66,15 +66,16 @@ for (const [file, content] of Object.entries(contents)) {
 
 const html = contents["index.html"] || "";
 for (const requirement of [
-  "styles.css?v=20260730-mobile-1",
+  "styles.css?v=20260804-2",
   "note.css?v=20260730-mobile-1",
   "enhancements.css?v=20260804-1",
   "weekly-text.css?v=20260730-mobile-1",
   "task-card-colors.css?v=20260804-1",
+  "script.js?v=20260804-2",
   "weekly-text-ui.js?v=20260729-2",
   "task-ui.js?v=20260804-1",
-  "schedule.css?v=20260804-1",
-  "schedule-ui.js?v=20260804-1",
+  "schedule.css?v=20260804-2",
+  "schedule-ui.js?v=20260804-2",
   "release-entry.js?v=20260804-1",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
@@ -213,11 +214,13 @@ for (const requirement of [
   'sed -i "s/__BUILD_COMMIT__/${GITHUB_SHA}/g" _site/factory-manifest.json',
   "task-ui.js?v=20260804-1",
   "task-card-colors.css?v=20260804-1",
-  "schedule-ui.js?v=20260804-1",
-  "schedule.css?v=20260804-1",
+  "schedule-ui.js?v=20260804-2",
+  "schedule.css?v=20260804-2",
   "full-backup-entry.js?v=20260804-1",
   "study-canvas:schedule-placement-request",
   "study-canvas:schedule:v1",
+  "placementCopies",
+  "penOptions",
 ]) {
   requireText(workflow, requirement, `Pages公開に${requirement}がありません`);
 }
