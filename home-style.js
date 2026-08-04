@@ -23,7 +23,9 @@ body.is-home-route .app-header,
 body.is-home-route .pen-options,
 body.is-home-route .orientation-note,
 body.is-home-route .daily-weekly-shelf,
-body.is-home-route .workspace{display:none!important}
+body.is-home-route .workspace,
+body.is-home-route .daily-view-tabs,
+body.is-home-route .schedule-workspace{display:none!important}
 body:not(.is-home-route) .home-screen{display:none}
 @media(max-width:820px){.home-menu-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.home-screen{padding-top:max(14px,env(safe-area-inset-top));padding-left:10px;padding-right:10px}.home-shell{gap:14px}.home-heading{align-items:start;flex-direction:column;gap:4px}.home-heading h1{font-size:1.7rem}.home-date{white-space:normal}.home-today-heading{align-items:start;flex-direction:column}.home-primary-button{width:100%;justify-self:stretch}.home-menu-grid{grid-template-columns:1fr}.home-menu-card{min-height:76px;padding:11px 12px}.home-today-card{padding:14px}}

@@ -1,4 +1,4 @@
-export const MIN_VIEW_SCALE = 1;
+export const MIN_VIEW_SCALE = 0.25;
 export const MAX_VIEW_SCALE = 4;
 
 export class CanvasViewport {
@@ -105,10 +105,14 @@ export class CanvasViewport {
   clampPosition() {
     const width = this.stage.offsetWidth || this.container.clientWidth;
     const height = this.stage.offsetHeight || this.container.clientHeight;
-    const minimumX = Math.min(0, this.container.clientWidth - width * this.scale);
-    const minimumY = Math.min(0, this.container.clientHeight - height * this.scale);
-    this.x = clamp(this.x, minimumX, 0);
-    this.y = clamp(this.y, minimumY, 0);
+    const scaledWidth = width * this.scale;
+    const scaledHeight = height * this.scale;
+    this.x = scaledWidth <= this.container.clientWidth
+      ? (this.container.clientWidth - scaledWidth) / 2
+      : clamp(this.x, this.container.clientWidth - scaledWidth, 0);
+    this.y = scaledHeight <= this.container.clientHeight
+      ? (this.container.clientHeight - scaledHeight) / 2
+      : clamp(this.y, this.container.clientHeight - scaledHeight, 0);
   }
 
   apply() {

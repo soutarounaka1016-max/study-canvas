@@ -43,6 +43,48 @@ test("@published 最新版が起動しAI・時間UIがない", async ({ page }) 
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
+test("今日のスケジュールを作成し、手書き・カード・完了状態を保存する", async ({ page }) => {
+  const errors = watchCriticalErrors(page);
+  await gotoHome(page);
+  await page.evaluate(() => {
+    localStorage.setItem("study-canvas:tasks:v1", JSON.stringify({
+      version: 1,
+      tasksByDate: {
+        [new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date())]: [{
+          id: "schedule-e2e-task", subject: "数学", title: "微積を2題", plannedMinutes: 30,
+          completed: false, x: 0.05, y: 0.05,
+        }],
+      },
+    }));
+    localStorage.removeItem("study-canvas:schedule:v1");
+  });
+  await page.reload();
+  await page.locator('[data-home-route="daily"]').click();
+  await page.locator('[data-daily-view="schedule"]').click();
+  await expect(page.locator(".schedule-time-slot")).toHaveCount(8);
+  await expect(page.locator("#scheduleCanvasWrap")).toBeVisible();
+  await page.locator('[data-place-task="schedule-e2e-task"]').click();
+  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"]')).toBeVisible();
+
+  const canvas = page.locator("#scheduleCanvas");
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + 180, box.y + 180);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 240, box.y + 230, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("study-canvas:schedule:v1")).days[Object.keys(JSON.parse(localStorage.getItem("study-canvas:schedule:v1")).days)[0]].drawing.strokes.length)).toBe(1);
+
+  await page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input').check();
+  await page.locator('[data-daily-view="plan"]').click();
+  await expect(page.locator('.canvas-task-card[data-task-id="schedule-e2e-task"] input')).toBeChecked();
+  await page.reload();
+  await page.locator('[data-home-route="daily"]').click();
+  await page.locator('[data-daily-view="schedule"]').click();
+  await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input')).toBeChecked();
+  expect(errors).toEqual([]);
+});
+
 test("主要画面へ移動し自由ノートを開ける", async ({ page }) => {
   const errors = watchCriticalErrors(page);
   await gotoHome(page);

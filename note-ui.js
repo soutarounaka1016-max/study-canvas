@@ -1,7 +1,7 @@
 import { replaceStoredNoteStore } from "./src/note-store.js?v=20260720-6";
 
 const NOTE_ROUTE = "#notes";
-const noteReady = import("./note-selection-ui.js?v=20260721-2").catch((error) => {
+const noteReady = import("./note-selection-ui.js?v=20260804-1").catch((error) => {
   document.documentElement.dataset.noteLoadError = "true";
   console.error("自由ノートの初期化に失敗しました", error);
   return null;

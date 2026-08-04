@@ -6,7 +6,7 @@ import {
   readCurrentFullState,
   serializeFullBackup,
   summarizeFullState,
-} from "./src/full-backup.js?v=20260727-1";
+} from "./src/full-backup.js?v=20260804-1";
 
 const backupButton = document.querySelector("#backupButton");
 const restoreButton = document.querySelector("#restoreButton");
@@ -84,6 +84,7 @@ function renderRestorePreview() {
     `週間目標 ${summary.weeklyPageCount}週・${summary.weeklyStrokeCount}本`,
     `週間カード ${summary.weeklyCardCount || 0}件`,
     `自由ノート ${summary.notePageCount}ページ・${summary.noteStrokeCount}本`,
+    `今日のスケジュール ${summary.scheduleDayCount}日・${summary.scheduleStrokeCount}本`,
   ].join(" / ");
 
   const available = new Set(pendingBackup.availableSections);
@@ -141,6 +142,7 @@ function createRestoreDialog() {
       <label><input type="checkbox" name="fullRestoreSection" value="weekly" />週間目標</label>
       <label><input type="checkbox" name="fullRestoreSection" value="weeklyCards" />週間カード</label>
       <label><input type="checkbox" name="fullRestoreSection" value="notes" />自由ノート</label>
+      <label><input type="checkbox" name="fullRestoreSection" value="schedule" />今日のスケジュール</label>
     </fieldset>
     <p id="legacyBackupNote" class="full-restore-note" hidden>旧形式のバックアップなので、含まれている項目だけ復元できます。</p>
     <p class="full-restore-warning"><strong>復元前の現在データは、統合バックアップとして自動保存します。</strong></p>

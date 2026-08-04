@@ -16,12 +16,12 @@ homeScreen.className = "home-screen";
 homeScreen.innerHTML = `
   <div class="home-shell">
     <header class="home-heading">
-      <div><h1>Study Canvas</h1><p>週間カードを選び、今日の目標キャンバスへ置いて使います。</p></div>
+      <div><h1>Study Canvas</h1><p>今日の目標を決め、3時間区切りのスケジュールへ配置できます。</p></div>
       <time id="homeDate" class="home-date">${formatLongDate(today)}</time>
     </header>
     <section class="home-today-card" aria-labelledby="homeTodayHeading">
       <div class="home-today-heading">
-        <div><h2 id="homeTodayHeading">今日の目標を決める</h2><p>週間カードをドラッグして、手書きキャンバスの好きな位置へ配置できます。</p></div>
+        <div><h2 id="homeTodayHeading">今日の目標と時間を決める</h2><p>週間カードを目標キャンバスへ置き、スケジュールで取り組む時間帯を決められます。</p></div>
       </div>
       <button class="home-primary-button" type="button" data-home-route="daily">今日のキャンバスを開く</button>
     </section>

@@ -24,7 +24,7 @@ import {
   getBackupSummary,
   serializeBackup,
 } from "./src/backup.js?v=20260719-6";
-import { CanvasViewport } from "./src/canvas-viewport.js?v=20260720-5";
+import { CanvasViewport } from "./src/canvas-viewport.js?v=20260804-1";
 
 const LEGACY_STORAGE_KEY = "study-canvas:drawing:v1";
 const PAGE_STORE_KEY = "study-canvas:pages:v2";

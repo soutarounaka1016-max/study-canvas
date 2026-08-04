@@ -1,0 +1,44 @@
+.daily-view-tabs { display: flex; justify-content: center; gap: 8px; padding: 10px 16px; background: #eef0f3; }
+.daily-view-tabs button { min-height: 44px; padding: 8px 18px; border: 1px solid #cfd5df; border-radius: 999px; background: white; color: #475467; font-weight: 700; }
+.daily-view-tabs button.is-selected { border-color: #2558e6; background: #2558e6; color: white; }
+.schedule-workspace { padding: 10px max(16px, env(safe-area-inset-right)) 34px max(16px, env(safe-area-inset-left)); background: #eef0f3; }
+.schedule-task-palette { width: min(900px, 100%); margin: 0 auto 12px; padding: 12px; border: 1px solid #d8dde6; border-radius: 12px; background: white; }
+.schedule-task-palette h2 { margin: 0 0 4px; font-size: 16px; }
+.schedule-task-palette > p { margin: 0 0 10px; color: #667085; font-size: 13px; }
+.schedule-unplaced-tasks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.schedule-unplaced-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 8px; border: 1px solid #d8dde6; border-radius: 9px; }
+.schedule-unplaced-card strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.schedule-unplaced-card button { min-height: 44px; border: 0; border-radius: 8px; background: #e8efff; color: #1849a9; font-weight: 700; }
+.schedule-controls { display: flex; align-items: center; gap: 8px; width: min(900px, 100%); margin: 0 auto 8px; }
+.schedule-controls button { min-height: 44px; padding: 8px 14px; border: 1px solid #cfd5df; border-radius: 9px; background: white; }
+.schedule-controls p { margin: 0 0 0 auto; color: #067647; font-size: 13px; }
+.schedule-controls p.is-error { color: #b42318; }
+.schedule-canvas-wrap { position: relative; width: min(900px, 100%); height: min(1120px, calc(100vh - 210px)); min-height: 620px; margin: auto; overflow: hidden; background: #d9dde3; border: 1px solid #c7ccd4; box-shadow: 0 8px 24px rgb(16 24 40 / 12%); touch-action: none; }
+.schedule-canvas-stage { position: absolute; inset: 0; width: 100%; height: 1600px; background: white; transform-origin: 0 0; will-change: transform; }
+.schedule-time-grid { position: absolute; inset: 0; display: grid; grid-template-rows: repeat(8, 1fr); pointer-events: none; }
+.schedule-time-slot { display: grid; grid-template-columns: 92px 1fr; border-bottom: 2px solid #cfd5df; }
+.schedule-time-slot time { padding: 12px 8px; border-right: 2px solid #cfd5df; color: #344054; font-weight: 800; text-align: center; }
+#scheduleCanvas { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; touch-action: none; }
+.schedule-task-board { position: absolute; inset: 0 0 0 92px; z-index: 2; pointer-events: none; }
+.schedule-task-card { position: absolute; display: grid; grid-template-columns: 34px 1fr 32px; align-items: stretch; width: 24%; min-width: 190px; min-height: 74px; border: 2px solid #cfd5df; border-radius: 10px; background: #fff; box-shadow: 0 4px 12px rgb(16 24 40 / 18%); pointer-events: auto; }
+.schedule-task-card.is-completed { opacity: .62; }
+.schedule-task-card.is-completed span { text-decoration: line-through; }
+.schedule-card-handle, .schedule-card-remove { border: 0; background: transparent; font-size: 20px; touch-action: none; }
+.schedule-task-card label { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 8px 2px; }
+.schedule-task-card label input { width: 22px; height: 22px; flex: 0 0 auto; }
+.schedule-task-card label span { overflow: hidden; font-size: 18px; font-weight: 800; line-height: 1.15; }
+.schedule-gesture-note { width: min(900px, 100%); margin: 9px auto 0; color: #667085; font-size: 13px; text-align: center; }
+@media (max-width: 600px) {
+  .daily-view-tabs { padding: 8px; }
+  .daily-view-tabs button { flex: 1; padding-inline: 8px; }
+  .schedule-workspace { padding: 8px 6px 24px; }
+  .schedule-task-palette { padding: 9px; }
+  .schedule-unplaced-tasks { grid-template-columns: 1fr; }
+  .schedule-controls { flex-wrap: wrap; }
+  .schedule-controls p { width: 100%; margin-left: 0; }
+  .schedule-canvas-wrap { width: 100%; min-height: 580px; height: calc(100vh - 220px); }
+  .schedule-canvas-stage { width: 720px; }
+  .schedule-time-slot { grid-template-columns: 76px 1fr; }
+  .schedule-task-board { left: 76px; }
+  .schedule-task-card { width: 230px; min-width: 230px; }
+}
