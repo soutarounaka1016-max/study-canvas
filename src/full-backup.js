@@ -4,15 +4,17 @@ import { listWeeklyDrawings, loadWeeklyStore, serializeWeeklyStore } from "./wee
 import { countWeeklyCards, loadWeeklyCardStore, serializeWeeklyCardStore } from "./weekly-card-store.js";
 import { loadNoteStore, serializeNoteStore } from "./note-store.js";
 import { parseBackupForRestore } from "./restore.js";
+import { loadScheduleStore, serializeScheduleStore } from "./schedule-store.js";
 
 export const FULL_BACKUP_FORMAT = "study-canvas-full-backup";
-export const FULL_BACKUP_VERSION = 2;
+export const FULL_BACKUP_VERSION = 3;
 export const FULL_BACKUP_KEYS = {
   pages: "study-canvas:pages:v2",
   tasks: "study-canvas:tasks:v1",
   weekly: "study-canvas:weekly:v1",
   weeklyCards: "study-canvas:weekly-cards:v1",
   notes: "study-canvas:free-note:v1",
+  schedule: "study-canvas:schedule:v1",
 };
 const MAX_FULL_BACKUP_BYTES = 24 * 1024 * 1024;
 const BASE_SECTIONS = ["pages", "tasks", "weekly", "notes"];
@@ -24,6 +26,7 @@ export function readCurrentFullState(storage, currentDate) {
     weekly: loadWeeklyStore(storage.getItem(FULL_BACKUP_KEYS.weekly), currentDate).store,
     weeklyCards: loadWeeklyCardStore(storage.getItem(FULL_BACKUP_KEYS.weeklyCards)).store,
     notes: loadNoteStore(storage.getItem(FULL_BACKUP_KEYS.notes)).store,
+    schedule: loadScheduleStore(storage.getItem(FULL_BACKUP_KEYS.schedule)).store,
   };
 }
 
@@ -69,7 +72,7 @@ export function parseFullBackup(rawBackup, currentDate) {
     };
   }
 
-  if (![1, FULL_BACKUP_VERSION].includes(value.version) || !value.data || typeof value.data !== "object" || Array.isArray(value.data)) {
+  if (![1, 2, FULL_BACKUP_VERSION].includes(value.version) || !value.data || typeof value.data !== "object" || Array.isArray(value.data)) {
     throw new TypeError("Study Canvasの対応統合バックアップではありません");
   }
   const exportedAt = new Date(value.exportedAt);
@@ -80,6 +83,7 @@ export function parseFullBackup(rawBackup, currentDate) {
   const data = canonicalizeState(value.data, currentDate);
   const availableSections = [...BASE_SECTIONS];
   if (Object.hasOwn(value.data, "weeklyCards")) availableSections.splice(3, 0, "weeklyCards");
+  if (value.version >= 3 && Object.hasOwn(value.data, "schedule")) availableSections.push("schedule");
   return {
     format: FULL_BACKUP_FORMAT,
     exportedAt: exportedAt.toISOString(),
@@ -140,6 +144,8 @@ export function summarizeFullState(state) {
     weeklyCardCount: countWeeklyCards(state?.weeklyCards),
     notePageCount: notes.length,
     noteStrokeCount: notes.reduce((sum, page) => sum + (page?.drawing?.strokes?.length || 0), 0),
+    scheduleDayCount: Object.keys(state?.schedule?.days || {}).length,
+    scheduleStrokeCount: Object.values(state?.schedule?.days || {}).reduce((sum, day) => sum + (day?.drawing?.strokes?.length || 0), 0),
   };
 }
 
@@ -164,6 +170,8 @@ function canonicalizeState(state, currentDate) {
 
   const noteLoaded = loadNoteStore(JSON.stringify(state?.notes));
   if (noteLoaded.recovered || noteLoaded.migrated) throw new TypeError("自由ノートデータが正しくありません");
+  const scheduleLoaded = loadScheduleStore(state?.schedule === undefined ? null : JSON.stringify(state.schedule));
+  if (scheduleLoaded.recovered) throw new TypeError("スケジュールデータが正しくありません");
 
   return {
     pages: JSON.parse(serializePageStore(pagesLoaded.store)),
@@ -171,6 +179,7 @@ function canonicalizeState(state, currentDate) {
     weekly: JSON.parse(serializeWeeklyStore(weeklyLoaded.store)),
     weeklyCards: JSON.parse(serializeWeeklyCardStore(weeklyCardsLoaded.store)),
     notes: JSON.parse(serializeNoteStore(noteLoaded.store)),
+    schedule: JSON.parse(serializeScheduleStore(scheduleLoaded.store)),
   };
 }
 
@@ -181,6 +190,7 @@ function canonicalRawBySection(data) {
   if (data.weekly) raw.weekly = serializeWeeklyStore(data.weekly);
   if (data.weeklyCards) raw.weeklyCards = serializeWeeklyCardStore(data.weeklyCards);
   if (data.notes) raw.notes = serializeNoteStore(data.notes);
+  if (data.schedule) raw.schedule = serializeScheduleStore(data.schedule);
   return raw;
 }
 

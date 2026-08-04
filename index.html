@@ -7,9 +7,10 @@
     <title>Study Canvas</title>
     <link rel="stylesheet" href="styles.css?v=20260730-mobile-1" />
     <link rel="stylesheet" href="note.css?v=20260730-mobile-1" />
-    <link rel="stylesheet" href="enhancements.css?v=20260730-mobile-1" />
+    <link rel="stylesheet" href="enhancements.css?v=20260804-1" />
     <link rel="stylesheet" href="weekly-text.css?v=20260730-mobile-1" />
-    <link rel="stylesheet" href="task-card-colors.css?v=20260729-2" />
+    <link rel="stylesheet" href="task-card-colors.css?v=20260804-1" />
+    <link rel="stylesheet" href="schedule.css?v=20260804-1" />
   </head>
   <body>
     <header class="app-header">
@@ -35,7 +36,9 @@
     </header>
     <section class="pen-options" aria-label="ペン設定"><div class="color-options" role="group" aria-label="ペンの色"><button class="color-button is-selected" type="button" data-color="#2558e6" aria-label="青" aria-pressed="true"></button><button class="color-button" type="button" data-color="#ef4444" aria-label="赤" aria-pressed="false"></button><button class="color-button" type="button" data-color="#111827" aria-label="黒" aria-pressed="false"></button></div><label class="width-control" for="penWidth"><span>太さ</span><input id="penWidth" type="range" min="2" max="14" step="1" value="5" /></label><p id="selectionHint" class="selection-hint" hidden>手書きを囲んで選択してください</p><div class="save-state" role="status" aria-live="polite"><span id="saveDot" aria-hidden="true"></span><span id="saveStatus">保存済み</span></div></section>
     <p class="orientation-note">iPadを横向きにすると、広いキャンバスで書けます。</p>
+    <nav id="dailyViewTabs" class="daily-view-tabs" aria-label="今日の表示" role="tablist"><button class="is-selected" type="button" role="tab" data-daily-view="plan" aria-selected="true">今日の目標</button><button type="button" role="tab" data-daily-view="schedule" aria-selected="false">今日のスケジュール</button></nav>
     <main class="workspace"><div class="page" id="page"><div id="dailyCanvasStage" class="canvas-stage"><canvas id="drawingCanvas" aria-label="今日の計画を書く白いキャンバス"></canvas><p id="emptyHint">Apple Pencilまたは一本指で書き、二本指で移動・拡大縮小できます</p><button id="selectionDeleteButton" class="selection-delete-button" type="button" hidden>削除</button></div></div></main>
+    <main id="scheduleWorkspace" class="schedule-workspace" hidden><section class="schedule-task-palette"><h2>まだ時間を決めていないタスク</h2><p>「予定へ置く」を押してから、カードの持ち手で時間帯へ移動できます。</p><p id="scheduleUnplacedEmpty">未配置のタスクはありません。</p><div id="scheduleUnplacedTasks" class="schedule-unplaced-tasks"></div></section><div class="schedule-controls"><button id="scheduleUndoButton" type="button">↶ 最後の線を戻す</button><button id="scheduleClearButton" type="button">手書きを白紙にする</button><p id="scheduleStatus" role="status" aria-live="polite">保存済み</p></div><div id="scheduleCanvasWrap" class="schedule-canvas-wrap"><div id="scheduleCanvasStage" class="schedule-canvas-stage"><div class="schedule-time-grid" aria-hidden="true"><div class="schedule-time-slot"><time>0:00–3:00</time></div><div class="schedule-time-slot"><time>3:00–6:00</time></div><div class="schedule-time-slot"><time>6:00–9:00</time></div><div class="schedule-time-slot"><time>9:00–12:00</time></div><div class="schedule-time-slot"><time>12:00–15:00</time></div><div class="schedule-time-slot"><time>15:00–18:00</time></div><div class="schedule-time-slot"><time>18:00–21:00</time></div><div class="schedule-time-slot"><time>21:00–24:00</time></div></div><canvas id="scheduleCanvas" aria-label="今日のスケジュールへ手書きするキャンバス"></canvas><section id="scheduleTaskBoard" class="schedule-task-board" aria-label="今日のスケジュールに置いたタスクカード"></section></div></div><p class="schedule-gesture-note">一本指またはApple Pencilで書き、二本指で移動・25%〜400%に拡大縮小できます。</p></main>
 
     <dialog id="taskDialog" class="task-dialog" aria-labelledby="taskDialogTitle">
       <div class="task-dialog-header"><div><h2 id="taskDialogTitle">この日のタスク</h2><time id="taskDialogDate"></time></div><button id="closeTaskDialogButton" class="dialog-close-button" type="button" aria-label="タスクを閉じる">×</button></div>
@@ -56,11 +59,12 @@
     <dialog id="restoreDialog"><form method="dialog"><h2>手書きバックアップから復元</h2><p>次の内容で全日付の手書きを置き換えます。まだ現在のデータは変更されていません。</p><dl><dt>ファイル</dt><dd id="restoreFileName"></dd><dt>保存日時</dt><dd id="restoreExportedAt"></dd><dt>手書きがある日</dt><dd id="restorePageCount"></dd><dt>手書き線</dt><dd id="restoreStrokeCount"></dd></dl><p><strong>復元前の現在データは、自動で別のJSONファイルに保存します。</strong></p><div class="dialog-actions"><button value="cancel">キャンセル</button><button id="confirmRestoreButton" class="danger-button" type="button">退避して復元する</button></div></form></dialog>
     <dialog id="clearDialog"><form method="dialog"><h2>ページを白紙に戻しますか？</h2><p>現在の手書きは削除されます。取り消し操作で元に戻せます。</p><div class="dialog-actions"><button value="cancel">キャンセル</button><button id="confirmClearButton" class="danger-button" value="confirm">白紙に戻す</button></div></form></dialog>
     <noscript>このアプリを使うにはJavaScriptを有効にしてください。</noscript>
-    <script type="module" src="script.js?v=20260729-1"></script>
+    <script type="module" src="script.js?v=20260804-1"></script>
     <script type="module" src="restore-ui.js?v=20260720-7"></script>
-    <script type="module" src="task-ui.js?v=20260729-4"></script>
+    <script type="module" src="task-ui.js?v=20260804-1"></script>
+    <script type="module" src="schedule-ui.js?v=20260804-1"></script>
     <script type="module" src="weekly-text-ui.js?v=20260729-2"></script>
-    <script type="module" src="note-ui.js?v=20260721-2"></script>
-    <script type="module" src="release-entry.js?v=20260730-mobile-1"></script>
+    <script type="module" src="note-ui.js?v=20260804-1"></script>
+    <script type="module" src="release-entry.js?v=20260804-1"></script>
   </body>
 </html>

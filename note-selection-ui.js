@@ -18,7 +18,7 @@ import {
   setActiveNotePage,
   setNoteDrawing,
 } from "./src/note-store.js?v=20260720-6";
-import { CanvasViewport } from "./src/canvas-viewport.js?v=20260720-5";
+import { CanvasViewport } from "./src/canvas-viewport.js?v=20260804-1";
 import { SelectionController } from "./src/selection-controller.js?v=20260720-9";
 
 const $ = (selector) => document.querySelector(selector);

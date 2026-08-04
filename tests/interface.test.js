@@ -141,12 +141,14 @@ test("自由ノートの複数ページ手書き機能を維持する", () => {
 test("公開資産に更新版を指定する", () => {
   assert.match(html, /styles\.css\?v=20260730-mobile-1/);
   assert.match(html, /note\.css\?v=20260730-mobile-1/);
-  assert.match(html, /enhancements\.css\?v=20260730-mobile-1/);
+  assert.match(html, /enhancements\.css\?v=20260804-1/);
   assert.match(html, /weekly-text\.css\?v=20260730-mobile-1/);
-  assert.match(html, /task-card-colors\.css\?v=20260729-2/);
-  assert.match(html, /task-ui\.js\?v=20260729-4/);
+  assert.match(html, /task-card-colors\.css\?v=20260804-1/);
+  assert.match(html, /task-ui\.js\?v=20260804-1/);
   assert.match(html, /weekly-text-ui\.js\?v=20260729-2/);
-  assert.match(html, /release-entry\.js\?v=20260730-mobile-1/);
+  assert.match(html, /schedule\.css\?v=20260804-1/);
+  assert.match(html, /schedule-ui\.js\?v=20260804-1/);
+  assert.match(html, /release-entry\.js\?v=20260804-1/);
 });
 
 test("ページ一覧は白紙を含むすべての日付を選べる", () => {

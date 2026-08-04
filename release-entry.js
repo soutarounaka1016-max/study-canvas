@@ -15,7 +15,7 @@ const releaseMetadata = fetch(new URL("./factory-manifest.json", import.meta.url
 
 await Promise.all([
   import("./daily-enhancements.js?v=20260729-3"),
-  import("./full-backup-entry.js?v=20260729-1"),
-  import("./home-entry.js?v=20260730-mobile-1"),
+  import("./full-backup-entry.js?v=20260804-1"),
+  import("./home-entry.js?v=20260804-1"),
   releaseMetadata,
 ]);

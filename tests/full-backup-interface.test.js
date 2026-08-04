@@ -15,7 +15,7 @@ test("integrated backup replaces the old menu action", () => {
 });
 
 test("restore supports all data sections and legacy pages", () => {
-  for (const section of ["pages", "tasks", "weekly", "notes"]) {
+  for (const section of ["pages", "tasks", "weekly", "notes", "schedule"]) {
     assert.match(ui, new RegExp(`value="${section}"`));
   }
   assert.match(model, /legacy-pages-only/);

@@ -127,6 +127,10 @@ window.addEventListener("pointermove", handlePointerMove, { passive: false });
 window.addEventListener("pointerup", finishPointerInteraction);
 window.addEventListener("pointercancel", finishPointerInteraction);
 document.addEventListener("study-canvas:weekly-cards-changed", renderWeeklyShelf);
+document.addEventListener("study-canvas:tasks-changed", () => {
+  taskStore = loadTaskStore(localStorage.getItem(TASK_STORAGE_KEY)).store;
+  render();
+});
 window.addEventListener("storage", (event) => {
   if (event.key === TASK_STORAGE_KEY) {
     taskStore = loadTaskStore(localStorage.getItem(TASK_STORAGE_KEY)).store;
@@ -377,7 +381,8 @@ function handlePointerMove(event) {
     weeklyDragState.clientY = event.clientY;
     weeklyDragState.ghost.style.left = `${event.clientX + 12}px`;
     weeklyDragState.ghost.style.top = `${event.clientY + 12}px`;
-    dailyCanvasStage.classList.toggle("is-weekly-drop-target", isInside(event, dailyCanvasStage.getBoundingClientRect()));
+    const target = getActiveDropStage();
+    target.classList.toggle("is-weekly-drop-target", isInside(event, target.getBoundingClientRect()));
   }
 }
 
@@ -402,8 +407,9 @@ function finishPointerInteraction(event) {
     weeklyDragState = null;
     state.ghost.remove();
     document.body.classList.remove("is-dragging-weekly-card");
-    dailyCanvasStage.classList.remove("is-weekly-drop-target");
-    const rect = dailyCanvasStage.getBoundingClientRect();
+    const target = getActiveDropStage();
+    target.classList.remove("is-weekly-drop-target");
+    const rect = target.getBoundingClientRect();
     if (!isInside(state, rect)) {
       setShelfStatus("カードを「今日の目標」の中で離してください。");
       return;
@@ -429,11 +435,22 @@ function placeWeeklyCard(card, rect) {
     const x = clamp((card.clientX - rect.left) / rect.width - 0.12, 0, 0.76);
     const y = clamp((card.clientY - rect.top) / rect.height - 0.09, 0, 0.82);
     next = updateTaskPosition(next, activeDate, id, { x, y });
-    persistTasks(next, "週間カードを今日の目標へ配置しました。");
+    persistTasks(next, document.body.dataset.dailyView === "schedule" ? "週間カードを今日のスケジュールへ配置しました。" : "週間カードを今日の目標へ配置しました。");
+    if (document.body.dataset.dailyView === "schedule") {
+      document.dispatchEvent(new CustomEvent("study-canvas:schedule-placement-request", {
+        detail: { taskId: id, x: clamp((card.clientX - rect.left) / rect.width - 0.12, 0, 0.76), y: clamp((card.clientY - rect.top) / rect.height - 0.05, 0, 0.925) },
+      }));
+    }
     setShelfStatus("カードを配置しました。");
   } catch (error) {
     setShelfStatus(error?.message || "カードを配置できませんでした。", true);
   }
+}
+
+function getActiveDropStage() {
+  return document.body.dataset.dailyView === "schedule"
+    ? document.querySelector("#scheduleCanvasStage") || dailyCanvasStage
+    : dailyCanvasStage;
 }
 
 function toggleTaskCompletion(task) {

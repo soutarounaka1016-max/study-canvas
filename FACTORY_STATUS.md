@@ -4,39 +4,39 @@
 
 - アプリ名: Study Canvas
 - 目的: iPadの手書きキャンバスで受験勉強の計画を作成し、今日やることを決める
-- 適用AI工場OS: Version 0.4.1
+- 適用AI工場OS: Version 0.6
 - 正式公開URL: https://soutarounaka1016-max.github.io/study-canvas/
 
 ## 現在の状態
 
-- 完成段階: 完成
-- 進行状態: 完了
-- 開発開始時main Commit: `c14080c064372da94e3e4a1b8b9f1c182ca998b2`
-- 最新機能main Commit: `fcbf3fd219558ddefd2db70e614b7b06938ae078`
-- 最新機能公開Commit: `fcbf3fd219558ddefd2db70e614b7b06938ae078`
-- 作業ブランチ: なし（PR #74をmainへ反映済み）
+- 完成段階: 実装・ローカル検証完了、Release Gate待ち
+- 進行状態: 開発中
+- 開発開始時main Commit: `e7a06694b8102783dc9bdd4ce7c3d2a62bb09c60`
+- 最新機能main Commit: `e7a06694b8102783dc9bdd4ce7c3d2a62bb09c60`
+- 最新機能公開Commit: `e7a06694b8102783dc9bdd4ce7c3d2a62bb09c60`
+- 作業ブランチ: `agent/zoom-schedule`
 
 ## 今回の変更
 
-- 週間タスクカードを教科タブで絞り込み、横スクロールを不要にする
-- 週間棚、日次キャンバス、タスク編集一覧のタスク名を18pxへ拡大する
-- 日付一覧の縮小キャンバスにタスクカードを保存位置・教科色・短いタスク名付きで表示する
-- 既存の教科情報と保存形式を維持する
+- キャンバスの最小倍率を100%から25%へ変更し、縮小用紙を中央表示する
+- 今日の計画へ、3時間区切り8区画の「今日のスケジュール」を追加する
+- 日付別手書き、カード配置、完了同期、旧バックアップ互換を実装する
+- 既存の日次手書き・タスク・週間目標・自由ノートの保存形式を維持する
 
 ## 工程別結果
 
-- 単体テスト: 合格（100件）
+- 単体テスト: 合格（107件）
 - ビルド: 合格
-- ローカルブラウザ: 実行不能（配布ファイルが0MBで返る環境制限。PR用CIで代替）
-- PR用CI: 合格（[Actions Run 30421736541](https://github.com/soutarounaka1016-max/study-canvas/actions/runs/30421736541)）
-- main反映後CI: 合格（[Actions Run 30421895498](https://github.com/soutarounaka1016-max/study-canvas/actions/runs/30421895498)）
-- デプロイ: 合格（[Actions Run 30421895531](https://github.com/soutarounaka1016-max/study-canvas/actions/runs/30421895531)）
-- 公開環境E2E: 合格
-- Release Gate: 合格
+- ローカルブラウザ: 実行不能（Playwrightブラウザ実行ファイルなし。PR用CIで代替予定）
+- PR用CI: 未実行
+- main反映後CI: 未実行
+- デプロイ: 未実行
+- 公開環境E2E: 未実行
+- Release Gate: 未通過
 
 ## 外部操作待ち
 
-- なし
+- PR用Release Gate、main反映、Pages公開、公開環境E2E
 
 ## 既知の問題
 

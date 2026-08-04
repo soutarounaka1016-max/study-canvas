@@ -59,7 +59,7 @@ test("full backup round trips every store", () => {
   const parsed = parseFullBackup(raw, "2026-07-20");
   assert.equal(parsed.format, FULL_BACKUP_FORMAT);
   assert.deepEqual(parsed.data, createFullBackup(state, "2026-07-20T00:00:00.000Z").data);
-  assert.deepEqual(parsed.availableSections, ["pages", "tasks", "weekly", "weeklyCards", "notes"]);
+  assert.deepEqual(parsed.availableSections, ["pages", "tasks", "weekly", "weeklyCards", "notes", "schedule"]);
 });
 
 test("summary counts all saved content", () => {
@@ -73,6 +73,8 @@ test("summary counts all saved content", () => {
     weeklyCardCount: 1,
     notePageCount: 1,
     noteStrokeCount: 1,
+    scheduleDayCount: 0,
+    scheduleStrokeCount: 0,
   });
 });
 

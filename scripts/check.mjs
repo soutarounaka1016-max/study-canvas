@@ -65,12 +65,14 @@ const html = contents["index.html"] || "";
 for (const requirement of [
   "styles.css?v=20260730-mobile-1",
   "note.css?v=20260730-mobile-1",
-  "enhancements.css?v=20260730-mobile-1",
+  "enhancements.css?v=20260804-1",
   "weekly-text.css?v=20260730-mobile-1",
-  "task-card-colors.css?v=20260729-2",
+  "task-card-colors.css?v=20260804-1",
   "weekly-text-ui.js?v=20260729-2",
-  "task-ui.js?v=20260729-4",
-  "release-entry.js?v=20260730-mobile-1",
+  "task-ui.js?v=20260804-1",
+  "schedule.css?v=20260804-1",
+  "schedule-ui.js?v=20260804-1",
+  "release-entry.js?v=20260804-1",
   'id="weeklySubjectGrid"',
   "教科別に1行ずつ入力",
 ]) {
@@ -92,8 +94,8 @@ for (const removed of [
 const releaseEntry = contents["release-entry.js"] || "";
 for (const requirement of [
   "daily-enhancements.js?v=20260729-3",
-  "full-backup-entry.js?v=20260729-1",
-  "home-entry.js?v=20260730-mobile-1",
+  "full-backup-entry.js?v=20260804-1",
+  "home-entry.js?v=20260804-1",
   "factory-manifest.json",
   "document.documentElement.dataset.release",
 ]) {
