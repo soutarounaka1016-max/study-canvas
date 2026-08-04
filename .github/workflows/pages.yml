@@ -164,30 +164,36 @@ jobs:
           entry_path="$(grep -o 'release-entry.js?v=[^"]*' <<<"${html}" | head -n 1)"
           test -n "${entry_path}"
           grep -F 'weekly-text-ui.js?v=20260729-2' <<<"${html}"
-          grep -F 'task-ui.js?v=20260729-4' <<<"${html}"
-          grep -F 'task-card-colors.css?v=20260729-2' <<<"${html}"
+          grep -F 'task-ui.js?v=20260804-1' <<<"${html}"
+          grep -F 'task-card-colors.css?v=20260804-1' <<<"${html}"
+          grep -F 'schedule-ui.js?v=20260804-1' <<<"${html}"
+          grep -F 'schedule.css?v=20260804-1' <<<"${html}"
           if grep -E 'weekly-recognition|AIで読み取る|予定時間|学習時間の集計' <<<"${html}"; then
             echo "The official HTML still contains removed OCR or time UI."
             exit 1
           fi
           entry="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}${entry_path}")"
           grep -F 'daily-enhancements.js?v=20260729-3' <<<"${entry}"
-          grep -F 'full-backup-entry.js?v=20260729-1' <<<"${entry}"
+          grep -F 'full-backup-entry.js?v=20260804-1' <<<"${entry}"
           if grep -E 'ai-recognition|taskize|dashboard' <<<"${entry}"; then
             echo "The official entry still loads removed AI or time modules."
             exit 1
           fi
-          task_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-ui.js?v=20260729-4")"
+          task_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-ui.js?v=20260804-1")"
           grep -F 'dailyWeeklyShelf' <<<"${task_ui}"
           grep -F 'sourceWeeklyCardId' <<<"${task_ui}"
           grep -F 'card.dataset.subject = task.subject' <<<"${task_ui}"
           grep -F 'data-weekly-subject-filter' <<<"${task_ui}"
-          task_colors="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-card-colors.css?v=20260729-2")"
+          task_colors="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}task-card-colors.css?v=20260804-1")"
           grep -F 'data-subject="数学"' <<<"${task_colors}"
           grep -F 'data-subject="英語"' <<<"${task_colors}"
           grep -F 'data-subject="化学"' <<<"${task_colors}"
           grep -F 'data-subject="物理"' <<<"${task_colors}"
           grep -F 'calendar-task-mini-card' <<<"${task_colors}"
+          schedule_ui="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}schedule-ui.js?v=20260804-1")"
+          grep -F 'study-canvas:schedule-placement-request' <<<"${schedule_ui}"
+          schedule_store="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}src/schedule-store.js?v=20260804-1")"
+          grep -F 'study-canvas:schedule:v1' <<<"${schedule_store}"
 
           archive_html="$(curl --silent --show-error --fail --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL}ocr-experiment/?archive=${GITHUB_SHA}")"
           grep -F 'meta name="study-canvas-release" content="20260728-ocr-grounding-1"' <<<"${archive_html}"

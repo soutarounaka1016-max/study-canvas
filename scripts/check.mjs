@@ -10,6 +10,8 @@ const requiredFiles = [
   "task-card-colors.css",
   "weekly-text-ui.js",
   "task-ui.js",
+  "schedule.css",
+  "schedule-ui.js",
   "daily-enhancements.js",
   "release-entry.js",
   "home-entry.js",
@@ -20,6 +22,7 @@ const requiredFiles = [
   "archive-banner.js",
   "archive-banner.css",
   "src/task-store.js",
+  "src/schedule-store.js",
   "src/weekly-store.js",
   "src/weekly-card-store.js",
   "src/full-backup.js",
@@ -208,6 +211,13 @@ for (const requirement of [
   "Verify published release chains",
   "release-gate-evidence",
   'sed -i "s/__BUILD_COMMIT__/${GITHUB_SHA}/g" _site/factory-manifest.json',
+  "task-ui.js?v=20260804-1",
+  "task-card-colors.css?v=20260804-1",
+  "schedule-ui.js?v=20260804-1",
+  "schedule.css?v=20260804-1",
+  "full-backup-entry.js?v=20260804-1",
+  "study-canvas:schedule-placement-request",
+  "study-canvas:schedule:v1",
 ]) {
   requireText(workflow, requirement, `Pages公開に${requirement}がありません`);
 }
