@@ -79,7 +79,7 @@ test("今日のスケジュールを作成し、手書き・カード・完了�
   await page.locator('[data-daily-view="plan"]').click();
   await expect(page.locator('.canvas-task-card[data-task-id="schedule-e2e-task"] input')).toBeChecked();
   await page.reload();
-  await page.locator('[data-home-route="daily"]').click();
+  await expect(page.locator("#dailyViewTabs")).toBeVisible();
   await page.locator('[data-daily-view="schedule"]').click();
   await expect(page.locator('.schedule-task-card[data-task-id="schedule-e2e-task"] input')).toBeChecked();
   expect(errors).toEqual([]);
