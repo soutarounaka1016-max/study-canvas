@@ -22,9 +22,10 @@ export function loadScheduleStore(raw) {
       if (!isDate(date) || !isObject(day)) { recovered = true; continue; }
       const drawing = normalizeDrawing(day.drawing, date);
       const placements = normalizePlacements(day.placements);
-      if (drawing.recovered || placements.recovered) recovered = true;
-      if (drawing.value.strokes.length || Object.keys(placements.value).length) {
-        days[date] = { drawing: drawing.value, placements: placements.value };
+      const placementCopies = normalizePlacementCopies(day.placementCopies);
+      if (drawing.recovered || placements.recovered || placementCopies.recovered) recovered = true;
+      if (drawing.value.strokes.length || Object.keys(placements.value).length || Object.keys(placementCopies.value).length) {
+        days[date] = { drawing: drawing.value, placements: placements.value, placementCopies: placementCopies.value };
       }
     }
     if (Object.keys(value.days).length > MAX_DAYS) recovered = true;
@@ -43,7 +44,17 @@ export function serializeScheduleStore(store) {
 export function getScheduleDay(store, date) {
   assertDate(date);
   const day = store.days[date];
-  return day ? structuredClone(day) : { drawing: emptyDrawing(date), placements: {} };
+  return day
+    ? { ...structuredClone(day), placements: structuredClone(day.placements || {}), placementCopies: structuredClone(day.placementCopies || {}) }
+    : { drawing: emptyDrawing(date), placements: {}, placementCopies: {} };
+}
+
+export function getSchedulePlacementInstances(store, date) {
+  const day = getScheduleDay(store, date);
+  return [
+    ...Object.entries(day.placements).map(([taskId, position]) => ({ placementId: taskId, taskId, ...position })),
+    ...Object.entries(day.placementCopies).map(([placementId, placement]) => ({ placementId, ...placement })),
+  ];
 }
 
 export function setScheduleDrawing(store, date, drawing) {
@@ -62,9 +73,45 @@ export function setSchedulePlacement(store, date, taskId, position) {
   return setDay(store, date, day);
 }
 
+export function addSchedulePlacement(store, date, taskId, position, placementId) {
+  const id = validateId(taskId);
+  const day = getScheduleDay(store, date);
+  if (!day.placements[id]) return setSchedulePlacement(store, date, id, position);
+  const copyId = validateId(placementId);
+  if (day.placementCopies[copyId] || day.placements[copyId]) throw new TypeError("同じ配置IDがあります");
+  const x = Number(position?.x);
+  const y = Number(position?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new TypeError("カード位置が正しくありません");
+  day.placementCopies[copyId] = { taskId: id, x: clamp(x, 0, 0.76), y: clamp(y, 0, 0.925) };
+  return setDay(store, date, day);
+}
+
+export function updateSchedulePlacement(store, date, placementId, taskId, position) {
+  const id = validateId(placementId);
+  const linkedTaskId = validateId(taskId);
+  if (id === linkedTaskId) return setSchedulePlacement(store, date, linkedTaskId, position);
+  const day = getScheduleDay(store, date);
+  if (!day.placementCopies[id] || day.placementCopies[id].taskId !== linkedTaskId) throw new TypeError("移動するカード配置が見つかりません");
+  const x = Number(position?.x);
+  const y = Number(position?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new TypeError("カード位置が正しくありません");
+  day.placementCopies[id] = { taskId: linkedTaskId, x: clamp(x, 0, 0.76), y: clamp(y, 0, 0.925) };
+  return setDay(store, date, day);
+}
+
 export function removeSchedulePlacement(store, date, taskId) {
   const day = getScheduleDay(store, date);
   delete day.placements[validateId(taskId)];
+  return setDay(store, date, day);
+}
+
+export function removeSchedulePlacementInstance(store, date, placementId, taskId) {
+  const id = validateId(placementId);
+  const linkedTaskId = validateId(taskId);
+  if (id === linkedTaskId) return removeSchedulePlacement(store, date, linkedTaskId);
+  const day = getScheduleDay(store, date);
+  if (day.placementCopies[id]?.taskId !== linkedTaskId) return store;
+  delete day.placementCopies[id];
   return setDay(store, date, day);
 }
 
@@ -85,7 +132,7 @@ export function replaceStoredScheduleStore(storage, nextStore) {
 function setDay(store, date, day) {
   assertDate(date);
   const days = { ...store.days };
-  if (!day.drawing.strokes.length && !Object.keys(day.placements).length) delete days[date];
+  if (!day.drawing.strokes.length && !Object.keys(day.placements).length && !Object.keys(day.placementCopies).length) delete days[date];
   else days[date] = structuredClone(day);
   return { version: SCHEDULE_STORE_VERSION, days };
 }
@@ -126,6 +173,23 @@ function normalizePlacements(value) {
     } catch { recovered = true; }
   }
   return { value: placements, recovered };
+}
+
+function normalizePlacementCopies(value) {
+  if (value === undefined) return { value: {}, recovered: false };
+  if (!isObject(value)) return { value: {}, recovered: true };
+  const placementCopies = {};
+  let recovered = false;
+  for (const [placementId, placement] of Object.entries(value)) {
+    try {
+      const x = Number(placement?.x); const y = Number(placement?.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error();
+      placementCopies[validateId(placementId)] = {
+        taskId: validateId(placement?.taskId), x: clamp(x, 0, 0.76), y: clamp(y, 0, 0.925),
+      };
+    } catch { recovered = true; }
+  }
+  return { value: placementCopies, recovered };
 }
 
 function validateId(id) {
